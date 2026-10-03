@@ -57,6 +57,7 @@ pub struct Todo {
     pub done: bool,
     pub parent_id: Option<i64>,
     pub priority: Priority,
+    pub position: i64,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -85,6 +86,7 @@ impl Database {
                  done INTEGER NOT NULL DEFAULT 0 CHECK(done IN (0, 1)),
                  parent_id INTEGER REFERENCES todos(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
                  priority INTEGER NOT NULL DEFAULT 3 CHECK(priority IN (1, 3, 5)),
+                 position INTEGER NOT NULL DEFAULT 0,
                  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now')),
                  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now'))
              );",
@@ -106,6 +108,12 @@ impl Database {
                  CHECK(priority IN (1, 3, 5));",
             )?;
         }
+        if !columns.iter().any(|column| column == "position") {
+            transaction.execute_batch(
+                "ALTER TABLE todos ADD COLUMN position INTEGER NOT NULL DEFAULT 0;
+                 UPDATE todos SET position = id;",
+            )?;
+        }
         // Normalize databases created with the earlier five-level priority scale.
         transaction.execute_batch(
             "UPDATE todos SET priority = CASE priority WHEN 2 THEN 1 WHEN 4 THEN 5 END
@@ -119,8 +127,8 @@ impl Database {
 
     pub fn list(&self) -> Result<Vec<Todo>> {
         let mut statement = self.connection.prepare(
-            "SELECT id, title, done, created_at, updated_at, parent_id, priority
-             FROM todos ORDER BY priority ASC, id ASC",
+            "SELECT id, title, done, created_at, updated_at, parent_id, priority, position
+             FROM todos ORDER BY priority ASC, position ASC, id ASC",
         )?;
         Ok(statement
             .query_map([], Self::todo_from_row)?
@@ -136,15 +144,49 @@ impl Database {
             updated_at: row.get(4)?,
             parent_id: row.get(5)?,
             priority: row.get(6)?,
+            position: row.get(7)?,
         })
     }
 
     pub fn add(&self, title: &str, parent_id: Option<i64>, priority: Priority) -> Result<i64> {
         self.connection.execute(
-            "INSERT INTO todos (title, parent_id, priority) VALUES (?1, ?2, ?3)",
+            "INSERT INTO todos (title, parent_id, priority, position)
+             SELECT ?1, ?2, ?3, COALESCE(MAX(position), 0) + 1
+             FROM todos WHERE parent_id IS ?2",
             params![title, parent_id, priority],
         )?;
         Ok(self.connection.last_insert_rowid())
+    }
+
+    pub fn add_relative(
+        &mut self,
+        title: &str,
+        id: i64,
+        above: bool,
+        priority: Priority,
+    ) -> Result<i64> {
+        let transaction = self.connection.transaction()?;
+        let (parent_id, position) = transaction
+            .query_row(
+                "SELECT parent_id, position FROM todos WHERE id = ?1",
+                [id],
+                |row| Ok((row.get::<_, Option<i64>>(0)?, row.get::<_, i64>(1)?)),
+            )
+            .optional()?
+            .context("Task no longer exists; press Ctrl-r to refresh")?;
+        let position = position + i64::from(!above);
+        transaction.execute(
+            "UPDATE todos SET position = position + 1
+             WHERE parent_id IS ?1 AND position >= ?2",
+            params![parent_id, position],
+        )?;
+        transaction.execute(
+            "INSERT INTO todos (title, parent_id, priority, position) VALUES (?1, ?2, ?3, ?4)",
+            params![title, parent_id, priority, position],
+        )?;
+        let id = transaction.last_insert_rowid();
+        transaction.commit()?;
+        Ok(id)
     }
 
     pub fn update(&self, id: i64, title: &str, priority: Priority) -> Result<()> {
@@ -207,7 +249,7 @@ impl Database {
                      UNION
                      SELECT todos.id FROM todos JOIN subtree ON todos.parent_id = subtree.id
                  )
-                 SELECT id, title, done, created_at, updated_at, parent_id, priority
+                 SELECT id, title, done, created_at, updated_at, parent_id, priority, position
                  FROM todos WHERE id IN (SELECT id FROM subtree) ORDER BY id",
             )?;
             for todo in todos {
@@ -228,8 +270,8 @@ impl Database {
         let transaction = self.connection.transaction()?;
         for todo in todos {
             transaction.execute(
-                "INSERT INTO todos (id, title, done, created_at, updated_at, parent_id, priority) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-                params![todo.id, todo.title, todo.done, todo.created_at, todo.updated_at, todo.parent_id, todo.priority]
+                "INSERT INTO todos (id, title, done, created_at, updated_at, parent_id, priority, position) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                params![todo.id, todo.title, todo.done, todo.created_at, todo.updated_at, todo.parent_id, todo.priority, todo.position]
             )?;
         }
         transaction.commit()?;
@@ -268,12 +310,23 @@ mod tests {
         let folder = std::env::temp_dir().join(format!("todo-rs-test-{}", std::process::id()));
         let path = folder.join("nested/db.sql");
         {
-            let db = Database::open(&path).unwrap();
-            db.add("Persist this", None, Priority::High).unwrap();
+            let mut db = Database::open(&path).unwrap();
+            let root = db.add("Persist this", None, Priority::High).unwrap();
+            db.add_relative("Above", root, true, Priority::High)
+                .unwrap();
+            db.add_relative("Below", root, false, Priority::High)
+                .unwrap();
         }
         let db = Database::open(&path).unwrap();
-        assert_eq!(db.list().unwrap()[0].title, "Persist this");
-        assert_eq!(db.list().unwrap()[0].priority, Priority::High);
+        let todos = db.list().unwrap();
+        assert_eq!(
+            todos
+                .iter()
+                .map(|todo| todo.title.as_str())
+                .collect::<Vec<_>>(),
+            ["Above", "Persist this", "Below"]
+        );
+        assert!(todos.iter().all(|todo| todo.priority == Priority::High));
         drop(db);
         std::fs::remove_dir_all(folder).unwrap();
     }
@@ -347,6 +400,7 @@ mod tests {
         assert!(existing.done);
         assert_eq!(existing.parent_id, None);
         assert_eq!(existing.priority, Priority::Mid);
+        assert_eq!(existing.position, existing.id);
         assert_eq!(existing.created_at, "2026-01-01 00:00:00");
         let child = db.add("Child", Some(existing.id), Priority::Mid).unwrap();
         assert_eq!(db.list().unwrap()[1].parent_id, Some(existing.id));
@@ -355,6 +409,37 @@ mod tests {
         let db = Database::initialize(db.connection).unwrap();
         assert_eq!(db.list().unwrap()[0], existing);
         assert_eq!(db.list().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn sibling_insertion_rolls_back_order_on_failure() {
+        let mut db = Database::memory();
+        let root = db.add("Root", None, Priority::Mid).unwrap();
+        let child = db.add("Child", Some(root), Priority::Mid).unwrap();
+        db.add("Sibling", Some(root), Priority::Mid).unwrap();
+        let expected = db.list().unwrap();
+        assert!(db.add_relative(" ", child, true, Priority::Mid).is_err());
+        assert_eq!(db.list().unwrap(), expected);
+        assert!(
+            db.add_relative("Orphan", 9999, false, Priority::Mid)
+                .is_err()
+        );
+        assert_eq!(db.list().unwrap(), expected);
+        db.add_relative("Before child", child, true, Priority::Mid)
+            .unwrap();
+        let todos = db.list().unwrap();
+        assert_eq!(
+            todos.iter().find(|todo| todo.id == root).unwrap(),
+            &expected[0]
+        );
+        assert_eq!(
+            todos
+                .iter()
+                .filter(|todo| todo.parent_id == Some(root))
+                .map(|todo| todo.title.as_str())
+                .collect::<Vec<_>>(),
+            ["Before child", "Child", "Sibling"]
+        );
     }
 
     #[test]

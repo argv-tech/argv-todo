@@ -119,10 +119,19 @@ fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
                 (parent + 1, position, depth + 1)
             })
             .unwrap_or((0, visible.len(), 0));
+        let relative_position = app.adding_relative.and_then(|(id, above)| {
+            app.todos
+                .iter()
+                .find(|todo| todo.id == id)
+                .map(|todo| todo.position + i64::from(!above))
+        });
         let position = (start..end)
             .find(|&row| {
+                let todo = &app.todos[visible[row].index.unwrap()];
                 visible[row].depth == depth
-                    && app.todos[visible[row].index.unwrap()].priority > app.input_priority
+                    && (todo.priority > app.input_priority
+                        || (todo.priority == app.input_priority
+                            && relative_position.is_some_and(|position| todo.position >= position)))
             })
             .unwrap_or(end);
         visible.insert(position, DisplayRow { index: None, depth });
@@ -358,11 +367,11 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
     } else if area.width < 45 {
         "h/l tree  i  ?  q"
     } else if area.width < 75 {
-        "i add · t priority · ? help"
+        "i child · o below · ? help"
     } else if area.width < 105 {
-        "i add · t priority · x done · ? help · q quit"
+        "i child · o/O below/above · ? help · q quit"
     } else {
-        "j/k move · h/l tree · i add · x done · t priority · ? help · q quit"
+        "j/k move · i/a child · o/O below/above · x done · t priority · ? help · q quit"
     };
     frame.render_widget(
         Paragraph::new(hint)
@@ -385,12 +394,13 @@ fn draw_help(frame: &mut Frame, app: &App) {
     frame.render_widget(Clear, popup);
     let lines = [
         "j/k       next / previous task",
-        "l         select / create child",
+        "l         select first child",
         "h         select parent",
         "gg / G    first / last task",
         "3j / 2k   repeat movement",
         "",
-        "i/a/o     add sibling task",
+        "i/a       add child task",
+        "o / O     add sibling below / above",
         "e / cc    edit task",
         "t         cycle priority",
         "ph/pm/pl  high / mid / low",
@@ -494,6 +504,19 @@ mod tests {
             assert_eq!(text_position(&terminal, "Draft task"), expected);
         }
         app.input_priority = Priority::Mid;
+        for (id, above, parent_id, expected) in [
+            (parent, true, None, (12, 3)),
+            (parent, false, None, (12, 7)),
+            (child, true, Some(parent), (17, 4)),
+            (child, false, Some(parent), (17, 6)),
+            (sibling, false, Some(parent), (17, 7)),
+        ] {
+            app.adding_parent = parent_id;
+            app.adding_relative = Some((id, above));
+            terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+            assert_eq!(text_position(&terminal, "Draft task"), expected);
+        }
+        app.adding_relative = None;
         // Editing replaces the existing title without adding another row.
         app.editing_id = Some(parent);
         terminal.draw(|frame| draw(frame, &mut app)).unwrap();

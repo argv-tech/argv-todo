@@ -131,7 +131,9 @@ impl VimManager {
             KeyCode::Char('t') => VimAction::CyclePriority,
             KeyCode::Char('0') | KeyCode::Home => VimAction::FileStart,
             KeyCode::Char('G') | KeyCode::End => VimAction::FileEnd,
-            KeyCode::Char('i' | 'a' | 'o') => VimAction::Add,
+            KeyCode::Char('i' | 'a') => VimAction::AddChild,
+            KeyCode::Char('o') => VimAction::AddBelow,
+            KeyCode::Char('O') => VimAction::AddAbove,
             KeyCode::Char(' ' | 'x') | KeyCode::Enter => VimAction::Toggle,
             KeyCode::Char('u') => VimAction::Undo,
             KeyCode::Char('/') => VimAction::Search,
@@ -179,7 +181,7 @@ mod tests {
     fn insert_mode_treats_commands_as_text_and_ignores_release() {
         let mut vim = VimManager::default();
         vim.set_mode(VimMode::Insert);
-        for c in ['h', 'j', 'k', 'l', 'q', 't', 'p', 'é'] {
+        for c in ['h', 'j', 'k', 'l', 'q', 't', 'p', 'i', 'a', 'o', 'O', 'é'] {
             assert_eq!(vim.handle(key(c)), Some(VimAction::Insert(c)));
         }
         let mut release = key('q');
@@ -188,6 +190,23 @@ mod tests {
         assert_eq!(
             vim.handle(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE)),
             Some(VimAction::Cancel)
+        );
+    }
+
+    #[test]
+    fn creation_keys_distinguish_children_and_siblings() {
+        let mut vim = VimManager::default();
+        for (letter, action) in [
+            ('i', VimAction::AddChild),
+            ('a', VimAction::AddChild),
+            ('o', VimAction::AddBelow),
+            ('O', VimAction::AddAbove),
+        ] {
+            assert_eq!(vim.handle(key(letter)), Some(action));
+        }
+        assert_eq!(
+            vim.handle(KeyEvent::new(KeyCode::Char('O'), KeyModifiers::SHIFT)),
+            Some(VimAction::AddAbove)
         );
     }
 

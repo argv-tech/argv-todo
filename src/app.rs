@@ -28,6 +28,7 @@ pub struct App {
     database: Database,
     pub todos: Vec<Todo>,
     pub adding_parent: Option<i64>,
+    pub adding_relative: Option<(i64, bool)>,
     pub list: ListState,
     pub vim: VimManager,
     pub editor: Editor,
@@ -49,6 +50,7 @@ impl App {
             database,
             todos,
             adding_parent: None,
+            adding_relative: None,
             list: ListState::default(),
             vim: VimManager::default(),
             editor: Editor::default(),
@@ -166,6 +168,7 @@ impl App {
         // Show the full tree so the draft and saved task occupy the same place.
         self.query.clear();
         self.adding_parent = parent_id;
+        self.adding_relative = None;
         self.editing_id = None;
         self.input_priority = DEFAULT_PRIORITY;
         self.editor = Editor::default();
@@ -189,6 +192,17 @@ impl App {
         self.normalize_selection();
     }
 
+    fn begin_sibling(&mut self, above: bool) {
+        let selected = self
+            .selected_todo()
+            .map(|todo| (todo.id, todo.parent_id, todo.priority));
+        self.begin_add(selected.and_then(|(_, parent, _)| parent));
+        if let Some((id, _, priority)) = selected {
+            self.adding_relative = Some((id, above));
+            self.input_priority = priority;
+        }
+    }
+
     fn set_priority(&mut self, priority: Priority) -> Result<()> {
         if let Some(id) = self.selected_todo().map(|todo| todo.id) {
             self.database.set_priority(id, priority)?;
@@ -200,7 +214,6 @@ impl App {
 
     fn select_child(&mut self) {
         let Some(id) = self.selected_todo().map(|todo| todo.id) else {
-            self.begin_add(None);
             return;
         };
         if let Some(child) = self
@@ -212,8 +225,6 @@ impl App {
             self.query.clear();
             self.select_id(child);
             self.message("Child selected.");
-        } else {
-            self.begin_add(Some(id));
         }
     }
 
@@ -298,6 +309,7 @@ impl App {
                     self.editor = Editor::default();
                     self.editing_id = None;
                     self.adding_parent = None;
+                    self.adding_relative = None;
                     self.normalize_selection();
                     self.message("Cancelled.");
                 }
@@ -317,6 +329,9 @@ impl App {
                         let id = if let Some(id) = self.editing_id {
                             self.database.update(id, &text, self.input_priority)?;
                             id
+                        } else if let Some((id, above)) = self.adding_relative {
+                            self.database
+                                .add_relative(&text, id, above, self.input_priority)?
                         } else {
                             self.database
                                 .add(&text, self.adding_parent, self.input_priority)?
@@ -328,6 +343,7 @@ impl App {
                         self.vim.set_mode(VimMode::Normal);
                         self.editing_id = None;
                         self.adding_parent = None;
+                        self.adding_relative = None;
                         self.editor = Editor::default();
                         self.reload(Some(id))?;
                         self.message(if was_edit {
@@ -387,10 +403,12 @@ impl App {
                 self.list
                     .select(self.visible_indices().len().checked_sub(1));
             }
-            VimAction::Add => {
-                let parent = self.selected_todo().and_then(|todo| todo.parent_id);
+            VimAction::AddChild => {
+                let parent = self.selected_todo().map(|todo| todo.id);
                 self.begin_add(parent);
             }
+            VimAction::AddBelow => self.begin_sibling(false),
+            VimAction::AddAbove => self.begin_sibling(true),
             VimAction::Edit => {
                 if let Some(todo) = self.selected_todo() {
                     let id = todo.id;
@@ -517,12 +535,75 @@ mod tests {
     }
 
     #[test]
+    fn creation_keys_place_children_and_siblings_and_undo_keeps_order() {
+        let mut app = app();
+        for key in ["a", "i", "o", "O"] {
+            keys(&mut app, key);
+            assert_eq!(app.vim.mode(), VimMode::Insert);
+            assert_eq!(app.adding_parent, None);
+            assert_eq!(app.adding_relative, None);
+            app.dispatch(VimAction::Cancel);
+        }
+        keys(&mut app, "iRoot");
+        enter(&mut app);
+        let root = app.selected_todo().unwrap().id;
+        keys(&mut app, "aFirst child");
+        assert_eq!(app.adding_parent, Some(root));
+        enter(&mut app);
+        let first = app.selected_todo().unwrap().id;
+        keys(&mut app, "iGrandchild");
+        assert_eq!(app.adding_parent, Some(first));
+        enter(&mut app);
+        keys(&mut app, "hoSecond child");
+        enter(&mut app);
+        keys(&mut app, "OBetween children");
+        enter(&mut app);
+        assert_eq!(app.selected_todo().unwrap().parent_id, Some(root));
+        keys(&mut app, "ggoBelow root");
+        enter(&mut app);
+        app.select_id(root);
+        keys(&mut app, "OAbove root");
+        enter(&mut app);
+        let selected = app.selected_todo().unwrap().id;
+        app.reload(Some(selected)).unwrap();
+        assert_eq!(
+            app.visible_rows()
+                .iter()
+                .map(|row| { (app.todos[row.index].title.as_str(), row.depth) })
+                .collect::<Vec<_>>(),
+            [
+                ("Above root", 0),
+                ("Root", 0),
+                ("First child", 1),
+                ("Grandchild", 2),
+                ("Between children", 1),
+                ("Second child", 1),
+                ("Below root", 0),
+            ]
+        );
+        let expected = app.todos.clone();
+        app.select_id(root);
+        keys(&mut app, "O");
+        app.dispatch(VimAction::Cancel);
+        assert_eq!(app.selected_todo().unwrap().id, root);
+        assert_eq!(app.todos, expected);
+        keys(&mut app, "ddu");
+        assert_eq!(app.todos, expected);
+        keys(&mut app, "pho");
+        assert_eq!(app.input_priority, Priority::High);
+        keys(&mut app, "High sibling");
+        enter(&mut app);
+        assert_eq!(app.selected_todo().unwrap().priority, Priority::High);
+        assert_eq!(app.selected_todo().unwrap().parent_id, None);
+    }
+
+    #[test]
     fn priorities_sort_siblings_keep_selection_and_survive_edit_and_undo() {
         let mut app = app();
         keys(&mut app, "iFirst root");
         enter(&mut app);
         let first = app.selected_todo().unwrap().id;
-        keys(&mut app, "iSecond root");
+        keys(&mut app, "oSecond root");
         enter(&mut app);
         let second = app.selected_todo().unwrap().id;
         for (priority, order) in [
@@ -541,15 +622,16 @@ mod tests {
                 order
             );
         }
-        keys(&mut app, "phlMid child");
+        keys(&mut app, "phiMid child");
         enter(&mut app);
+        keys(&mut app, "pm");
         let mid_child = app.selected_todo().unwrap().id;
-        keys(&mut app, "iHigh child");
+        keys(&mut app, "oHigh child");
         cycle_input_priority(&mut app);
         enter(&mut app);
         let high_child = app.selected_todo().unwrap().id;
         assert_eq!(app.selected_todo().unwrap().priority, Priority::High);
-        keys(&mut app, "lGrandchild");
+        keys(&mut app, "iGrandchild");
         enter(&mut app);
         let grandchild = app.selected_todo().unwrap().id;
         keys(&mut app, "hpl");
@@ -590,7 +672,7 @@ mod tests {
         let mut app = app();
         keys(&mut app, "iRead a book");
         enter(&mut app);
-        keys(&mut app, "iShip the app");
+        keys(&mut app, "oShip the app");
         enter(&mut app);
         assert_eq!(app.selected_todo().unwrap().title, "Ship the app");
         keys(&mut app, "ke");
@@ -618,8 +700,9 @@ mod tests {
     #[test]
     fn search_cancel_blank_title_and_empty_navigation() {
         let mut app = app();
-        keys(&mut app, "jkGggdd");
+        keys(&mut app, "jkGggdd3l");
         assert_eq!(app.list.selected(), None);
+        assert_eq!(app.vim.mode(), VimMode::Normal);
         keys(&mut app, "i  ");
         enter(&mut app);
         assert!(app.error);
@@ -627,7 +710,7 @@ mod tests {
         app.dispatch(VimAction::Cancel);
         keys(&mut app, "iBuy coffee");
         enter(&mut app);
-        keys(&mut app, "iRead Rust");
+        keys(&mut app, "oRead Rust");
         enter(&mut app);
         keys(&mut app, "/COFFEE");
         assert_eq!(app.visible_indices().len(), 1);
@@ -649,16 +732,20 @@ mod tests {
         keys(&mut app, "iProject");
         enter(&mut app);
         let root = app.selected_todo().unwrap().id;
-        keys(&mut app, "l");
+        keys(&mut app, "i");
         assert_eq!(app.adding_parent, Some(root));
         assert_eq!(app.visible_indices().len(), 1);
         keys(&mut app, "Child");
         enter(&mut app);
         let child = app.selected_todo().unwrap().id;
-        keys(&mut app, "lGrandchild");
+        keys(&mut app, "iGrandchild");
         enter(&mut app);
         let grandchild = app.selected_todo().unwrap().id;
-        keys(&mut app, "iSibling");
+        keys(&mut app, "3l");
+        assert_eq!(app.vim.mode(), VimMode::Normal);
+        assert_eq!(app.selected_todo().unwrap().id, grandchild);
+        assert_eq!(app.todos.len(), 3);
+        keys(&mut app, "oSibling");
         enter(&mut app);
         assert_eq!(app.selected_todo().unwrap().parent_id, Some(child));
         assert_eq!(
@@ -715,13 +802,13 @@ mod tests {
         keys(&mut app, "iRoot");
         enter(&mut app);
         let root = app.selected_todo().unwrap().clone();
-        keys(&mut app, "iOther root");
+        keys(&mut app, "oOther root");
         enter(&mut app);
-        keys(&mut app, "kl");
+        keys(&mut app, "ki");
         app.dispatch(VimAction::Cancel);
         assert_eq!(app.selected_todo().unwrap().id, root.id);
         assert_eq!(app.adding_parent, None);
-        keys(&mut app, "lChild");
+        keys(&mut app, "iChild");
         enter(&mut app);
         let rows = app.visible_rows();
         assert_eq!(
@@ -739,7 +826,7 @@ mod tests {
         enter(&mut app);
         keys(&mut app, "i");
         assert!(app.query.is_empty());
-        assert_eq!(app.adding_parent, Some(root.id));
+        assert_eq!(app.adding_parent, Some(child));
         assert_eq!(app.selected_todo().unwrap().id, child);
         assert_eq!(app.todos.len(), 3, "Drafts are not saved before Enter");
         app.dispatch(VimAction::Cancel);

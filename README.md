@@ -34,11 +34,12 @@ cargo run -- --help
 | Key | Action |
 | --- | --- |
 | `j` / `k` | Next / previous row in the task tree |
-| `l` | Select the first child; start a child if there are none |
+| `l` | Select the first child; stay selected if there are none |
 | `h` | Select the parent task |
 | `gg` / `G` | First / last task |
 | `3j`, `2k` | Repeat a motion |
-| `i`, `a`, `o` | Add a sibling of the selected task; add a root task when the list is empty |
+| `i`, `a` | Add a child of the selected task; add a root task when the list is empty |
+| `o`, `O` | Add a sibling below or above the selected task; add a root task when the list is empty |
 | `e`, `cc` | Edit selected task |
 | `t` | Cycle priority: low → mid → high → low |
 | `ph`, `pm`, `pl` | Set priority to high, mid, or low |
@@ -56,7 +57,7 @@ In insert and search modes, letters are text. `Enter` saves or applies search. A
 
 Tasks can contain nested child tasks. Existing databases are upgraded automatically, keeping existing tasks at the top level. Deleting a parent also deletes its descendants; `u` restores the entire tree. Completing or reopening a parent gives all its descendants the same state, including tasks hidden by search. Toggling a child affects its own subtree without changing its ancestors or siblings. Changes are saved atomically.
 
-Tasks have **high**, **mid**, or **low** priority; new and existing tasks default to **mid**. Roots and children within each parent are sorted high first, then mid, then low. Equal priorities keep creation order. Changing a priority keeps the task selected, and children stay with their parent. Priorities are saved in SQLite and preserved by deletion undo.
+Tasks have **high**, **mid**, or **low** priority; new roots, children, and existing tasks default to **mid**. Siblings created with `o` or `O` start with the selected task's priority so they appear beside it. Roots and children within each parent are sorted high first, then mid, then low. Equal priorities keep their saved sibling order, including insertion above or below. Changing a priority keeps the task selected, and children stay with their parent. Priorities and sibling order are saved in SQLite and preserved by deletion undo.
 
 The fullscreen interface uses your terminal's background and ANSI color palette. Tasks occupy one row each, with bold parents and indented connecting branches. A small cyan caret marks the selection; checkmarks and tree lines use normal text color and turn cyan when selected. Focus and completion preserve title and priority colors; a checkmark identifies completed tasks. A `done/total` count beside a parent shows its direct children. The header contains only the app name and completion count. Short key hints stay at the bottom; input and errors appear when needed. Layout and key hints adapt to the terminal size.
 
