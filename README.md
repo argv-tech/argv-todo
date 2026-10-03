@@ -33,16 +33,17 @@ cargo run -- --help
 
 | Key | Action |
 | --- | --- |
-| `j` / `k` | Next / previous task |
-| `h` / `l` | Switch All / Active / Done filters |
+| `j` / `k` | Next / previous task at the current level |
+| `l` | Enter selected task's children; start a child if there are none |
+| `h` | Return to the parent level with the parent selected |
 | `gg` / `G` | First / last task |
 | `3j`, `2k` | Repeat a motion |
-| `i`, `a`, `o` | Add a task |
+| `i`, `a`, `o` | Add a task at the current level |
 | `e`, `cc` | Edit selected task |
 | `Space`, `x`, `Enter` | Toggle completion in normal mode |
-| `dd`, `3dd` | Delete one / three tasks starting at selection |
-| `u` | Undo last deletion in the current session |
-| `/` | Search titles, ignoring case |
+| `dd`, `3dd` | Delete one / three tasks and all their children starting at selection |
+| `u` | Restore the last deleted task tree(s) in the current session |
+| `/` | Search titles at the current level, ignoring case |
 | `?` | Show help |
 | `Esc` | Cancel input, close help, or clear applied search |
 | `Ctrl-r` | Reload tasks from disk |
@@ -50,7 +51,9 @@ cargo run -- --help
 
 In insert and search modes, letters are text. `Enter` saves or applies search. Arrow keys, `Home`, and `End` move the input cursor; `Ctrl-Left` / `Ctrl-Right` move by word. `Backspace`, `Delete`, `Ctrl-w`, and `Ctrl-u` edit text. Bracketed paste is supported. Text editing handles Unicode graphemes and wide characters.
 
-The borderless interface fills the terminal with a task list, selected-task metadata, and a command line. The header stays at the top and the mode and key hints stay at the bottom. Layout and key hints adapt to the terminal size.
+Tasks can contain nested child tasks. Existing databases are upgraded automatically, keeping existing tasks at the top level. Deleting a parent also deletes its descendants; `u` restores the entire tree. Completion applies to the selected task independently of its children.
+
+The borderless interface fills the terminal with one list containing active and completed tasks at the current level, selected-task metadata, and a command line. A breadcrumb shows the current parent path, and `› done/total` beside a task shows its direct children. The header stays at the top and the mode and key hints stay at the bottom. Layout and key hints adapt to the terminal size.
 
 ## Check
 
