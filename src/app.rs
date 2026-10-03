@@ -170,7 +170,9 @@ impl App {
         self.adding_parent = parent_id;
         self.adding_relative = None;
         self.editing_id = None;
-        self.input_priority = DEFAULT_PRIORITY;
+        self.input_priority = parent_id
+            .and_then(|id| self.todos.iter().find(|todo| todo.id == id))
+            .map_or(DEFAULT_PRIORITY, |todo| todo.priority);
         self.editor = Editor::default();
         self.vim.set_mode(VimMode::Insert);
         if let Some(id) = selected_id {
@@ -532,6 +534,28 @@ mod tests {
             .handle(KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL))
             .unwrap();
         app.dispatch(action);
+    }
+
+    #[test]
+    fn new_children_inherit_parent_priority_for_all_creation_keys() {
+        for priority in [Priority::High, Priority::Mid, Priority::Low] {
+            for key in ["a", "i"] {
+                let database = Database::memory();
+                let parent = database.add("Parent", None, priority).unwrap();
+                database
+                    .add("Existing child", Some(parent), Priority::Low)
+                    .unwrap();
+                let mut app = App::new(database).unwrap();
+                keys(&mut app, key);
+                assert_eq!(app.vim.mode(), VimMode::Insert);
+                assert_eq!(app.adding_parent, Some(parent));
+                assert_eq!(app.input_priority, priority);
+                keys(&mut app, "New child");
+                enter(&mut app);
+                assert_eq!(app.selected_todo().unwrap().parent_id, Some(parent));
+                assert_eq!(app.selected_todo().unwrap().priority, priority);
+            }
+        }
     }
 
     #[test]
