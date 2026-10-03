@@ -7,13 +7,13 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Clear, List, ListItem, Paragraph, Wrap},
 };
 
-const BG: Color = Color::Rgb(19, 22, 28);
-const TEXT: Color = Color::Rgb(226, 230, 237);
-const MUTED: Color = Color::Rgb(150, 161, 179);
-const ACCENT: Color = Color::Rgb(143, 216, 186);
-const RULE: Color = Color::Rgb(67, 78, 95);
-const SELECTED: Color = Color::Rgb(30, 45, 44);
-const ERROR: Color = Color::Rgb(244, 146, 146);
+// ANSI colors follow the user's terminal palette; preserve its background.
+const BG: Color = Color::Reset;
+const TEXT: Color = Color::Reset;
+const MUTED: Color = Color::DarkGray;
+const ACCENT: Color = Color::Cyan;
+const DONE: Color = Color::Green;
+const ERROR: Color = Color::Red;
 
 fn workspace(area: Rect) -> Rect {
     let margin = if area.width >= 60 { 2 } else { 1 };
@@ -23,13 +23,6 @@ fn workspace(area: Rect) -> Rect {
         area.width.saturating_sub(margin * 2),
         area.height.saturating_sub(2),
     )
-}
-
-fn rule(frame: &mut Frame, area: Rect) {
-    frame.render_widget(
-        Paragraph::new("─".repeat(area.width as usize)).style(Style::default().fg(RULE)),
-        area,
-    );
 }
 
 pub fn draw(frame: &mut Frame, app: &mut App) {
@@ -47,53 +40,24 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         );
         return;
     }
-    let [header, separator, body, metadata, message, input, footer] = Layout::vertical([
+    let show_input = app.vim.mode() != VimMode::Normal || !app.query.is_empty();
+    let [header, _, body, message, input, footer] = Layout::vertical([
         Constraint::Length(1),
-        Constraint::Length(if area.height >= 16 { 2 } else { 1 }),
+        Constraint::Length(1),
         Constraint::Min(1),
-        Constraint::Length(1),
-        Constraint::Length(1),
-        Constraint::Length(2),
+        Constraint::Length(u16::from(app.error)),
+        Constraint::Length(u16::from(show_input)),
         Constraint::Length(1),
     ])
     .areas(workspace(area));
     draw_header(frame, app, header);
-    rule(
-        frame,
-        Rect {
-            height: 1,
-            ..separator
-        },
-    );
     draw_tasks(frame, app, body);
-    if let Some(todo) = app.selected_todo() {
-        let text = if metadata.width >= 65 {
-            format!(
-                "  #{}  ·  {}  ·  created {} UTC",
-                todo.id,
-                if todo.done { "completed" } else { "active" },
-                todo.created_at
-            )
-        } else {
-            format!(
-                "  #{}  ·  {}",
-                todo.id,
-                if todo.done { "completed" } else { "active" }
-            )
-        };
+    if app.error {
         frame.render_widget(
-            Paragraph::new(text).style(Style::default().fg(MUTED)),
-            metadata,
+            Paragraph::new(app.status.as_str()).style(Style::default().fg(ERROR)),
+            message,
         );
     }
-    frame.render_widget(
-        Paragraph::new(app.status.as_str()).style(Style::default().fg(if app.error {
-            ERROR
-        } else {
-            MUTED
-        })),
-        message,
-    );
     draw_input(frame, app, input);
     draw_footer(frame, app, footer);
     if app.help {
@@ -103,22 +67,16 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
 
 fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
     let [brand, summary] =
-        Layout::horizontal([Constraint::Length(12), Constraint::Min(0)]).areas(area);
+        Layout::horizontal([Constraint::Length(6), Constraint::Min(0)]).areas(area);
     frame.render_widget(
-        Paragraph::new(Line::from(vec![
-            Span::styled(
-                "todo",
-                Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
-            ),
-            Span::styled(" / rs", Style::default().fg(MUTED)),
-        ])),
+        Paragraph::new("todo").style(Style::default().fg(TEXT).add_modifier(Modifier::BOLD)),
         brand,
     );
     let done = app.todos.iter().filter(|todo| todo.done).count();
     let text = if app.todos.is_empty() {
         "0 tasks".into()
     } else {
-        format!("{} open  /  {done} done", app.todos.len() - done)
+        format!("{done}/{} done", app.todos.len())
     };
     frame.render_widget(
         Paragraph::new(text)
@@ -174,14 +132,7 @@ fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
             last_at_depth.push(row);
         }
     }
-    let padding = if area.width >= 60 { 2 } else { 0 };
-    let area = Rect::new(
-        area.x + padding,
-        area.y,
-        area.width.saturating_sub(padding * 2),
-        area.height,
-    );
-    let max_depth = (area.width.saturating_sub(24) as usize / 5).max(1);
+    let max_depth = (area.width.saturating_sub(18) as usize / 5).max(1);
     let mut ancestors = Vec::new();
     let items: Vec<_> = visible
         .iter()
@@ -191,20 +142,20 @@ fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
             let selected = app.list.selected() == Some(row);
             let (done, total) = child_counts[row];
             let root = tree_row.depth == 0;
-            let mut style = Style::default().fg(if todo.done {
-                MUTED
-            } else if root {
+            let mut style = Style::default().fg(if selected {
                 ACCENT
+            } else if todo.done {
+                MUTED
             } else {
                 TEXT
             });
-            if root || total > 0 {
+            if root || total > 0 || selected {
                 style = style.add_modifier(Modifier::BOLD);
             }
             let children = if total == 0 {
                 String::new()
             } else {
-                format!("   {done}/{total}")
+                format!("  {done}/{total}")
             };
             ancestors.truncate(tree_row.depth);
             let hidden = tree_row.depth.saturating_sub(max_depth);
@@ -230,20 +181,16 @@ fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
             };
             ancestors.push(!last_sibling[row]);
             let line = Line::from(vec![
-                Span::styled(
-                    format!("{:>2}    ", row + 1),
-                    Style::default().fg(if selected { ACCENT } else { MUTED }),
-                ),
                 Span::styled(branch, Style::default().fg(MUTED)),
                 Span::styled(
-                    if todo.done {
-                        "✓  "
-                    } else if root {
-                        "□  "
+                    if todo.done { "✓  " } else { "□  " },
+                    Style::default().fg(if todo.done {
+                        DONE
+                    } else if selected {
+                        ACCENT
                     } else {
-                        "○  "
-                    },
-                    Style::default().fg(if todo.done || selected { ACCENT } else { MUTED }),
+                        TEXT
+                    }),
                 ),
                 Span::styled(todo.title.as_str(), style),
                 Span::styled(children, Style::default().fg(MUTED)),
@@ -252,19 +199,13 @@ fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
         })
         .collect();
     let list = List::new(items)
-        .highlight_symbol("▎ ")
-        .highlight_style(Style::default().bg(SELECTED).fg(ACCENT));
+        .highlight_symbol("› ")
+        .highlight_style(Style::default().fg(ACCENT));
     frame.render_stateful_widget(list, area, &mut app.list);
 }
 
 fn draw_input(frame: &mut Frame, app: &App, area: Rect) {
-    rule(frame, Rect { height: 1, ..area });
-    let input = Rect::new(
-        area.x,
-        area.y + 1,
-        area.width,
-        area.height.saturating_sub(1),
-    );
+    let input = area;
     if input.height == 0 {
         return;
     }
@@ -308,8 +249,15 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
     let pending = app.vim.pending_label();
     let [mode, keys] = Layout::horizontal([Constraint::Length(14), Constraint::Min(0)]).areas(area);
     frame.render_widget(
-        Paragraph::new(format!("{}  {pending}", app.vim.mode().label()))
-            .style(Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
+        Paragraph::new(format!(
+            "{}  {pending}",
+            app.vim.mode().label().to_lowercase()
+        ))
+        .style(Style::default().fg(if editing || !pending.is_empty() {
+            ACCENT
+        } else {
+            MUTED
+        })),
         mode,
     );
     let hint = if editing {
@@ -323,11 +271,11 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
     } else if area.width < 45 {
         "h/l tree  i  ?  q"
     } else if area.width < 75 {
-        "h/l tree · i add · ? help"
+        "i add · x done · ? help"
     } else if area.width < 105 {
-        "j/k move · h/l tree · i add · ? help · q quit"
+        "h/l tree · i add · x done · ? help · q quit"
     } else {
-        "j/k move · h parent · l child · i add · x done · ? help · q quit"
+        "j/k move · h/l tree · i add · x done · ? help · q quit"
     };
     frame.render_widget(
         Paragraph::new(hint)
@@ -357,7 +305,7 @@ fn draw_help(frame: &mut Frame, app: &App) {
         "",
         "i/a/o     add sibling task",
         "e / cc    edit task",
-        "Space/x   toggle completion",
+        "Space/x   toggle task + children",
         "dd / 3dd  delete task tree(s)",
         "u         undo deletion",
         "",
@@ -378,7 +326,7 @@ fn draw_help(frame: &mut Frame, app: &App) {
         .title_style(Style::default().fg(ACCENT))
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(RULE))
+        .border_style(Style::default().fg(MUTED))
         .style(Style::default().bg(BG).fg(TEXT));
     frame.render_widget(
         Paragraph::new(lines.into_iter().map(Line::from).collect::<Vec<_>>())
@@ -442,6 +390,15 @@ mod tests {
                 assert!(rows[positions[1].0].contains("├──"));
                 assert!(rows[positions[2].0].contains("│    └──"));
                 assert!(rows[positions[3].0].contains("└──"));
+                assert!(
+                    rows.iter()
+                        .all(|line| !line.contains("created") && !line.contains("───"))
+                );
+                assert!(
+                    buffer.content.iter().all(|cell| {
+                        cell.bg == Color::Reset && !matches!(cell.fg, Color::Rgb(..))
+                    })
+                );
             }
             app.list.select(Some(app.todos.len() - 1));
             terminal.draw(|frame| draw(frame, &mut app)).unwrap();
@@ -449,6 +406,10 @@ mod tests {
             app.editor.insert("A long task with Unicode 界 👩‍💻");
             terminal.draw(|frame| draw(frame, &mut app)).unwrap();
             app.vim.set_mode(VimMode::Normal);
+            app.error = true;
+            app.status = "Could not save task".into();
+            terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+            app.error = false;
             app.help = true;
             terminal.draw(|frame| draw(frame, &mut app)).unwrap();
             app.help = false;
