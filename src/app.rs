@@ -384,12 +384,13 @@ impl App {
                 if let Some(todo) = self.selected_todo() {
                     let id = todo.id;
                     let done = todo.done;
-                    self.database.toggle(id)?;
+                    let changed = self.database.toggle(id)?;
                     self.reload(Some(id))?;
-                    self.message(if done {
-                        "Task reopened."
+                    let action = if done { "Reopened" } else { "Completed" };
+                    self.message(if changed == 1 {
+                        format!("{action} task.")
                     } else {
-                        "Task completed."
+                        format!("{action} task and {} descendants.", changed - 1)
                     });
                 }
             }
@@ -587,6 +588,17 @@ mod tests {
         assert_eq!(app.todos, expected);
         assert_eq!(app.selected_todo().unwrap().id, root);
         assert_eq!(app.visible_indices().len(), 4);
+        // Toggling a parent also reaches descendants hidden by search.
+        keys(&mut app, "/Project");
+        enter(&mut app);
+        assert_eq!(app.visible_indices().len(), 1);
+        keys(&mut app, "x");
+        assert_eq!(app.selected_todo().unwrap().id, root);
+        assert!(app.todos.iter().all(|todo| todo.done));
+        assert!(app.database.list().unwrap().iter().all(|todo| todo.done));
+        app.dispatch(VimAction::Cancel);
+        keys(&mut app, "x");
+        assert!(app.todos.iter().all(|todo| !todo.done));
     }
 
     #[test]

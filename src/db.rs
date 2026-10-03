@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, OptionalExtension, params};
 use std::{collections::BTreeMap, path::Path, time::Duration};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -98,15 +98,27 @@ impl Database {
         Ok(())
     }
 
-    pub fn toggle(&self, id: i64) -> Result<()> {
-        let changed = self.connection.execute(
-            "UPDATE todos SET done = 1 - done, updated_at = strftime('%Y-%m-%d %H:%M:%S', 'now') WHERE id = ?1", [id]
+    /// Give the selected task and every descendant the same completion state.
+    pub fn toggle(&mut self, id: i64) -> Result<usize> {
+        let transaction = self.connection.transaction()?;
+        let done = transaction
+            .query_row("SELECT done FROM todos WHERE id = ?1", [id], |row| {
+                row.get::<_, bool>(0)
+            })
+            .optional()?
+            .context("Task no longer exists; press Ctrl-r to refresh")?;
+        let changed = transaction.execute(
+            "WITH RECURSIVE subtree(id) AS (
+                 SELECT id FROM todos WHERE id = ?1
+                 UNION
+                 SELECT todos.id FROM todos JOIN subtree ON todos.parent_id = subtree.id
+             )
+             UPDATE todos SET done = ?2, updated_at = strftime('%Y-%m-%d %H:%M:%S', 'now')
+             WHERE id IN (SELECT id FROM subtree)",
+            params![id, !done],
         )?;
-        anyhow::ensure!(
-            changed == 1,
-            "Task no longer exists; press Ctrl-r to refresh"
-        );
-        Ok(())
+        transaction.commit()?;
+        Ok(changed)
     }
 
     /// Snapshot and delete whole subtrees atomically, including any newer children.
@@ -187,6 +199,54 @@ mod tests {
         assert_eq!(db.list().unwrap()[0].title, "Persist this");
         drop(db);
         std::fs::remove_dir_all(folder).unwrap();
+    }
+
+    #[test]
+    fn toggle_sets_the_entire_subtree_without_changing_ancestors_or_siblings() {
+        let mut db = Database::memory();
+        let parent = db.add("Parent", None).unwrap();
+        let unrelated = db.add("Unrelated", None).unwrap();
+        let child = db.add("Child", Some(parent)).unwrap();
+        let grandchild = db.add("Grandchild", Some(child)).unwrap();
+        let sibling = db.add("Sibling", Some(parent)).unwrap();
+        db.toggle(grandchild).unwrap();
+        assert_eq!(db.toggle(parent).unwrap(), 4);
+        assert!(
+            db.list()
+                .unwrap()
+                .iter()
+                .all(|todo| todo.done == (todo.id != unrelated))
+        );
+        assert_eq!(db.toggle(parent).unwrap(), 4);
+        assert!(db.list().unwrap().iter().all(|todo| !todo.done));
+        assert_eq!(db.toggle(child).unwrap(), 2);
+        assert!(
+            db.list()
+                .unwrap()
+                .iter()
+                .all(|todo| { todo.done == (todo.id == child || todo.id == grandchild) })
+        );
+        assert!(
+            !db.list()
+                .unwrap()
+                .iter()
+                .find(|todo| todo.id == sibling)
+                .unwrap()
+                .done
+        );
+        let expected = db.list().unwrap();
+        assert!(db.toggle(9999).is_err());
+        assert_eq!(db.list().unwrap(), expected);
+        // A database failure must never leave a half-completed task tree.
+        db.connection
+            .execute_batch(
+                "CREATE TRIGGER reject_completion BEFORE UPDATE OF done ON todos
+             WHEN NEW.title = 'Sibling' AND NEW.done = 1
+             BEGIN SELECT RAISE(ABORT, 'test failure'); END;",
+            )
+            .unwrap();
+        assert!(db.toggle(parent).is_err());
+        assert_eq!(db.list().unwrap(), expected);
     }
 
     #[test]
