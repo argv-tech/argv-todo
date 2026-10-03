@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet};
+
 use anyhow::Result;
 use crossterm::{
     cursor::SetCursorStyle,
@@ -16,10 +18,16 @@ use crate::{
     },
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TreeRow {
+    pub index: usize,
+    pub depth: usize,
+}
+
 pub struct App {
     database: Database,
     pub todos: Vec<Todo>,
-    pub parent_id: Option<i64>,
+    pub adding_parent: Option<i64>,
     pub list: ListState,
     pub vim: VimManager,
     pub editor: Editor,
@@ -39,7 +47,7 @@ impl App {
         let mut app = Self {
             database,
             todos,
-            parent_id: None,
+            adding_parent: None,
             list: ListState::default(),
             vim: VimManager::default(),
             editor: Editor::default(),
@@ -81,21 +89,64 @@ impl App {
         Ok(())
     }
 
-    pub fn visible_indices(&self) -> Vec<usize> {
+    /// All tasks in tree order. Searches retain the ancestors of matching tasks.
+    pub fn visible_rows(&self) -> Vec<TreeRow> {
         let query = if self.vim.mode() == VimMode::Search {
             self.editor.text()
         } else {
             &self.query
-        };
-        let query = query.to_lowercase();
-        self.todos
+        }
+        .to_lowercase();
+        let by_id: HashMap<_, _> = self
+            .todos
             .iter()
             .enumerate()
-            .filter(|(_, todo)| {
-                todo.parent_id == self.parent_id
-                    && (query.is_empty() || todo.title.to_lowercase().contains(&query))
-            })
-            .map(|(index, _)| index)
+            .map(|(index, todo)| (todo.id, index))
+            .collect();
+        let mut children: HashMap<Option<i64>, Vec<usize>> = HashMap::new();
+        let mut included = HashSet::new();
+        for (index, todo) in self.todos.iter().enumerate() {
+            let parent = todo.parent_id.filter(|id| by_id.contains_key(id));
+            children.entry(parent).or_default().push(index);
+            if query.is_empty() || todo.title.to_lowercase().contains(&query) {
+                let mut ancestor = Some(index);
+                while let Some(index) = ancestor {
+                    if !included.insert(index) {
+                        break;
+                    }
+                    ancestor = self.todos[index]
+                        .parent_id
+                        .and_then(|id| by_id.get(&id).copied());
+                }
+            }
+        }
+        let mut stack: Vec<_> = children
+            .get(&None)
+            .into_iter()
+            .flatten()
+            .rev()
+            .map(|&index| TreeRow { index, depth: 0 })
+            .collect();
+        let mut rows = Vec::new();
+        while let Some(row) = stack.pop() {
+            if !included.contains(&row.index) {
+                continue;
+            }
+            if let Some(children) = children.get(&Some(self.todos[row.index].id)) {
+                stack.extend(children.iter().rev().map(|&index| TreeRow {
+                    index,
+                    depth: row.depth + 1,
+                }));
+            }
+            rows.push(row);
+        }
+        rows
+    }
+
+    pub fn visible_indices(&self) -> Vec<usize> {
+        self.visible_rows()
+            .into_iter()
+            .map(|row| row.index)
             .collect()
     }
 
@@ -108,68 +159,53 @@ impl App {
             })
     }
 
-    pub fn breadcrumb(&self) -> String {
-        let mut titles = Vec::new();
-        let mut parent = self.parent_id;
-        while let Some(id) = parent {
-            let Some(todo) = self.todos.iter().find(|todo| todo.id == id) else {
-                break;
-            };
-            titles.push(todo.title.as_str());
-            parent = todo.parent_id;
-            if titles.len() >= self.todos.len() {
-                break;
-            }
-        }
-        titles.reverse();
-        format!("tasks / {}", titles.join(" / "))
-    }
-
-    fn begin_add(&mut self) {
+    fn begin_add(&mut self, parent_id: Option<i64>) {
+        self.adding_parent = parent_id;
         self.editing_id = None;
         self.editor = Editor::default();
         self.vim.set_mode(VimMode::Insert);
-        self.message(if self.parent_id.is_some() {
+        self.message(if parent_id.is_some() {
             "New child task. Enter saves. Esc cancels."
         } else {
             "Enter saves your task. Esc cancels."
         });
     }
 
-    fn enter_children(&mut self) {
+    fn select_id(&mut self, id: i64) {
+        self.list.select(
+            self.visible_indices()
+                .iter()
+                .position(|&index| self.todos[index].id == id),
+        );
+        self.normalize_selection();
+    }
+
+    fn select_child(&mut self) {
         let Some(id) = self.selected_todo().map(|todo| todo.id) else {
-            self.begin_add();
+            self.begin_add(None);
             return;
         };
-        let has_children = self.child_counts(id).1 > 0;
-        self.parent_id = Some(id);
-        self.query.clear();
-        self.list.select(None);
-        self.normalize_selection();
-        if has_children {
-            self.message("Child tasks. h returns to parent. i adds a child.");
+        if let Some(child) = self
+            .todos
+            .iter()
+            .find(|todo| todo.parent_id == Some(id))
+            .map(|todo| todo.id)
+        {
+            self.query.clear();
+            self.select_id(child);
+            self.message("Child selected.");
         } else {
-            self.begin_add();
+            self.begin_add(Some(id));
         }
     }
 
-    fn leave_parent(&mut self) -> bool {
-        let Some(id) = self.parent_id else {
+    fn select_parent(&mut self) -> bool {
+        let Some(id) = self.selected_todo().and_then(|todo| todo.parent_id) else {
             return false;
         };
-        self.parent_id = self
-            .todos
-            .iter()
-            .find(|todo| todo.id == id)
-            .and_then(|todo| todo.parent_id);
         self.query.clear();
-        let row = self
-            .visible_indices()
-            .iter()
-            .position(|&index| self.todos[index].id == id);
-        self.list.select(row);
-        self.normalize_selection();
-        self.message("Returned to parent level.");
+        self.select_id(id);
+        self.message("Parent selected.");
         true
     }
 
@@ -191,14 +227,6 @@ impl App {
 
     fn reload(&mut self, selected_id: Option<i64>) -> Result<()> {
         self.todos = self.database.list()?;
-        if self
-            .parent_id
-            .is_some_and(|id| !self.todos.iter().any(|todo| todo.id == id))
-        {
-            self.parent_id = None;
-            self.query.clear();
-            self.list.select(None);
-        }
         if let Some(id) = selected_id {
             let row = self
                 .visible_indices()
@@ -251,6 +279,7 @@ impl App {
                     self.vim.set_mode(VimMode::Normal);
                     self.editor = Editor::default();
                     self.editing_id = None;
+                    self.adding_parent = None;
                     self.normalize_selection();
                     self.message("Cancelled.");
                 }
@@ -271,7 +300,7 @@ impl App {
                             self.database.rename(id, &text)?;
                             id
                         } else {
-                            self.database.add(&text, self.parent_id)?
+                            self.database.add(&text, self.adding_parent)?
                         };
                         let was_edit = self.editing_id.is_some();
                         if !was_edit {
@@ -279,6 +308,7 @@ impl App {
                         }
                         self.vim.set_mode(VimMode::Normal);
                         self.editing_id = None;
+                        self.adding_parent = None;
                         self.editor = Editor::default();
                         self.reload(Some(id))?;
                         self.message(if was_edit {
@@ -312,7 +342,7 @@ impl App {
                 }
                 Motion::Right => {
                     for _ in 0..count {
-                        self.enter_children();
+                        self.select_child();
                         if self.vim.mode() != VimMode::Normal {
                             break;
                         }
@@ -320,7 +350,7 @@ impl App {
                 }
                 Motion::Left => {
                     for _ in 0..count {
-                        if !self.leave_parent() {
+                        if !self.select_parent() {
                             break;
                         }
                     }
@@ -335,7 +365,10 @@ impl App {
                 self.list
                     .select(self.visible_indices().len().checked_sub(1));
             }
-            VimAction::Add => self.begin_add(),
+            VimAction::Add => {
+                let parent = self.selected_todo().and_then(|todo| todo.parent_id);
+                self.begin_add(parent);
+            }
             VimAction::Edit => {
                 if let Some(todo) = self.selected_todo() {
                     let id = todo.id;
@@ -386,7 +419,6 @@ impl App {
                 if let Some(deleted) = self.undo.last() {
                     self.database.restore(deleted)?;
                     let id = deleted[0].id;
-                    self.parent_id = deleted[0].parent_id;
                     self.query.clear();
                     self.undo.pop();
                     self.reload(Some(id))?;
@@ -503,73 +535,90 @@ mod tests {
     }
 
     #[test]
-    fn nested_navigation_creates_children_and_undo_restores_tree() {
+    fn nested_tasks_stay_in_one_view_and_undo_restores_tree() {
         let mut app = app();
         keys(&mut app, "iProject");
         enter(&mut app);
         let root = app.selected_todo().unwrap().id;
         keys(&mut app, "l");
-        assert_eq!(app.parent_id, Some(root));
-        assert_eq!(app.vim.mode(), VimMode::Insert);
+        assert_eq!(app.adding_parent, Some(root));
+        assert_eq!(app.visible_indices().len(), 1);
         keys(&mut app, "Child");
         enter(&mut app);
         let child = app.selected_todo().unwrap().id;
-        assert_eq!(app.selected_todo().unwrap().parent_id, Some(root));
         keys(&mut app, "lGrandchild");
         enter(&mut app);
-        assert_eq!(app.parent_id, Some(child));
-        assert_eq!(app.breadcrumb(), "tasks / Project / Child");
-        keys(&mut app, "2h");
-        assert_eq!(app.parent_id, None);
-        assert_eq!(app.selected_todo().unwrap().id, root);
-        assert_eq!(app.visible_indices().len(), 1);
-        keys(&mut app, "l");
-        assert_eq!(app.vim.mode(), VimMode::Normal);
-        assert_eq!(app.selected_todo().unwrap().id, child);
+        let grandchild = app.selected_todo().unwrap().id;
         keys(&mut app, "iSibling");
         enter(&mut app);
-        assert_eq!(app.visible_indices().len(), 2);
+        assert_eq!(app.selected_todo().unwrap().parent_id, Some(child));
+        assert_eq!(
+            app.visible_rows()
+                .iter()
+                .map(|row| row.depth)
+                .collect::<Vec<_>>(),
+            [0, 1, 2, 2]
+        );
+        keys(&mut app, "2h");
+        assert_eq!(app.selected_todo().unwrap().id, root);
+        assert_eq!(app.visible_indices().len(), 4);
+        keys(&mut app, "ll");
+        assert_eq!(app.selected_todo().unwrap().id, grandchild);
+        assert_eq!(app.visible_indices().len(), 4);
+        keys(&mut app, "x");
+        let expected = app.todos.clone();
         keys(&mut app, "/grand");
         enter(&mut app);
+        let rows = app.visible_rows();
         assert_eq!(
-            app.visible_indices().len(),
-            0,
-            "Search stays within the current level"
+            rows.iter()
+                .map(|row| app.todos[row.index].id)
+                .collect::<Vec<_>>(),
+            [root, child, grandchild]
+        );
+        assert_eq!(
+            rows.iter().map(|row| row.depth).collect::<Vec<_>>(),
+            [0, 1, 2]
         );
         app.dispatch(VimAction::Cancel);
-        keys(&mut app, "lx");
-        assert_eq!(app.parent_id, Some(child));
-        assert!(app.selected_todo().unwrap().done);
-        assert_eq!(app.child_counts(child), (1, 1));
-        let expected = app.todos.clone();
-        keys(&mut app, "hhdd");
+        keys(&mut app, "gghdd");
         assert!(app.todos.is_empty());
         keys(&mut app, "u");
         assert_eq!(app.todos, expected);
-        assert_eq!(app.parent_id, None);
         assert_eq!(app.selected_todo().unwrap().id, root);
-        assert_eq!(app.child_counts(root), (0, 2));
+        assert_eq!(app.visible_indices().len(), 4);
     }
 
     #[test]
-    fn empty_child_cancel_and_parent_removal_recover_to_root() {
+    fn tree_order_groups_children_and_cancel_keeps_parent_selected() {
         let mut app = app();
-        keys(&mut app, "lRoot");
+        keys(&mut app, "iRoot");
         enter(&mut app);
         let root = app.selected_todo().unwrap().clone();
-        keys(&mut app, "l");
+        keys(&mut app, "iOther root");
+        enter(&mut app);
+        keys(&mut app, "kl");
         app.dispatch(VimAction::Cancel);
-        assert_eq!(app.parent_id, Some(root.id));
-        assert_eq!(app.todos.len(), 1);
-        keys(&mut app, "h");
         assert_eq!(app.selected_todo().unwrap().id, root.id);
+        assert_eq!(app.adding_parent, None);
         keys(&mut app, "lChild");
         enter(&mut app);
+        let rows = app.visible_rows();
+        assert_eq!(
+            rows.iter()
+                .map(|row| app.todos[row.index].title.as_str())
+                .collect::<Vec<_>>(),
+            ["Root", "Child", "Other root"]
+        );
+        assert_eq!(
+            rows.iter().map(|row| row.depth).collect::<Vec<_>>(),
+            [0, 1, 0]
+        );
+        keys(&mut app, "jh");
+        assert_eq!(app.selected_todo().unwrap().title, "Other root");
         app.database.delete(&[root]).unwrap();
         app.apply(VimAction::Refresh).unwrap();
-        assert_eq!(app.parent_id, None);
-        assert!(app.visible_indices().is_empty());
-        keys(&mut app, "hjk");
-        assert_eq!(app.list.selected(), None);
+        assert_eq!(app.selected_todo().unwrap().title, "Other root");
+        assert_eq!(app.visible_indices().len(), 1);
     }
 }

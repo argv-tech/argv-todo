@@ -47,18 +47,8 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         );
         return;
     }
-    let [
-        header,
-        path,
-        separator,
-        body,
-        metadata,
-        message,
-        input,
-        footer,
-    ] = Layout::vertical([
+    let [header, separator, body, metadata, message, input, footer] = Layout::vertical([
         Constraint::Length(1),
-        Constraint::Length(u16::from(app.parent_id.is_some())),
         Constraint::Length(if area.height >= 16 { 2 } else { 1 }),
         Constraint::Min(1),
         Constraint::Length(1),
@@ -68,18 +58,6 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     ])
     .areas(workspace(area));
     draw_header(frame, app, header);
-    if path.height > 0 {
-        let breadcrumb = app.breadcrumb();
-        let offset = unicode_width::UnicodeWidthStr::width(breadcrumb.as_str())
-            .saturating_sub(path.width as usize)
-            .min(u16::MAX as usize) as u16;
-        frame.render_widget(
-            Paragraph::new(breadcrumb)
-                .style(Style::default().fg(MUTED))
-                .scroll((0, offset)),
-            path,
-        );
-    }
     rule(
         frame,
         Rect {
@@ -136,16 +114,11 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
         ])),
         brand,
     );
-    let siblings: Vec<_> = app
-        .todos
-        .iter()
-        .filter(|todo| todo.parent_id == app.parent_id)
-        .collect();
-    let done = siblings.iter().filter(|todo| todo.done).count();
-    let text = if siblings.is_empty() {
+    let done = app.todos.iter().filter(|todo| todo.done).count();
+    let text = if app.todos.is_empty() {
         "0 tasks".into()
     } else {
-        format!("{} open  /  {done} done", siblings.len() - done)
+        format!("{} open  /  {done} done", app.todos.len() - done)
     };
     frame.render_widget(
         Paragraph::new(text)
@@ -156,7 +129,7 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
 }
 
 fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
-    let visible = app.visible_indices();
+    let visible = app.visible_rows();
     if visible.is_empty() {
         let query = if app.vim.mode() == VimMode::Search {
             app.editor.text()
@@ -165,8 +138,6 @@ fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
         };
         let (title, hint) = if !query.is_empty() {
             ("No matching tasks.", "Esc  clear search")
-        } else if app.parent_id.is_some() {
-            ("No child tasks yet.", "i  add a child  ·  h  back")
         } else {
             ("Nothing on your list.", "i  add your first task")
         };
@@ -190,37 +161,94 @@ fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
     }
     let child_counts: Vec<_> = visible
         .iter()
-        .map(|&index| app.child_counts(app.todos[index].id))
+        .map(|row| app.child_counts(app.todos[row.index].id))
         .collect();
+    let mut last_sibling = vec![true; visible.len()];
+    let mut last_at_depth = Vec::new();
+    for (row, task) in visible.iter().enumerate() {
+        last_at_depth.truncate(task.depth + 1);
+        if let Some(previous) = last_at_depth.get_mut(task.depth) {
+            last_sibling[*previous] = false;
+            *previous = row;
+        } else {
+            last_at_depth.push(row);
+        }
+    }
+    let padding = if area.width >= 60 { 2 } else { 0 };
+    let area = Rect::new(
+        area.x + padding,
+        area.y,
+        area.width.saturating_sub(padding * 2),
+        area.height,
+    );
+    let max_depth = (area.width.saturating_sub(24) as usize / 5).max(1);
+    let mut ancestors = Vec::new();
     let items: Vec<_> = visible
         .iter()
         .enumerate()
-        .map(|(row, &index)| {
-            let todo = &app.todos[index];
+        .map(|(row, tree_row)| {
+            let todo = &app.todos[tree_row.index];
             let selected = app.list.selected() == Some(row);
-            let style = if todo.done {
-                Style::default().fg(MUTED)
-            } else {
-                Style::default().fg(TEXT)
-            };
             let (done, total) = child_counts[row];
+            let root = tree_row.depth == 0;
+            let mut style = Style::default().fg(if todo.done {
+                MUTED
+            } else if root {
+                ACCENT
+            } else {
+                TEXT
+            });
+            if root || total > 0 {
+                style = style.add_modifier(Modifier::BOLD);
+            }
             let children = if total == 0 {
                 String::new()
             } else {
-                format!("  › {done}/{total}")
+                format!("   {done}/{total}")
             };
-            ListItem::new(Line::from(vec![
+            ancestors.truncate(tree_row.depth);
+            let hidden = tree_row.depth.saturating_sub(max_depth);
+            let mut guides = if hidden > 0 {
+                "… ".into()
+            } else {
+                String::new()
+            };
+            for &continues in ancestors.iter().skip(hidden.max(1)) {
+                guides.push_str(if continues { "│    " } else { "     " });
+            }
+            let branch = if root {
+                String::new()
+            } else {
+                format!(
+                    "{guides}{}",
+                    if last_sibling[row] {
+                        "└──  "
+                    } else {
+                        "├──  "
+                    }
+                )
+            };
+            ancestors.push(!last_sibling[row]);
+            let line = Line::from(vec![
                 Span::styled(
-                    format!("{:>2}  ", row + 1),
+                    format!("{:>2}    ", row + 1),
                     Style::default().fg(if selected { ACCENT } else { MUTED }),
                 ),
+                Span::styled(branch, Style::default().fg(MUTED)),
                 Span::styled(
-                    if todo.done { "✓  " } else { "○  " },
+                    if todo.done {
+                        "✓  "
+                    } else if root {
+                        "□  "
+                    } else {
+                        "○  "
+                    },
                     Style::default().fg(if todo.done || selected { ACCENT } else { MUTED }),
                 ),
                 Span::styled(todo.title.as_str(), style),
                 Span::styled(children, Style::default().fg(MUTED)),
-            ]))
+            ]);
+            ListItem::new(line)
         })
         .collect();
     let list = List::new(items)
@@ -256,7 +284,7 @@ fn draw_input(frame: &mut Frame, app: &App, area: Rect) {
     let label = match app.vim.mode() {
         VimMode::Search => "/ ",
         VimMode::Insert if app.editing_id.is_some() => "edit › ",
-        VimMode::Insert if app.parent_id.is_some() => "child › ",
+        VimMode::Insert if app.adding_parent.is_some() => "child › ",
         _ => "add › ",
     };
     let prefix_width = unicode_width::UnicodeWidthStr::width(label) as u16;
@@ -322,18 +350,18 @@ fn draw_help(frame: &mut Frame, app: &App) {
     frame.render_widget(Clear, popup);
     let lines = [
         "j/k       next / previous task",
-        "l         enter / create child",
-        "h         return to parent",
+        "l         select / create child",
+        "h         select parent",
         "gg / G    first / last task",
         "3j / 2k   repeat movement",
         "",
-        "i/a/o     add task at this level",
+        "i/a/o     add sibling task",
         "e / cc    edit task",
         "Space/x   toggle completion",
         "dd / 3dd  delete task tree(s)",
         "u         undo deletion",
         "",
-        "/         search this level",
+        "/         search all tasks",
         "Esc       cancel / clear search",
         "Enter     save / apply search",
         "←/→       move input cursor",
@@ -369,9 +397,53 @@ mod tests {
 
     #[test]
     fn renders_small_and_large_terminals_and_input_modes() {
-        let mut app = App::new(Database::memory()).unwrap();
+        let mut empty = App::new(Database::memory()).unwrap();
+        let database = Database::memory();
+        let root = database.add("Parent task", None).unwrap();
+        let child = database.add("Child task", Some(root)).unwrap();
+        database.add("Grandchild task", Some(child)).unwrap();
+        database.add("Sibling task", Some(root)).unwrap();
+        database.add("Other root", None).unwrap();
+        let mut app = App::new(database).unwrap();
         for (width, height) in [(20, 5), (35, 12), (80, 24), (120, 35), (192, 60)] {
             let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
+            terminal.draw(|frame| draw(frame, &mut empty)).unwrap();
+            app.list.select(Some(0));
+            terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+            if width >= 80 {
+                let buffer = terminal.backend().buffer();
+                let rows: Vec<String> = (0..height)
+                    .map(|y| (0..width).map(|x| buffer[(x, y)].symbol()).collect())
+                    .collect();
+                let positions: Vec<_> = [
+                    "Parent task",
+                    "Child task",
+                    "Grandchild task",
+                    "Sibling task",
+                    "Other root",
+                ]
+                .iter()
+                .map(|title| {
+                    rows.iter()
+                        .enumerate()
+                        .find_map(|(y, line)| {
+                            line.find(title)
+                                .map(|byte| (y, line[..byte].chars().count()))
+                        })
+                        .unwrap()
+                })
+                .collect();
+                // Padding is horizontal: every task occupies exactly one row.
+                assert!(positions.windows(2).all(|pair| pair[1].0 == pair[0].0 + 1));
+                assert_eq!(positions[1].1, positions[0].1 + 5);
+                assert_eq!(positions[2].1, positions[1].1 + 5);
+                assert_eq!(positions[3].1, positions[1].1);
+                assert_eq!(positions[4].1, positions[0].1);
+                assert!(rows[positions[1].0].contains("├──"));
+                assert!(rows[positions[2].0].contains("│    └──"));
+                assert!(rows[positions[3].0].contains("└──"));
+            }
+            app.list.select(Some(app.todos.len() - 1));
             terminal.draw(|frame| draw(frame, &mut app)).unwrap();
             app.vim.set_mode(VimMode::Insert);
             app.editor.insert("A long task with Unicode 界 👩‍💻");
