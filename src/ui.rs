@@ -12,7 +12,6 @@ const BG: Color = Color::Reset;
 const TEXT: Color = Color::Reset;
 const MUTED: Color = Color::DarkGray;
 const ACCENT: Color = Color::Cyan;
-const DONE: Color = Color::Green;
 const ERROR: Color = Color::Red;
 
 fn workspace(area: Rect) -> Rect {
@@ -201,13 +200,7 @@ fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
             };
             let (done, total) = child_counts[row];
             let root = tree_row.depth == 0;
-            let mut style = Style::default().fg(if selected {
-                ACCENT
-            } else if completed {
-                MUTED
-            } else {
-                TEXT
-            });
+            let mut style = Style::default().fg(TEXT);
             if root || total > 0 || selected {
                 style = style.add_modifier(Modifier::BOLD);
             }
@@ -255,27 +248,20 @@ fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
                 Span::styled(todo.unwrap().title.as_str(), style)
             };
             let line = Line::from(vec![
-                Span::styled(branch, Style::default().fg(MUTED)),
+                Span::styled(
+                    branch,
+                    Style::default().fg(if selected { ACCENT } else { TEXT }),
+                ),
                 Span::styled(
                     if completed { "✓  " } else { "□  " },
-                    Style::default().fg(if completed {
-                        DONE
-                    } else if selected {
-                        ACCENT
-                    } else {
-                        TEXT
-                    }),
+                    Style::default().fg(if selected { ACCENT } else { TEXT }),
                 ),
                 Span::styled(
                     format!("{:<4} ", priority.label()),
-                    Style::default().fg(if completed {
-                        MUTED
-                    } else {
-                        match priority {
-                            Priority::High => Color::Red,
-                            Priority::Mid => Color::Yellow,
-                            Priority::Low => Color::Blue,
-                        }
+                    Style::default().fg(match priority {
+                        Priority::High => Color::Red,
+                        Priority::Mid => Color::Yellow,
+                        Priority::Low => Color::Blue,
                     }),
                 ),
                 title,
@@ -287,9 +273,7 @@ fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
             ListItem::new(line)
         })
         .collect();
-    let list = List::new(items)
-        .highlight_symbol("› ")
-        .highlight_style(Style::default().fg(ACCENT));
+    let list = List::new(items).highlight_symbol(Span::styled("› ", Style::default().fg(ACCENT)));
     frame.render_stateful_widget(list, area, &mut state);
     *app.list.offset_mut() = state.offset();
     if !app.help
