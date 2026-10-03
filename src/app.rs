@@ -9,7 +9,7 @@ use crossterm::{
 use ratatui::{DefaultTerminal, widgets::ListState};
 
 use crate::{
-    db::{Database, Todo},
+    db::{DEFAULT_PRIORITY, Database, Priority, Todo},
     vim_motion::{
         editor::Editor,
         manager::VimManager,
@@ -32,6 +32,7 @@ pub struct App {
     pub vim: VimManager,
     pub editor: Editor,
     pub editing_id: Option<i64>,
+    pub input_priority: Priority,
     pub query: String,
     pub help: bool,
     pub help_scroll: u16,
@@ -52,6 +53,7 @@ impl App {
             vim: VimManager::default(),
             editor: Editor::default(),
             editing_id: None,
+            input_priority: DEFAULT_PRIORITY,
             query: String::new(),
             help: false,
             help_scroll: 0,
@@ -160,10 +162,17 @@ impl App {
     }
 
     fn begin_add(&mut self, parent_id: Option<i64>) {
+        let selected_id = self.selected_todo().map(|todo| todo.id);
+        // Show the full tree so the draft and saved task occupy the same place.
+        self.query.clear();
         self.adding_parent = parent_id;
         self.editing_id = None;
+        self.input_priority = DEFAULT_PRIORITY;
         self.editor = Editor::default();
         self.vim.set_mode(VimMode::Insert);
+        if let Some(id) = selected_id {
+            self.select_id(id);
+        }
         self.message(if parent_id.is_some() {
             "New child task. Enter saves. Esc cancels."
         } else {
@@ -178,6 +187,15 @@ impl App {
                 .position(|&index| self.todos[index].id == id),
         );
         self.normalize_selection();
+    }
+
+    fn set_priority(&mut self, priority: Priority) -> Result<()> {
+        if let Some(id) = self.selected_todo().map(|todo| todo.id) {
+            self.database.set_priority(id, priority)?;
+            self.reload(Some(id))?;
+            self.message(format!("Priority {}.", priority.label()));
+        }
+        Ok(())
     }
 
     fn select_child(&mut self) {
@@ -297,10 +315,11 @@ impl App {
                     } else {
                         anyhow::ensure!(!text.is_empty(), "Task title cannot be empty");
                         let id = if let Some(id) = self.editing_id {
-                            self.database.rename(id, &text)?;
+                            self.database.update(id, &text, self.input_priority)?;
                             id
                         } else {
-                            self.database.add(&text, self.adding_parent)?
+                            self.database
+                                .add(&text, self.adding_parent, self.input_priority)?
                         };
                         let was_edit = self.editing_id.is_some();
                         if !was_edit {
@@ -317,6 +336,9 @@ impl App {
                             "Task added."
                         });
                     }
+                }
+                VimAction::CyclePriority if self.vim.mode() == VimMode::Insert => {
+                    self.input_priority = self.input_priority.next();
                 }
                 _ => {
                     self.editor.apply(action);
@@ -372,8 +394,10 @@ impl App {
             VimAction::Edit => {
                 if let Some(todo) = self.selected_todo() {
                     let id = todo.id;
+                    let priority = todo.priority;
                     self.editor = Editor::new(todo.title.clone());
                     self.editing_id = Some(id);
+                    self.input_priority = priority;
                     self.vim.set_mode(VimMode::Insert);
                     self.message("Editing task. Enter saves. Esc cancels.");
                 } else {
@@ -392,6 +416,12 @@ impl App {
                     } else {
                         format!("{action} task and {} descendants.", changed - 1)
                     });
+                }
+            }
+            VimAction::Priority(priority) => self.set_priority(priority)?,
+            VimAction::CyclePriority => {
+                if let Some(priority) = self.selected_todo().map(|todo| todo.priority) {
+                    self.set_priority(priority.next())?;
                 }
             }
             VimAction::Delete(count) => {
@@ -476,6 +506,84 @@ mod tests {
             .handle(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE))
             .unwrap();
         app.dispatch(action);
+    }
+
+    fn cycle_input_priority(app: &mut App) {
+        let action = app
+            .vim
+            .handle(KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL))
+            .unwrap();
+        app.dispatch(action);
+    }
+
+    #[test]
+    fn priorities_sort_siblings_keep_selection_and_survive_edit_and_undo() {
+        let mut app = app();
+        keys(&mut app, "iFirst root");
+        enter(&mut app);
+        let first = app.selected_todo().unwrap().id;
+        keys(&mut app, "iSecond root");
+        enter(&mut app);
+        let second = app.selected_todo().unwrap().id;
+        for (priority, order) in [
+            (Priority::High, [second, first]),
+            (Priority::Low, [first, second]),
+            (Priority::Mid, [first, second]),
+        ] {
+            keys(&mut app, "t");
+            assert_eq!(app.selected_todo().unwrap().id, second);
+            assert_eq!(app.selected_todo().unwrap().priority, priority);
+            assert_eq!(
+                app.visible_indices()
+                    .iter()
+                    .map(|&i| app.todos[i].id)
+                    .collect::<Vec<_>>(),
+                order
+            );
+        }
+        keys(&mut app, "phlMid child");
+        enter(&mut app);
+        let mid_child = app.selected_todo().unwrap().id;
+        keys(&mut app, "iHigh child");
+        cycle_input_priority(&mut app);
+        enter(&mut app);
+        let high_child = app.selected_todo().unwrap().id;
+        assert_eq!(app.selected_todo().unwrap().priority, Priority::High);
+        keys(&mut app, "lGrandchild");
+        enter(&mut app);
+        let grandchild = app.selected_todo().unwrap().id;
+        keys(&mut app, "hpl");
+        let rows = app.visible_rows();
+        assert_eq!(
+            rows.iter()
+                .map(|row| (app.todos[row.index].id, row.depth))
+                .collect::<Vec<_>>(),
+            [
+                (second, 0),
+                (mid_child, 1),
+                (high_child, 1),
+                (grandchild, 2),
+                (first, 0),
+            ]
+        );
+        assert_eq!(app.selected_todo().unwrap().id, high_child);
+        keys(&mut app, "e");
+        cycle_input_priority(&mut app);
+        app.dispatch(VimAction::Clear);
+        keys(&mut app, "Updated child");
+        enter(&mut app);
+        assert_eq!(app.selected_todo().unwrap().priority, Priority::Mid);
+        assert_eq!(app.selected_todo().unwrap().title, "Updated child");
+        let expected = app.todos.clone();
+        keys(&mut app, "e");
+        cycle_input_priority(&mut app);
+        app.dispatch(VimAction::Cancel);
+        assert_eq!(app.todos, expected, "Cancel must not save priority changes");
+        keys(&mut app, "ggdd");
+        assert_eq!(app.todos.len(), 1);
+        keys(&mut app, "u");
+        assert_eq!(app.todos, expected);
+        assert_eq!(app.selected_todo().unwrap().id, second);
     }
     #[test]
     fn keyboard_workflow_keeps_completed_tasks_in_one_list() {
@@ -626,6 +734,16 @@ mod tests {
             rows.iter().map(|row| row.depth).collect::<Vec<_>>(),
             [0, 1, 0]
         );
+        let child = app.selected_todo().unwrap().id;
+        keys(&mut app, "/Child");
+        enter(&mut app);
+        keys(&mut app, "i");
+        assert!(app.query.is_empty());
+        assert_eq!(app.adding_parent, Some(root.id));
+        assert_eq!(app.selected_todo().unwrap().id, child);
+        assert_eq!(app.todos.len(), 3, "Drafts are not saved before Enter");
+        app.dispatch(VimAction::Cancel);
+        assert_eq!(app.selected_todo().unwrap().id, child);
         keys(&mut app, "jh");
         assert_eq!(app.selected_todo().unwrap().title, "Other root");
         app.database.delete(&[root]).unwrap();

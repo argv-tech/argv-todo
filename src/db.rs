@@ -1,6 +1,54 @@
 use anyhow::{Context, Result};
-use rusqlite::{Connection, OptionalExtension, params};
+use rusqlite::{
+    Connection, OptionalExtension, ToSql, params,
+    types::{FromSql, FromSqlError, FromSqlResult, ToSqlOutput, Value, ValueRef},
+};
 use std::{collections::BTreeMap, path::Path, time::Duration};
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Priority {
+    High = 1,
+    #[default]
+    Mid = 3,
+    Low = 5,
+}
+
+impl Priority {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::High => "high",
+            Self::Mid => "mid",
+            Self::Low => "low",
+        }
+    }
+
+    pub fn next(self) -> Self {
+        match self {
+            Self::Low => Self::Mid,
+            Self::Mid => Self::High,
+            Self::High => Self::Low,
+        }
+    }
+}
+
+impl ToSql for Priority {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+        Ok(ToSqlOutput::Owned(Value::Integer(*self as i64)))
+    }
+}
+
+impl FromSql for Priority {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        match value.as_i64()? {
+            1 => Ok(Self::High),
+            3 => Ok(Self::Mid),
+            5 => Ok(Self::Low),
+            value => Err(FromSqlError::OutOfRange(value)),
+        }
+    }
+}
+
+pub const DEFAULT_PRIORITY: Priority = Priority::Mid;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Todo {
@@ -8,6 +56,7 @@ pub struct Todo {
     pub title: String,
     pub done: bool,
     pub parent_id: Option<i64>,
+    pub priority: Priority,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -35,23 +84,33 @@ impl Database {
                  title TEXT NOT NULL CHECK(length(trim(title)) > 0),
                  done INTEGER NOT NULL DEFAULT 0 CHECK(done IN (0, 1)),
                  parent_id INTEGER REFERENCES todos(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+                 priority INTEGER NOT NULL DEFAULT 3 CHECK(priority IN (1, 3, 5)),
                  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now')),
                  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now'))
              );",
         )?;
-        let has_parent = connection
+        let columns = connection
             .prepare("PRAGMA table_info(todos)")?
             .query_map([], |row| row.get::<_, String>(1))?
-            .collect::<rusqlite::Result<Vec<_>>>()?
-            .iter()
-            .any(|column| column == "parent_id");
+            .collect::<rusqlite::Result<Vec<_>>>()?;
         let transaction = connection.transaction()?;
-        if !has_parent {
+        if !columns.iter().any(|column| column == "parent_id") {
             transaction.execute_batch(
                 "ALTER TABLE todos ADD COLUMN parent_id INTEGER
                  REFERENCES todos(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;",
             )?;
         }
+        if !columns.iter().any(|column| column == "priority") {
+            transaction.execute_batch(
+                "ALTER TABLE todos ADD COLUMN priority INTEGER NOT NULL DEFAULT 3
+                 CHECK(priority IN (1, 3, 5));",
+            )?;
+        }
+        // Normalize databases created with the earlier five-level priority scale.
+        transaction.execute_batch(
+            "UPDATE todos SET priority = CASE priority WHEN 2 THEN 1 WHEN 4 THEN 5 END
+             WHERE priority IN (2, 4);",
+        )?;
         transaction
             .execute_batch("CREATE INDEX IF NOT EXISTS todos_parent_id ON todos(parent_id);")?;
         transaction.commit()?;
@@ -60,7 +119,8 @@ impl Database {
 
     pub fn list(&self) -> Result<Vec<Todo>> {
         let mut statement = self.connection.prepare(
-            "SELECT id, title, done, created_at, updated_at, parent_id FROM todos ORDER BY id ASC",
+            "SELECT id, title, done, created_at, updated_at, parent_id, priority
+             FROM todos ORDER BY priority ASC, id ASC",
         )?;
         Ok(statement
             .query_map([], Self::todo_from_row)?
@@ -75,21 +135,36 @@ impl Database {
             created_at: row.get(3)?,
             updated_at: row.get(4)?,
             parent_id: row.get(5)?,
+            priority: row.get(6)?,
         })
     }
 
-    pub fn add(&self, title: &str, parent_id: Option<i64>) -> Result<i64> {
+    pub fn add(&self, title: &str, parent_id: Option<i64>, priority: Priority) -> Result<i64> {
         self.connection.execute(
-            "INSERT INTO todos (title, parent_id) VALUES (?1, ?2)",
-            params![title, parent_id],
+            "INSERT INTO todos (title, parent_id, priority) VALUES (?1, ?2, ?3)",
+            params![title, parent_id, priority],
         )?;
         Ok(self.connection.last_insert_rowid())
     }
 
-    pub fn rename(&self, id: i64, title: &str) -> Result<()> {
+    pub fn update(&self, id: i64, title: &str, priority: Priority) -> Result<()> {
         let changed = self.connection.execute(
-            "UPDATE todos SET title = ?1, updated_at = strftime('%Y-%m-%d %H:%M:%S', 'now') WHERE id = ?2",
-            params![title, id]
+            "UPDATE todos SET title = ?1, priority = ?2,
+             updated_at = strftime('%Y-%m-%d %H:%M:%S', 'now') WHERE id = ?3",
+            params![title, priority, id],
+        )?;
+        anyhow::ensure!(
+            changed == 1,
+            "Task no longer exists; press Ctrl-r to refresh"
+        );
+        Ok(())
+    }
+
+    pub fn set_priority(&self, id: i64, priority: Priority) -> Result<()> {
+        let changed = self.connection.execute(
+            "UPDATE todos SET priority = ?1,
+             updated_at = strftime('%Y-%m-%d %H:%M:%S', 'now') WHERE id = ?2",
+            params![priority, id],
         )?;
         anyhow::ensure!(
             changed == 1,
@@ -132,7 +207,7 @@ impl Database {
                      UNION
                      SELECT todos.id FROM todos JOIN subtree ON todos.parent_id = subtree.id
                  )
-                 SELECT id, title, done, created_at, updated_at, parent_id
+                 SELECT id, title, done, created_at, updated_at, parent_id, priority
                  FROM todos WHERE id IN (SELECT id FROM subtree) ORDER BY id",
             )?;
             for todo in todos {
@@ -153,8 +228,8 @@ impl Database {
         let transaction = self.connection.transaction()?;
         for todo in todos {
             transaction.execute(
-                "INSERT INTO todos (id, title, done, created_at, updated_at, parent_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                params![todo.id, todo.title, todo.done, todo.created_at, todo.updated_at, todo.parent_id]
+                "INSERT INTO todos (id, title, done, created_at, updated_at, parent_id, priority) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                params![todo.id, todo.title, todo.done, todo.created_at, todo.updated_at, todo.parent_id, todo.priority]
             )?;
         }
         transaction.commit()?;
@@ -173,18 +248,19 @@ mod tests {
     #[test]
     fn crud_and_undo_preserve_original_record() {
         let mut db = Database::memory();
-        let id = db.add("Read Rust's book 📚", None).unwrap();
-        db.rename(id, "Read chapter 2").unwrap();
+        let id = db.add("Read Rust's book 📚", None, Priority::Mid).unwrap();
+        db.update(id, "Read chapter 2", Priority::High).unwrap();
         db.toggle(id).unwrap();
         let todos = db.list().unwrap();
         assert_eq!(todos[0].title, "Read chapter 2");
         assert!(todos[0].done);
+        assert_eq!(todos[0].priority, Priority::High);
         db.delete(&todos).unwrap();
-        let newer = db.add("New task", None).unwrap();
+        let newer = db.add("New task", None, Priority::Mid).unwrap();
         assert!(newer > id);
         db.restore(&todos).unwrap();
         assert_eq!(db.list().unwrap()[0], todos[0]);
-        assert!(db.add("   ", None).is_err());
+        assert!(db.add("   ", None, Priority::Mid).is_err());
     }
 
     #[test]
@@ -193,10 +269,11 @@ mod tests {
         let path = folder.join("nested/db.sql");
         {
             let db = Database::open(&path).unwrap();
-            db.add("Persist this", None).unwrap();
+            db.add("Persist this", None, Priority::High).unwrap();
         }
         let db = Database::open(&path).unwrap();
         assert_eq!(db.list().unwrap()[0].title, "Persist this");
+        assert_eq!(db.list().unwrap()[0].priority, Priority::High);
         drop(db);
         std::fs::remove_dir_all(folder).unwrap();
     }
@@ -204,11 +281,11 @@ mod tests {
     #[test]
     fn toggle_sets_the_entire_subtree_without_changing_ancestors_or_siblings() {
         let mut db = Database::memory();
-        let parent = db.add("Parent", None).unwrap();
-        let unrelated = db.add("Unrelated", None).unwrap();
-        let child = db.add("Child", Some(parent)).unwrap();
-        let grandchild = db.add("Grandchild", Some(child)).unwrap();
-        let sibling = db.add("Sibling", Some(parent)).unwrap();
+        let parent = db.add("Parent", None, Priority::Mid).unwrap();
+        let unrelated = db.add("Unrelated", None, Priority::Mid).unwrap();
+        let child = db.add("Child", Some(parent), Priority::Mid).unwrap();
+        let grandchild = db.add("Grandchild", Some(child), Priority::Mid).unwrap();
+        let sibling = db.add("Sibling", Some(parent), Priority::Mid).unwrap();
         db.toggle(grandchild).unwrap();
         assert_eq!(db.toggle(parent).unwrap(), 4);
         assert!(
@@ -269,10 +346,11 @@ mod tests {
         assert_eq!(existing.title, "Existing task");
         assert!(existing.done);
         assert_eq!(existing.parent_id, None);
+        assert_eq!(existing.priority, Priority::Mid);
         assert_eq!(existing.created_at, "2026-01-01 00:00:00");
-        let child = db.add("Child", Some(existing.id)).unwrap();
+        let child = db.add("Child", Some(existing.id), Priority::Mid).unwrap();
         assert_eq!(db.list().unwrap()[1].parent_id, Some(existing.id));
-        assert!(db.add("Orphan", Some(child + 999)).is_err());
+        assert!(db.add("Orphan", Some(child + 999), Priority::Mid).is_err());
         // Reopening an upgraded schema is idempotent.
         let db = Database::initialize(db.connection).unwrap();
         assert_eq!(db.list().unwrap()[0], existing);
@@ -282,18 +360,73 @@ mod tests {
     #[test]
     fn delete_snapshots_new_descendants_and_undo_restores_entire_tree() {
         let mut db = Database::memory();
-        let parent = db.add("Parent", None).unwrap();
-        db.add("Unrelated", None).unwrap();
+        let parent = db.add("Parent", None, Priority::Mid).unwrap();
+        let unrelated = db.add("Unrelated", None, Priority::Mid).unwrap();
         let stale_roots = db.list().unwrap();
-        let child = db.add("Child", Some(parent)).unwrap();
-        let grandchild = db.add("Grandchild", Some(child)).unwrap();
-        db.add("Sibling", Some(parent)).unwrap();
+        let child = db.add("Child", Some(parent), Priority::Low).unwrap();
+        let grandchild = db.add("Grandchild", Some(child), Priority::High).unwrap();
+        db.add("Sibling", Some(parent), Priority::Low).unwrap();
         db.toggle(grandchild).unwrap();
         let expected = db.list().unwrap();
         let deleted = db.delete(&stale_roots[..1]).unwrap();
         assert_eq!(deleted.len(), 4);
-        assert_eq!(db.list().unwrap(), expected[1..2]);
+        assert_eq!(
+            db.list().unwrap(),
+            expected
+                .iter()
+                .filter(|todo| todo.id == unrelated)
+                .cloned()
+                .collect::<Vec<_>>()
+        );
         db.restore(&deleted).unwrap();
         assert_eq!(db.list().unwrap(), expected);
+    }
+
+    #[test]
+    fn migrates_numeric_priorities_without_losing_hierarchy_or_dates() {
+        let connection = Connection::open_in_memory().unwrap();
+        connection
+            .execute_batch(
+                "CREATE TABLE todos (
+                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 title TEXT NOT NULL,
+                 done INTEGER NOT NULL DEFAULT 0,
+                 parent_id INTEGER REFERENCES todos(id),
+                 priority INTEGER NOT NULL DEFAULT 3 CHECK(priority BETWEEN 1 AND 5),
+                 created_at TEXT NOT NULL DEFAULT '2026-01-01 00:00:00',
+                 updated_at TEXT NOT NULL DEFAULT '2026-01-02 00:00:00'
+             );
+             INSERT INTO todos (id, title, done, parent_id, priority) VALUES
+                 (1, 'Parent', 0, NULL, 4),
+                 (2, 'Child', 1, 1, 2),
+                 (3, 'Root', 0, NULL, 3);",
+            )
+            .unwrap();
+        let db = Database::initialize(connection).unwrap();
+        let todos = db.list().unwrap();
+        assert_eq!(
+            todos.iter().map(|todo| todo.priority).collect::<Vec<_>>(),
+            [Priority::High, Priority::Mid, Priority::Low]
+        );
+        assert_eq!(todos[0].parent_id, Some(1));
+        assert!(todos[0].done);
+        assert!(
+            todos
+                .iter()
+                .all(|todo| todo.created_at == "2026-01-01 00:00:00"
+                    && todo.updated_at == "2026-01-02 00:00:00")
+        );
+        let db = Database::initialize(db.connection).unwrap();
+        assert_eq!(db.list().unwrap(), todos);
+        let fresh = Database::memory();
+        let id = fresh
+            .add("Invalid priority check", None, Priority::Mid)
+            .unwrap();
+        assert!(
+            fresh
+                .connection
+                .execute("UPDATE todos SET priority = 2 WHERE id = ?1", [id])
+                .is_err()
+        );
     }
 }

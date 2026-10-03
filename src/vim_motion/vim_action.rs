@@ -1,3 +1,5 @@
+use crate::db::Priority;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Motion {
     Left,
@@ -17,6 +19,8 @@ pub enum VimAction {
     FileEnd,
     Add,
     Edit,
+    Priority(Priority),
+    CyclePriority,
     Toggle,
     Delete(usize),
     Undo,

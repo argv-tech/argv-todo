@@ -40,6 +40,9 @@ cargo run -- --help
 | `3j`, `2k` | Repeat a motion |
 | `i`, `a`, `o` | Add a sibling of the selected task; add a root task when the list is empty |
 | `e`, `cc` | Edit selected task |
+| `t` | Cycle priority: low → mid → high → low |
+| `ph`, `pm`, `pl` | Set priority to high, mid, or low |
+| `Ctrl-p` | Cycle priority, including while creating or editing inline |
 | `Space`, `x`, `Enter` | Toggle the selected task and all its descendants in normal mode |
 | `dd`, `3dd` | Delete one / three tasks and all their children starting at selection |
 | `u` | Restore the last deleted task tree(s) in the current session |
@@ -53,7 +56,11 @@ In insert and search modes, letters are text. `Enter` saves or applies search. A
 
 Tasks can contain nested child tasks. Existing databases are upgraded automatically, keeping existing tasks at the top level. Deleting a parent also deletes its descendants; `u` restores the entire tree. Completing or reopening a parent gives all its descendants the same state, including tasks hidden by search. Toggling a child affects its own subtree without changing its ancestors or siblings. Changes are saved atomically.
 
+Tasks have **high**, **mid**, or **low** priority; new and existing tasks default to **mid**. Roots and children within each parent are sorted high first, then mid, then low. Equal priorities keep creation order. Changing a priority keeps the task selected, and children stay with their parent. Priorities are saved in SQLite and preserved by deletion undo.
+
 The fullscreen interface uses your terminal's background and ANSI color palette. Tasks occupy one row each, with bold parents and indented connecting branches. A small caret and cyan title mark the selection; completed tasks have green checks and dimmed titles. A `done/total` count beside a parent shows its direct children. The header contains only the app name and completion count. Short key hints stay at the bottom; input and errors appear when needed. Layout and key hints adapt to the terminal size.
+
+Create and edit tasks directly in the tree. A new draft appears at its sorted position among siblings or directly beneath a parent when creating its first child. `Ctrl-p` changes the draft priority and its position before saving. Starting a new task clears search to show its context. `Enter` saves the inline row; `Esc` cancels it. Search stays at the bottom.
 
 ## Check
 
