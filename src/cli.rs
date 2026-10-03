@@ -12,7 +12,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Option<PathBuf>> {
         match arg.to_str() {
             Some("--help" | "-h") => {
                 println!(
-                    "todo-rs — a Vim-style terminal todo list\n\nUsage: todo-rs [--db PATH]\n\nDefault: platform config directory / todo-rs / db.sql\nLinux: ~/.config/todo-rs/db.sql (honors XDG_CONFIG_HOME)\nmacOS: ~/Library/Application Support/todo-rs/db.sql\nWindows: %APPDATA%\\todo-rs\\db.sql\n\nKeys: j/k select · h/l filters · i add · e edit · Space toggle\n      dd delete · u undo deletion · / search · ? help · q quit"
+                    "todo-rs — a Vim-style terminal todo list\n\nUsage: todo-rs [--db PATH]\n\nDefault: platform config directory / todo-rs / db.sql\nLinux: ~/.config/todo-rs/db.sql (honors XDG_CONFIG_HOME)\nmacOS: ~/Library/Application Support/todo-rs/db.sql\nWindows: %APPDATA%\\todo-rs\\db.sql\n\nKeys: j/k select · h parent · l child · i add · e edit · Space toggle\n      dd delete · u undo deletion · / search · ? help · q quit"
                 );
                 return Ok(None);
             }

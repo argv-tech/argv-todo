@@ -1,7 +1,4 @@
-use crate::{
-    app::{App, Filter},
-    vim_motion::vim_mode::VimMode,
-};
+use crate::{app::App, vim_motion::vim_mode::VimMode};
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Layout, Rect},
@@ -52,8 +49,7 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     }
     let [
         header,
-        _gap,
-        tabs,
+        path,
         separator,
         body,
         metadata,
@@ -62,8 +58,7 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         footer,
     ] = Layout::vertical([
         Constraint::Length(1),
-        Constraint::Length(u16::from(area.height >= 16)),
-        Constraint::Length(1),
+        Constraint::Length(u16::from(app.parent_id.is_some())),
         Constraint::Length(if area.height >= 16 { 2 } else { 1 }),
         Constraint::Min(1),
         Constraint::Length(1),
@@ -73,7 +68,18 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     ])
     .areas(workspace(area));
     draw_header(frame, app, header);
-    draw_tabs(frame, app, tabs);
+    if path.height > 0 {
+        let breadcrumb = app.breadcrumb();
+        let offset = unicode_width::UnicodeWidthStr::width(breadcrumb.as_str())
+            .saturating_sub(path.width as usize)
+            .min(u16::MAX as usize) as u16;
+        frame.render_widget(
+            Paragraph::new(breadcrumb)
+                .style(Style::default().fg(MUTED))
+                .scroll((0, offset)),
+            path,
+        );
+    }
     rule(
         frame,
         Rect {
@@ -130,11 +136,16 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
         ])),
         brand,
     );
-    let done = app.todos.iter().filter(|todo| todo.done).count();
-    let text = if app.todos.is_empty() {
+    let siblings: Vec<_> = app
+        .todos
+        .iter()
+        .filter(|todo| todo.parent_id == app.parent_id)
+        .collect();
+    let done = siblings.iter().filter(|todo| todo.done).count();
+    let text = if siblings.is_empty() {
         "0 tasks".into()
     } else {
-        format!("{} open  /  {done} done", app.todos.len() - done)
+        format!("{} open  /  {done} done", siblings.len() - done)
     };
     frame.render_widget(
         Paragraph::new(text)
@@ -142,28 +153,6 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
             .style(Style::default().fg(MUTED)),
         summary,
     );
-}
-
-fn draw_tabs(frame: &mut Frame, app: &App, area: Rect) {
-    let done = app.todos.iter().filter(|todo| todo.done).count();
-    let mut spans = Vec::new();
-    for (filter, count) in [
-        (Filter::All, app.todos.len()),
-        (Filter::Active, app.todos.len() - done),
-        (Filter::Done, done),
-    ] {
-        let selected = app.filter == filter;
-        let style = if selected {
-            Style::default()
-                .fg(ACCENT)
-                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED)
-        } else {
-            Style::default().fg(MUTED)
-        };
-        spans.push(Span::styled(format!("{} {count}", filter.label()), style));
-        spans.push(Span::raw("    "));
-    }
-    frame.render_widget(Paragraph::new(Line::from(spans)), area);
 }
 
 fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
@@ -176,12 +165,10 @@ fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
         };
         let (title, hint) = if !query.is_empty() {
             ("No matching tasks.", "Esc  clear search")
-        } else if app.todos.is_empty() {
-            ("Nothing on your list.", "i  add your first task")
-        } else if app.filter == Filter::Active {
-            ("All caught up.", "i  add a task  ·  h/l  change filter")
+        } else if app.parent_id.is_some() {
+            ("No child tasks yet.", "i  add a child  ·  h  back")
         } else {
-            ("No completed tasks yet.", "h/l  change filter")
+            ("Nothing on your list.", "i  add your first task")
         };
         let height = 3.min(area.height);
         let empty = Rect::new(
@@ -201,6 +188,10 @@ fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
         );
         return;
     }
+    let child_counts: Vec<_> = visible
+        .iter()
+        .map(|&index| app.child_counts(app.todos[index].id))
+        .collect();
     let items: Vec<_> = visible
         .iter()
         .enumerate()
@@ -212,6 +203,12 @@ fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
             } else {
                 Style::default().fg(TEXT)
             };
+            let (done, total) = child_counts[row];
+            let children = if total == 0 {
+                String::new()
+            } else {
+                format!("  › {done}/{total}")
+            };
             ListItem::new(Line::from(vec![
                 Span::styled(
                     format!("{:>2}  ", row + 1),
@@ -222,6 +219,7 @@ fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
                     Style::default().fg(if todo.done || selected { ACCENT } else { MUTED }),
                 ),
                 Span::styled(todo.title.as_str(), style),
+                Span::styled(children, Style::default().fg(MUTED)),
             ]))
         })
         .collect();
@@ -258,6 +256,7 @@ fn draw_input(frame: &mut Frame, app: &App, area: Rect) {
     let label = match app.vim.mode() {
         VimMode::Search => "/ ",
         VimMode::Insert if app.editing_id.is_some() => "edit › ",
+        VimMode::Insert if app.parent_id.is_some() => "child › ",
         _ => "add › ",
     };
     let prefix_width = unicode_width::UnicodeWidthStr::width(label) as u16;
@@ -294,11 +293,13 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
             "Enter save  ·  Esc cancel  ·  ←/→ move"
         }
     } else if area.width < 45 {
-        "i add  ? help  q"
-    } else if area.width < 60 {
-        "i add · ? help · q quit"
+        "h/l tree  i  ?  q"
+    } else if area.width < 75 {
+        "h/l tree · i add · ? help"
+    } else if area.width < 105 {
+        "j/k move · h/l tree · i add · ? help · q quit"
     } else {
-        "hjkl move  ·  i add  ·  x done  ·  ? help  ·  q quit"
+        "j/k move · h parent · l child · i add · x done · ? help · q quit"
     };
     frame.render_widget(
         Paragraph::new(hint)
@@ -321,17 +322,18 @@ fn draw_help(frame: &mut Frame, app: &App) {
     frame.render_widget(Clear, popup);
     let lines = [
         "j/k       next / previous task",
-        "h/l       change filter",
+        "l         enter / create child",
+        "h         return to parent",
         "gg / G    first / last task",
         "3j / 2k   repeat movement",
         "",
-        "i/a/o     add task",
+        "i/a/o     add task at this level",
         "e / cc    edit task",
         "Space/x   toggle completion",
-        "dd / 3dd  delete task(s)",
+        "dd / 3dd  delete task tree(s)",
         "u         undo deletion",
         "",
-        "/         search titles",
+        "/         search this level",
         "Esc       cancel / clear search",
         "Enter     save / apply search",
         "←/→       move input cursor",
