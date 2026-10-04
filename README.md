@@ -150,7 +150,9 @@ cargo clippy --locked --all-targets -- -D warnings
 cargo build --locked
 ```
 
-CI runs these checks on Linux, macOS, and Windows. For a local test session, use `cargo run --locked -- --db ./target/dev/db.sql` to keep development tasks separate from your personal database.
+CI runs these checks on Linux, macOS, and Windows for pull requests targeting `main` or `dev`. Pushes to `main` build release binaries and upload platform archives named with their Cargo version, such as `argv-todo-0.1.0-linux.tar.gz`, as workflow artifacts. Pushing a `v*` tag runs the same checks and builds before publishing the archives to a GitHub release. The test and build workflows also support `workflow_call` for reuse and manual runs.
+
+For a local test session, use `cargo run --locked -- --db ./target/dev/db.sql` to keep development tasks separate from your personal database.
 
 Keyboard input and Unicode editing live in `src/vim_motion`, following the action-based structure of `argvcode`. See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) for development guidance, and the [maintainer guide](docs/maintaining.md) for repository setup and releases.
 

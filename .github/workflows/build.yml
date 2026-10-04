@@ -1,0 +1,80 @@
+name: Build
+
+"on":
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            binary: target/release/argv-todo
+            extension: tar.gz
+          - os: macos-latest
+            platform: macos
+            binary: target/release/argv-todo
+            extension: tar.gz
+          - os: windows-latest
+            platform: windows
+            binary: target/release/argv-todo.exe
+            extension: zip
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install stable Rust
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+      - name: Build release binary
+        run: cargo build --release --locked
+      - name: Name release archive
+        id: archive
+        shell: bash
+        env:
+          RELEASE_BINARY: ${{ matrix.binary }}
+          ARCHIVE_PLATFORM: ${{ matrix.platform }}
+          ARCHIVE_EXTENSION: ${{ matrix.extension }}
+        run: |
+          release_version=$("./$RELEASE_BINARY" --version)
+          release_version="${release_version#argv-todo }"
+          echo "name=argv-todo-${release_version}-${ARCHIVE_PLATFORM}.${ARCHIVE_EXTENSION}" >> "$GITHUB_OUTPUT"
+      - name: Package Linux and macOS binary
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          ARCHIVE_PATH: ${{ steps.archive.outputs.name }}
+        run: tar -czf "$ARCHIVE_PATH" -C target/release argv-todo
+      - name: Package Windows binary
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          ARCHIVE_PATH: ${{ steps.archive.outputs.name }}
+        run: Compress-Archive -Path target/release/argv-todo.exe -DestinationPath $env:ARCHIVE_PATH
+      - name: Upload release archive
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          path: ${{ steps.archive.outputs.name }}
+          archive: false
+          if-no-files-found: error
+          overwrite: true

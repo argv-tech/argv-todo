@@ -65,7 +65,9 @@ cargo clippy --locked --all-targets -- -D warnings
 cargo build --locked
 ```
 
-Use `cargo fmt` to fix formatting. Commit `Cargo.lock` when a dependency change updates it. CI runs the same checks on Linux, macOS, and Windows.
+Use `cargo fmt` to fix formatting. Commit `Cargo.lock` when a dependency change updates it. CI runs the same checks on Linux, macOS, and Windows for pull requests targeting `main` or `dev`.
+
+The reusable workflows are `.github/workflows/ci.yml` for checks and `.github/workflows/build.yml` for release builds and archives. Other workflows call them with a job-level `uses: ./.github/workflows/ci.yml` or `uses: ./.github/workflows/build.yml`. Builds run on pushes to `main`; `.github/workflows/publish.yml` calls both workflows to test, build, and publish GitHub releases on `v*` tags.
 
 ## Pull requests
 
