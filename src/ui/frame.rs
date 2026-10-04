@@ -21,6 +21,10 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
         Block::default().style(Style::default().bg(BG).fg(TEXT)),
         area,
     );
+    if app.help {
+        draw_help(frame, app);
+        return;
+    }
     if area.width < 35 || area.height < 12 {
         frame.render_widget(
             Paragraph::new("argv-todo\n\nResize to 35 × 12 or larger.\nEsc back · Ctrl-c quit")
@@ -55,7 +59,4 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
     }
     draw_input(frame, app, input);
     draw_footer(frame, app, footer);
-    if app.help {
-        draw_help(frame, app);
-    }
 }

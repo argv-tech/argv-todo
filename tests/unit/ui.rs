@@ -10,7 +10,7 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::{Terminal, TerminalOptions, Viewport, backend::TestBackend, layout::Rect};
 use unicode_width::UnicodeWidthStr;
 
-fn text_position(terminal: &Terminal<TestBackend>, text: &str) -> (u16, u16) {
+pub(super) fn text_position(terminal: &Terminal<TestBackend>, text: &str) -> (u16, u16) {
     let buffer = terminal.backend().buffer();
     for y in 0..buffer.area.height {
         let mut line = String::new();
@@ -33,7 +33,7 @@ fn text_position(terminal: &Terminal<TestBackend>, text: &str) -> (u16, u16) {
     panic!("Text missing from terminal: {text}");
 }
 
-fn terminal_row(terminal: &Terminal<TestBackend>, y: u16) -> String {
+pub(super) fn terminal_row(terminal: &Terminal<TestBackend>, y: u16) -> String {
     let buffer = terminal.backend().buffer();
     (0..buffer.area.width)
         .map(|x| buffer[(x, y)].symbol())
@@ -486,16 +486,19 @@ fn help_keeps_close_hint_visible_and_clears_underlying_editor() {
     terminal.draw(|frame| draw(frame, &mut app)).unwrap();
     assert!(terminal.backend().cursor_visible());
     app.help = true;
-    for scroll in [0, 10, HELP_LINES.len().saturating_sub(6) as u16] {
-        app.help_scroll = scroll;
+    for key in ['g', 'g', 'j', 'G'] {
+        app.handle_key(crossterm::event::KeyEvent::new(
+            crossterm::event::KeyCode::Char(key),
+            crossterm::event::KeyModifiers::NONE,
+        ));
         terminal.draw(|frame| draw(frame, &mut app)).unwrap();
-        let (x, y) = text_position(&terminal, "j/k scroll · Esc close");
-        assert_eq!(y, 9);
+        let (x, y) = text_position(&terminal, "Esc / ? close");
+        assert_eq!(y, 10);
         assert_eq!(terminal.backend().buffer()[(x, y)].fg, Color::Cyan);
         assert!(!terminal.backend().cursor_visible());
         assert!(!(0..12).any(|y| terminal_row(&terminal, y).contains("Draft underneath")));
     }
-    text_position(&terminal, "ctrl-c");
+    text_position(&terminal, "swap case in Visual");
     app.help = false;
     terminal.draw(|frame| draw(frame, &mut app)).unwrap();
     text_position(&terminal, "Draft underneath help");

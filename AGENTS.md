@@ -81,12 +81,13 @@ Current source layout:
 | `src/app/`        | State, actions, editing, events, navigation, settings, tasks    |
 | `src/ui/`         | Frame composition, geometry, text, editors, chrome, help, theme |
 | `src/ui/tasks/`   | Draft placement and task-tree rendering                         |
+| `src/ui/help/`    | Shortcut content, wrapping, and help rendering                  |
 | `src/ui/config/`  | Configuration panes, setting editor, and path details           |
 | `src/db/`         | Database entry point, task model, queries, migrations, trees    |
 | `src/cli.rs`      | Command-line options and path overrides                         |
 | `src/config/`     | Configuration paths, loading, validation, and atomic saving     |
 | `src/vim_motion/` | Keyboard mapping, modes, actions, and Unicode text editing      |
-| `src/vim_motion/manager/` | Task and field key mapping, counts, pending command parsing |
+| `src/vim_motion/manager/` | Task, field, and help key mapping, counts, pending command parsing |
 | `src/vim_motion/editor/` | Unicode cursor and selection, edits, motions, objects, history, viewport |
 | `tests/unit/`     | Unit suites and test helpers, grouped by owning module          |
 

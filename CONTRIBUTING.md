@@ -44,10 +44,10 @@ The source layout and project constraints are described in [AGENTS.md](AGENTS.md
 `src/main.rs` owns startup and terminal cleanup; `src/cli.rs` parses command-line options. Larger concerns use directory modules:
 
 - `src/app/`: state, action routing, editing, events, tree navigation, settings, and task operations.
-- `src/ui/`: full-frame composition, shared geometry, Unicode labels and editor rendering, header and footer, help, and theme. `tasks/` separates draft placement from row rendering; `config/` composes the setting editor and path details into responsive panes.
+- `src/ui/`: full-frame composition, shared geometry, Unicode labels and editor rendering, header and footer, help, and theme. `tasks/` separates draft placement from row rendering; `config/` composes the setting editor and path details into responsive panes; `help/` separates shortcut content and wrapping from rendering.
 - `src/db/`: task types, queries, schema migrations, and atomic tree operations.
 - `src/config/`: configuration loading, validation, and atomic saving.
-- `src/vim_motion/`: input targets, modes, and actions. `manager/` maps task keys and field commands, with a typed pending-command parser. `editor/` owns Unicode cursor and selection state, edits, motions, text objects, undo/repeat history, and the horizontal viewport.
+- `src/vim_motion/`: input targets, modes, and actions. `manager/` maps task keys, field commands, and help navigation, with a typed pending-command parser. `editor/` owns Unicode cursor and selection state, edits, motions, text objects, undo/repeat history, and the horizontal viewport.
 - `tests/unit/`: all unit suites and test helpers, grouped by owning module; keyboard and editor suites live in `tests/unit/vim_motion/`.
 
 Each directory's `mod.rs` defines its interface. Keep implementation modules private with `mod`; use `pub(super)` or `pub(crate)` for the access callers need and re-export shared types. Add focused files within the appropriate directory instead of expanding unrelated modules.

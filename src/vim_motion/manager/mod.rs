@@ -1,3 +1,4 @@
+mod help;
 mod input;
 mod pending;
 mod tasks;

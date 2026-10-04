@@ -1,6 +1,7 @@
 mod actions;
 mod editing;
 mod events;
+mod help;
 mod navigation;
 mod settings;
 mod tasks;
@@ -10,6 +11,7 @@ mod tasks;
 mod tests;
 
 use anyhow::Result;
+use help::HelpView;
 use ratatui::widgets::ListState;
 
 use crate::{
@@ -36,7 +38,7 @@ pub(crate) struct App {
     pub(crate) input_priority: Priority,
     pub(crate) query: String,
     pub(crate) help: bool,
-    pub(crate) help_scroll: u16,
+    pub(crate) help_view: HelpView,
     pub(crate) status: String,
     pub(crate) error: bool,
     pub(crate) config: Option<Config>,
@@ -60,7 +62,7 @@ impl App {
             input_priority: DEFAULT_PRIORITY,
             query: String::new(),
             help: false,
-            help_scroll: 0,
+            help_view: HelpView::default(),
             status: String::new(),
             error: false,
             config: None,
