@@ -1,67 +1,23 @@
-use crate::{app::App, db::Priority, vim_motion::VimMode};
+use crate::{app::App, vim_motion::VimMode};
 use ratatui::{
     Frame,
     layout::{Alignment, Rect},
-    style::{Color, Modifier, Style},
+    style::Style,
     text::{Line, Span},
     widgets::{List, ListItem, Paragraph},
 };
 
-use super::theme::{ACCENT, MUTED, TEXT};
+use super::super::{
+    text::truncate,
+    theme::{ACCENT, MUTED, TEXT, priority_style, task_title_style},
+};
+use super::rows::display_rows;
 
-struct DisplayRow {
-    index: Option<usize>,
-    depth: usize,
-}
-
-pub(super) fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
-    let mut visible: Vec<_> = app
-        .visible_rows()
-        .into_iter()
-        .map(|row| DisplayRow {
-            index: Some(row.index),
-            depth: row.depth,
-        })
-        .collect();
-    let adding = app.vim.mode() == VimMode::Insert && app.editing_id.is_none();
-    let draft = if adding {
-        let (start, end, depth) = app
-            .adding_parent
-            .and_then(|id| {
-                visible.iter().enumerate().find_map(|(row, task)| {
-                    (app.todos[task.index.unwrap()].id == id).then_some((row, task.depth))
-                })
-            })
-            .map(|(parent, depth)| {
-                let position = visible
-                    .iter()
-                    .enumerate()
-                    .skip(parent + 1)
-                    .find(|(_, task)| task.depth <= depth)
-                    .map_or(visible.len(), |(row, _)| row);
-                (parent + 1, position, depth + 1)
-            })
-            .unwrap_or((0, visible.len(), 0));
-        let relative_position = app.adding_relative.and_then(|(id, above)| {
-            app.todos
-                .iter()
-                .find(|todo| todo.id == id)
-                .map(|todo| todo.position + i64::from(!above))
-        });
-        let position = (start..end)
-            .find(|&row| {
-                let todo = &app.todos[visible[row].index.unwrap()];
-                visible[row].depth == depth
-                    && (todo.priority > app.input_priority
-                        || (todo.priority == app.input_priority
-                            && relative_position.is_some_and(|position| todo.position >= position)))
-            })
-            .unwrap_or(end);
-        visible.insert(position, DisplayRow { index: None, depth });
-        Some(position)
-    } else {
-        None
-    };
+pub(in crate::ui) fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
+    if area.is_empty() {
+        return;
+    }
+    let (visible, draft) = display_rows(app);
     if visible.is_empty() {
         let query = if app.vim.mode() == VimMode::Search {
             app.editor.text()
@@ -128,14 +84,11 @@ pub(super) fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
             let priority = if inline {
                 app.input_priority
             } else {
-                todo.unwrap().priority
+                todo.map_or(app.input_priority, |todo| todo.priority)
             };
             let (done, total) = child_counts[row];
             let root = tree_row.depth == 0;
-            let mut style = Style::default().fg(TEXT);
-            if root || total > 0 || selected {
-                style = style.add_modifier(Modifier::BOLD);
-            }
+            let style = task_title_style(root || total > 0, selected, completed && !inline);
             let children = if total == 0 {
                 String::new()
             } else {
@@ -164,9 +117,9 @@ pub(super) fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
                 )
             };
             ancestors.push(!last_sibling[row]);
+            let prefix_width =
+                2 + unicode_width::UnicodeWidthStr::width(branch.as_str()) as u16 + 8;
             let title = if inline {
-                let prefix_width =
-                    2 + unicode_width::UnicodeWidthStr::width(branch.as_str()) as u16 + 8;
                 let (text, column) = app.editor.viewport(area.width.saturating_sub(prefix_width));
                 if prefix_width < area.width {
                     cursor = Some((row, prefix_width + column));
@@ -177,7 +130,15 @@ pub(super) fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
                     Span::styled(text, style)
                 }
             } else {
-                Span::styled(todo.unwrap().title.as_str(), style)
+                Span::styled(
+                    truncate(
+                        todo.map_or("", |todo| todo.title.as_str()),
+                        usize::from(area.width.saturating_sub(prefix_width)).saturating_sub(
+                            unicode_width::UnicodeWidthStr::width(children.as_str()),
+                        ),
+                    ),
+                    style,
+                )
             };
             let line = Line::from(vec![
                 Span::styled(
@@ -190,11 +151,7 @@ pub(super) fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
                 ),
                 Span::styled(
                     format!("{:<4} ", priority.label()),
-                    Style::default().fg(match priority {
-                        Priority::High => Color::Red,
-                        Priority::Mid => Color::Yellow,
-                        Priority::Low => Color::Blue,
-                    }),
+                    priority_style(priority),
                 ),
                 title,
                 Span::styled(
