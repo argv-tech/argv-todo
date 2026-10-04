@@ -9,7 +9,7 @@ homepage = "https://github.com/argv-tech/argv-todo"
 readme = "README.md"
 keywords = ["todo", "tui", "terminal", "sqlite", "vim"]
 categories = ["command-line-utilities"]
-include = ["src/**", "Cargo.toml", "Cargo.lock", "README.md", "LICENSE", "CHANGELOG.md"]
+include = ["src/**", "tests/**", "Cargo.toml", "Cargo.lock", "README.md", "LICENSE", "CHANGELOG.md"]
 
 [dependencies]
 anyhow = "1"

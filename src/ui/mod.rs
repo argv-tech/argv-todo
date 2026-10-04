@@ -9,6 +9,7 @@ mod text;
 mod theme;
 
 #[cfg(test)]
+#[path = "../../tests/unit/ui.rs"]
 mod tests;
 
 pub(crate) use frame::draw;

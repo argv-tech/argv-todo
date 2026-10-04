@@ -2,6 +2,7 @@ mod parsing;
 mod saving;
 
 #[cfg(test)]
+#[path = "../../tests/unit/config.rs"]
 mod tests;
 
 use anyhow::{Context, Result, ensure};

@@ -48,8 +48,11 @@ The source layout and project constraints are described in [AGENTS.md](AGENTS.md
 - `src/db/`: task types, queries, schema migrations, and atomic tree operations.
 - `src/config/`: configuration loading, validation, and atomic saving.
 - `src/vim_motion/`: keyboard mapping, modes, actions, and Unicode text editing.
+- `tests/unit/`: all unit suites and test helpers, grouped by owning module; keyboard and editor suites live in `tests/unit/vim_motion/`.
 
-Each directory's `mod.rs` defines its interface. Keep implementation modules private with `mod`; use `pub(super)` or `pub(crate)` for the access callers need and re-export shared types. Add focused files within the appropriate directory instead of expanding unrelated modules. Larger test suites live in `tests.rs` beside the code they exercise.
+Each directory's `mod.rs` defines its interface. Keep implementation modules private with `mod`; use `pub(super)` or `pub(crate)` for the access callers need and re-export shared types. Add focused files within the appropriate directory instead of expanding unrelated modules.
+
+Keep all tests and test helpers under `tests/unit/`. Source modules load these files using `#[cfg(test)]` and a relative `#[path = "..."] mod tests;` declaration. This keeps unit tests in their owning module's scope, including access to private helpers, while storing them outside `src/`. Cargo runs them with `cargo test --locked`; `tests/unit/` files are not separate integration-test targets. Include `tests/**` in the package so these paths also work in packaged source.
 
 ## Checks
 

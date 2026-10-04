@@ -4,6 +4,7 @@ mod schema;
 mod trees;
 
 #[cfg(test)]
+#[path = "../../tests/unit/db.rs"]
 mod tests;
 
 pub(crate) use model::{DEFAULT_PRIORITY, Priority, Todo};
@@ -23,10 +24,5 @@ impl Database {
                 .with_context(|| format!("Could not create {}", parent.display()))?;
         }
         Self::initialize(Connection::open(path)?)
-    }
-
-    #[cfg(test)]
-    pub(crate) fn memory() -> Self {
-        Self::initialize(Connection::open_in_memory().unwrap()).unwrap()
     }
 }
