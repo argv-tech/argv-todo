@@ -6,7 +6,7 @@ User-visible changes are recorded here. Release entries will be added when a ver
 
 ### Added
 
-- Show the Cargo package version beside the app name in the task header.
+- Show the Cargo package version in red beside the app name in the task header.
 - Reusable Rust test and release-build workflows for Linux, macOS, and Windows, with checks on pull requests to `main` and `dev`, versioned build artifacts on `main` pushes, and GitHub releases on `v*` tags.
 - Live `task_view` settings for normal and split todo/completed layouts, with Tab pane focus and separate selection and scrolling. Completed children retain unfinished ancestors as dimmed, nonselectable ghost rows.
 - A resolved database-path preview below the active database when the draft or saved setting points elsewhere.

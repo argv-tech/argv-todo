@@ -6,7 +6,7 @@ use crate::{
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Layout, Rect},
-    style::{Modifier, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::Paragraph,
 };
@@ -26,7 +26,7 @@ pub(super) fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
         ),
         Span::styled(
             concat!(" v", env!("CARGO_PKG_VERSION")),
-            Style::default().fg(MUTED),
+            Style::default().fg(Color::Red),
         ),
     ]);
     let brand_width = (brand.width() + 2) as u16;

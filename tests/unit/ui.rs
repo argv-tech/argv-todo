@@ -61,7 +61,7 @@ fn header_keeps_version_and_completion_count_visible_on_resize() {
         let buffer = terminal.backend().buffer();
         assert!(buffer[(brand_x, brand_y)].modifier.contains(Modifier::BOLD));
         for x in version_x..version_x + version.width() as u16 {
-            assert_eq!(buffer[(x, version_y)].fg, Color::DarkGray);
+            assert_eq!(buffer[(x, version_y)].fg, Color::Red);
             assert!(!buffer[(x, version_y)].modifier.contains(Modifier::BOLD));
         }
     }
