@@ -6,6 +6,7 @@ User-visible changes are recorded here. Release entries will be added when a ver
 
 ### Added
 
+- A resolved database-path preview below the active database when the draft or saved setting points elsewhere.
 - Normal, Visual, Visual Line, and Replace editing in every input field, with counted Vim operators, word/bracket/quote objects, find/till, yank/put, undo/redo, and repeat. Fields open in Insert; Esc enters Normal and another Esc cancels.
 - An `Esc` configuration view with the ASCII logo and an inline database-path editor. Saves preserve TOML comments and apply on the next launch.
 - A `config.toml` beside the default or overridden database, with a configurable `database_path` and `--db` precedence.

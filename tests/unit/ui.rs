@@ -41,6 +41,107 @@ fn terminal_row(terminal: &Terminal<TestBackend>, y: u16) -> String {
 }
 
 #[test]
+fn database_preview_tracks_drafts_and_saved_paths() {
+    let folder = std::env::temp_dir().join("argv-todo-preview");
+    let active = folder.join("db.sql");
+    let mut app = App::new(Database::memory()).unwrap();
+    app.configuring = true;
+    app.config = Some(crate::config::Config {
+        path: folder.join("config.toml"),
+        database_path: "db.sql".into(),
+        active_database: active.clone(),
+        database_override: false,
+    });
+    let mut terminal = Terminal::new(TestBackend::new(120, 35)).unwrap();
+    let absolute = folder.join("absolute.sql").display().to_string();
+    for (saved, draft, expected) in [
+        ("db.sql", None, None),
+        ("db.sql", Some("./db.sql"), None),
+        (
+            "db.sql",
+            Some("storage/tasks.sql"),
+            Some(folder.join("storage/tasks.sql")),
+        ),
+        ("db.sql", Some(""), None),
+        ("db.sql", Some("   "), None),
+        (
+            "db.sql",
+            Some(absolute.as_str()),
+            Some(folder.join("absolute.sql")),
+        ),
+        ("db.sql", None, None),
+        ("saved.sql", None, Some(folder.join("saved.sql"))),
+        ("saved.sql", Some("db.sql"), None),
+    ] {
+        app.config.as_mut().unwrap().database_path = saved.into();
+        if let Some(draft) = draft {
+            app.vim.begin_input(InputTarget::DatabasePath);
+            app.editor.reset(draft.into());
+        } else {
+            app.vim.end_input();
+        }
+        terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+        if let Some(expected) = expected {
+            let (x, y) = text_position(&terminal, "database preview (after restart)");
+            let (_, active_y) = text_position(&terminal, "active database");
+            let (_, config_y) = text_position(&terminal, "configuration file");
+            assert!(active_y < y && y < config_y);
+            assert!(terminal_row(&terminal, y + 1).contains(&expected.display().to_string()));
+            assert!(
+                terminal.backend().buffer()[(x, y)]
+                    .modifier
+                    .contains(Modifier::BOLD)
+            );
+        } else {
+            assert!((0..35).all(|y| !terminal_row(&terminal, y).contains("database preview")));
+        }
+        let config = app.config.as_ref().unwrap();
+        assert_eq!(config.active_database, active);
+        assert_eq!(config.database_path, saved);
+    }
+}
+
+#[test]
+fn database_preview_remains_visible_on_resize() {
+    let mut app = App::new(Database::memory()).unwrap();
+    app.configuring = true;
+    app.config = Some(crate::config::Config {
+        path: "/temporary/config.toml".into(),
+        database_path: "storage/界é👩‍💻tasks.sql".into(),
+        active_database: "/temporary/db.sql".into(),
+        database_override: true,
+    });
+    let mut terminal = Terminal::new(TestBackend::new(120, 35)).unwrap();
+    for (width, height) in [(120, 35), (100, 17), (74, 12), (73, 12), (35, 12)] {
+        terminal.backend_mut().resize(width, height);
+        terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+        let preview_y = text_position(
+            &terminal,
+            if height >= 17 {
+                "database preview (after restart)"
+            } else {
+                "preview (after restart) "
+            },
+        )
+        .1;
+        let active_y = text_position(
+            &terminal,
+            if width >= 74 {
+                "active database"
+            } else {
+                "using   "
+            },
+        )
+        .1;
+        assert!(preview_y > active_y);
+        assert!(terminal_row(&terminal, preview_y + u16::from(height >= 17)).contains("/temp"));
+        if width >= 74 {
+            text_position(&terminal, "Current launch uses --db.");
+        }
+    }
+}
+
+#[test]
 fn config_view_shows_logo_when_it_fits_and_keeps_editor_visible() {
     let mut app = App::new(Database::memory()).unwrap();
     app.configuring = true;
