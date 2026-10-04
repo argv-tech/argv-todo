@@ -4,6 +4,45 @@ fn key(c: char) -> KeyEvent {
 }
 
 #[test]
+fn tab_switches_panes_only_on_press_and_keeps_fields_isolated() {
+    let mut vim = VimManager::default();
+    for code in [KeyCode::Tab, KeyCode::BackTab] {
+        vim.handle(key('p'));
+        assert_eq!(
+            vim.handle(KeyEvent::new(code, KeyModifiers::NONE)),
+            Some(VimAction::SwitchPane)
+        );
+        assert!(vim.pending_label().is_empty());
+        for kind in [KeyEventKind::Repeat, KeyEventKind::Release] {
+            let mut event = KeyEvent::new(code, KeyModifiers::NONE);
+            event.kind = kind;
+            assert_eq!(vim.handle(event), None);
+        }
+    }
+    for target in [
+        InputTarget::Task,
+        InputTarget::Search,
+        InputTarget::DatabasePath,
+    ] {
+        vim.begin_input(target);
+        for mode in [
+            VimMode::Insert,
+            VimMode::Normal,
+            VimMode::Visual,
+            VimMode::VisualLine,
+            VimMode::Replace,
+        ] {
+            vim.set_mode(mode);
+            assert_eq!(
+                vim.handle(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE)),
+                None
+            );
+            assert_eq!(vim.input(), Some(target));
+        }
+    }
+}
+
+#[test]
 fn motions_counts_and_sequences() {
     let mut vim = VimManager::default();
     for (c, motion) in [

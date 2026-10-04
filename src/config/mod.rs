@@ -1,5 +1,8 @@
 mod parsing;
 mod saving;
+mod task_view;
+
+pub(crate) use task_view::TaskView;
 
 #[cfg(test)]
 #[path = "../../tests/unit/config.rs"]
@@ -14,13 +17,14 @@ use std::{
 
 use self::parsing::parse;
 
-const DEFAULT_CONFIG: &str = "# Paths are relative to this config file. --db overrides this setting.\ndatabase_path = \"db.sql\"\n";
+const DEFAULT_CONFIG: &str = "# Paths are relative to this config file. --db overrides this setting.\ndatabase_path = \"db.sql\"\n\n# Task layouts: normal, split. Changes apply immediately in Settings.\ntask_view = \"normal\"\n";
 
 pub(crate) struct Config {
     pub(crate) path: PathBuf,
     pub(crate) database_path: String,
     pub(crate) active_database: PathBuf,
     pub(crate) database_override: bool,
+    pub(crate) task_view: TaskView,
 }
 
 impl Config {
@@ -64,7 +68,7 @@ impl Config {
         let database = if database_override {
             default_database.to_path_buf()
         } else {
-            folder.join(&configured)
+            folder.join(&configured.database_path)
         };
         ensure!(
             database != config_path,
@@ -72,19 +76,20 @@ impl Config {
         );
         Ok(Self {
             path: config_path,
-            database_path: configured.to_string_lossy().into_owned(),
+            database_path: configured.database_path.to_string_lossy().into_owned(),
             active_database: database,
             database_override,
+            task_view: configured.task_view,
         })
     }
 
     pub(crate) fn reload(&mut self) -> Result<()> {
         let content = fs::read_to_string(&self.path)
             .with_context(|| format!("Could not read config {}", self.path.display()))?;
-        self.database_path = parse(&content)
-            .with_context(|| format!("Invalid config {}", self.path.display()))?
-            .to_string_lossy()
-            .into_owned();
+        let configured =
+            parse(&content).with_context(|| format!("Invalid config {}", self.path.display()))?;
+        self.database_path = configured.database_path.to_string_lossy().into_owned();
+        self.task_view = configured.task_view;
         Ok(())
     }
 }

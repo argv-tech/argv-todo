@@ -1,20 +1,27 @@
-use crate::{app::App, vim_motion::InputTarget};
+use crate::{
+    app::{App, TaskPane},
+    vim_motion::InputTarget,
+};
 
 pub(super) struct DisplayRow {
     pub(super) index: Option<usize>,
     pub(super) depth: usize,
+    pub(super) ghost: bool,
 }
 
-pub(super) fn display_rows(app: &App) -> (Vec<DisplayRow>, Option<usize>) {
+pub(super) fn display_rows(app: &App, pane: TaskPane) -> (Vec<DisplayRow>, Option<usize>) {
     let mut visible: Vec<_> = app
-        .visible_rows()
+        .rows_for_pane(pane)
         .into_iter()
         .map(|row| DisplayRow {
             index: Some(row.index),
             depth: row.depth,
+            ghost: row.ghost,
         })
         .collect();
-    let adding = app.vim.input() == Some(InputTarget::Task) && app.editing_id.is_none();
+    let adding = pane == app.task_pane()
+        && app.vim.input() == Some(InputTarget::Task)
+        && app.editing_id.is_none();
     let draft = if adding {
         let (start, end, depth) = app
             .adding_parent
@@ -52,7 +59,14 @@ pub(super) fn display_rows(app: &App) -> (Vec<DisplayRow>, Option<usize>) {
                             && relative_position.is_some_and(|position| todo.position >= position)))
             })
             .unwrap_or(end);
-        visible.insert(position, DisplayRow { index: None, depth });
+        visible.insert(
+            position,
+            DisplayRow {
+                index: None,
+                depth,
+                ghost: false,
+            },
+        );
         Some(position)
     } else {
         None

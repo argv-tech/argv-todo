@@ -87,9 +87,9 @@ pub(in crate::ui) fn draw_config(frame: &mut Frame, app: &App, area: Rect) {
         super::super::chrome::draw_footer(frame, app, footer);
         return;
     } else if area.width < 45 {
-        "Enter edit · Esc back · q quit"
+        "j/k setting · Enter change · Esc"
     } else {
-        "Enter/e edit · Esc tasks · q quit"
+        "j/k setting · Enter/e change · Esc tasks · q quit"
     };
     frame.render_widget(
         Paragraph::new(hint).style(Style::default().fg(MUTED)),

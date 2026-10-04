@@ -3,6 +3,7 @@
 A small terminal todo app with Vim-style keys, nested tasks, and local SQLite storage. Built with Rust, Ratatui, and Crossterm.
 
 - Keep parents and children together in one task tree.
+- Choose normal or split todo/completed layouts in Settings.
 - Create and edit tasks inline, with three priority levels and saved sibling order.
 - Search titles, complete subtrees, and undo deletions.
 - Use Unicode text, bracketed paste, and your terminal's color palette.
@@ -62,13 +63,18 @@ The generated config contains:
 
 ```toml
 database_path = "db.sql"
+task_view = "normal"
 ```
 
 Set `database_path` to an absolute path or a path relative to the config's directory. `--db` takes precedence over this setting. Changing the setting selects a database; it does not move existing tasks. The config stays in its original directory even when the database path points elsewhere.
 
-The app reads settings on startup and preserves existing config files, including comments. An empty config uses `db.sql`. Invalid TOML, unknown settings, and invalid database paths produce an error before the terminal interface opens. `--help` and `--version` do not create files.
+The app reads settings on startup and when opening configuration, preserving existing config files and comments. An empty config uses `db.sql` and the normal task view. Invalid TOML, unknown settings, invalid layout names, and invalid database paths produce an error before the terminal interface opens. `--help` and `--version` do not create files.
 
-Press `Esc` from the task view to open configuration. At 74 columns or wider, the screen splits into two panes: the database-path setting on the left and the active database and configuration-file paths on the right. Smaller terminals stack these sections. Paths wrap in spacious panes and show an ellipsis when space is limited. The screen shows the ARGV-TODO ASCII logo when the terminal is large enough and a compact heading on smaller terminals. Press `Enter`, `e`, or `i` to edit `database_path`, then `Enter` to save it to TOML. Editing uses the same Unicode text controls and paste support as task titles. Saves preserve comments and apply on the next launch; the current database stays open. `--db` continues to take precedence.
+Press `Esc` from the task view to open configuration. Use `j` / `k`, arrows, or `Tab` to select a setting. At 74 columns or wider, the screen shows settings on the left and database and configuration-file paths on the right. Smaller terminals stack these sections. Paths wrap in spacious panes and show an ellipsis when space is limited. The screen shows the ARGV-TODO ASCII logo when space permits. On `database_path`, press `Enter`, `e`, or `i` to edit, then `Enter` to save. Editing uses the same Unicode controls and paste support as task titles. Database-path changes apply on the next launch; the current database stays open, and `--db` retains precedence.
+
+On `task_view`, press `Enter`, `e`, `i`, `h` / `l`, or Left / Right to switch between `normal` and `split`. The choice saves to TOML and applies immediately. Press `Esc` to return to tasks without restarting. Normal keeps the full task tree. Split shows unfinished todos on the left and completed tasks on the right, stacking them below 74 columns. Unfinished ancestors of completed children appear in the Completed pane as dimmed ghost rows labeled `(parent)`. These rows provide context and are skipped by selection and task commands. An obsolete `nested` setting falls back to Normal.
+
+In Split, `Tab` or `Shift-Tab` switches pane focus. Each pane keeps its own selection and scroll position; task commands operate on the focused pane. Completing or reopening a task moves it to the corresponding pane and keeps it selected. Search filters both panes. Tab leaves focus in an active editor while typing.
 
 A database preview labeled “after restart” appears below the active database when the draft or saved setting resolves to a different path. Relative paths resolve against the config directory. The preview updates while editing; `--db` still takes precedence on launch.
 
@@ -79,6 +85,7 @@ While editing configuration, `Esc` discards the draft and returns to the configu
 | Key | Action |
 | --- | --- |
 | `j` / `k` | Next / previous row in the task tree |
+| `Tab`, `Shift-Tab` | Switch panes in Split; select a setting in configuration |
 | `l` | Select the first child; stay selected if there are none |
 | `h` | Select the parent task |
 | `gg` / `G` | First / last task |

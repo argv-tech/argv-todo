@@ -40,7 +40,11 @@ impl App {
             .into_iter()
             .flatten()
             .rev()
-            .map(|&index| TreeRow { index, depth: 0 })
+            .map(|&index| TreeRow {
+                index,
+                depth: 0,
+                ghost: false,
+            })
             .collect();
         let mut rows = Vec::new();
         while let Some(row) = stack.pop() {
@@ -51,6 +55,7 @@ impl App {
                 stack.extend(children.iter().rev().map(|&index| TreeRow {
                     index,
                     depth: row.depth + 1,
+                    ghost: false,
                 }));
             }
             rows.push(row);
@@ -59,8 +64,9 @@ impl App {
     }
 
     pub(super) fn visible_indices(&self) -> Vec<usize> {
-        self.visible_rows()
+        self.rows_for_pane(self.task_pane())
             .into_iter()
+            .filter(|row| !row.ghost)
             .map(|row| row.index)
             .collect()
     }
@@ -75,11 +81,15 @@ impl App {
     }
 
     pub(super) fn select_id(&mut self, id: i64) {
-        self.list.select(
-            self.visible_indices()
-                .iter()
-                .position(|&index| self.todos[index].id == id),
-        );
+        let row = self
+            .visible_indices()
+            .iter()
+            .position(|&index| self.todos[index].id == id);
+        if row.is_some() {
+            self.active_list_mut().select(row);
+        } else {
+            self.select_in_task_view(id);
+        }
         self.normalize_selection();
     }
 
@@ -110,18 +120,13 @@ impl App {
     }
 
     pub(super) fn selected_todo(&self) -> Option<&Todo> {
-        self.list
+        self.active_list()
             .selected()
             .and_then(|row| self.visible_indices().get(row).copied())
             .map(|index| &self.todos[index])
     }
 
     pub(super) fn normalize_selection(&mut self) {
-        let len = self.visible_indices().len();
-        self.list.select(if len == 0 {
-            None
-        } else {
-            Some(self.list.selected().unwrap_or(0).min(len - 1))
-        });
+        self.normalize_panes();
     }
 }

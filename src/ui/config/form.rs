@@ -3,7 +3,7 @@ use super::super::{
     text::truncate,
     theme::{ACCENT, MUTED},
 };
-use crate::app::App;
+use crate::app::{App, ConfigSetting};
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
@@ -13,11 +13,12 @@ use ratatui::{
 };
 
 pub(super) fn draw_form(frame: &mut Frame, app: &App, area: Rect, spacious: bool) {
-    let [label, input, _, note, _] = Layout::vertical([
+    let [label, input, view, _, note, _] = Layout::vertical([
+        Constraint::Length(1),
         Constraint::Length(1),
         Constraint::Length(1),
         Constraint::Length(u16::from(spacious)),
-        Constraint::Length(if spacious { 3 } else { 1 }),
+        Constraint::Length(if spacious { 2 } else { 0 }),
         Constraint::Min(0),
     ])
     .areas(area);
@@ -36,7 +37,14 @@ pub(super) fn draw_form(frame: &mut Frame, app: &App, area: Rect, spacious: bool
             .map_or("", |config| config.database_path.as_str());
         frame.render_widget(
             Paragraph::new(Line::from(vec![
-                Span::styled("› ", Style::default().fg(ACCENT)),
+                Span::styled(
+                    if app.config_setting == ConfigSetting::DatabasePath {
+                        "› "
+                    } else {
+                        "  "
+                    },
+                    Style::default().fg(ACCENT),
+                ),
                 Span::styled(
                     truncate(value, usize::from(input.width.saturating_sub(2))),
                     style,
@@ -45,13 +53,26 @@ pub(super) fn draw_form(frame: &mut Frame, app: &App, area: Rect, spacious: bool
             input,
         );
     }
+    let selected = !editing && app.config_setting == ConfigSetting::TaskView;
+    let view_style = if selected {
+        style.add_modifier(Modifier::UNDERLINED)
+    } else {
+        style
+    };
     frame.render_widget(
-        Paragraph::new(if spacious {
-            "Relative to config folder.\nSaved for the next launch."
-        } else {
-            "Applies on next launch."
-        })
-        .style(Style::default().fg(MUTED)),
+        Paragraph::new(Line::from(vec![
+            Span::styled(
+                if selected { "› " } else { "  " },
+                Style::default().fg(ACCENT),
+            ),
+            Span::styled("task_view  ", Style::default().fg(MUTED)),
+            Span::styled(app.task_view().label(), view_style),
+        ])),
+        view,
+    );
+    frame.render_widget(
+        Paragraph::new("Database path: next launch.\nTask view: applies immediately.")
+            .style(Style::default().fg(MUTED)),
         note,
     );
 }

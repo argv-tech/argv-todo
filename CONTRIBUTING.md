@@ -6,7 +6,7 @@ Bug reports, documentation improvements, tests, and focused code changes are wel
 
 Search [existing issues](https://github.com/argv-tech/argv-todo/issues) before opening a new one. For a larger change, describe the problem and proposed behavior in an issue first so maintainers can discuss the scope.
 
-The project favors a small dependency set and a single task tree with parents and children shown together. Keep the existing keyboard workflow and platform-specific storage behavior. Avoid adding dashboards, separate task pages, or unrelated refactors.
+The project favors a small dependency set and a normal task tree with parents and children shown together. The optional split todo/completed layout shares the same task workflow. Keep the existing keyboard controls and platform-specific storage behavior. Avoid adding dashboards, separate task pages, or unrelated refactors.
 
 ## Local setup
 
@@ -43,8 +43,8 @@ The source layout and project constraints are described in [AGENTS.md](AGENTS.md
 
 `src/main.rs` owns startup and terminal cleanup; `src/cli.rs` parses command-line options. Larger concerns use directory modules:
 
-- `src/app/`: state, action routing, editing, events, tree navigation, settings, and task operations.
-- `src/ui/`: full-frame composition, shared geometry, Unicode labels and editor rendering, header and footer, help, and theme. `tasks/` separates draft placement from row rendering; `config/` composes the setting editor and path details into responsive panes; `help/` separates shortcut content and wrapping from rendering.
+- `src/app/`: state, action routing, editing, events, tree navigation, settings, and task operations. `views.rs` owns pane focus, selection, and task projections, including ghost ancestor rows.
+- `src/ui/`: full-frame composition, shared geometry, Unicode labels and editor rendering, header and footer, help, and theme. `tasks/` separates pane composition, draft placement, and row rendering; `config/` composes setting controls and path details into responsive panes; `help/` separates shortcut content and wrapping from rendering.
 - `src/db/`: task types, queries, schema migrations, and atomic tree operations.
 - `src/config/`: configuration loading, validation, and atomic saving.
 - `src/vim_motion/`: input targets, modes, and actions. `manager/` maps task keys, field commands, and help navigation, with a typed pending-command parser. `editor/` owns Unicode cursor and selection state, edits, motions, text objects, undo/repeat history, and the horizontal viewport.

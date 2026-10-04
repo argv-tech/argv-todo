@@ -24,7 +24,9 @@ impl App {
                 .iter()
                 .position(|&index| self.todos[index].id == id);
             if row.is_some() {
-                self.list.select(row);
+                self.active_list_mut().select(row);
+            } else {
+                self.select_in_task_view(id);
             }
         }
         self.normalize_selection();
@@ -37,12 +39,13 @@ impl App {
                 Motion::Up | Motion::Down => {
                     let len = self.visible_indices().len();
                     if len > 0 {
-                        let selected = self.list.selected().unwrap_or(0);
-                        self.list.select(Some(if motion == Motion::Down {
-                            selected.saturating_add(count).min(len - 1)
-                        } else {
-                            selected.saturating_sub(count)
-                        }));
+                        let selected = self.active_list().selected().unwrap_or(0);
+                        self.active_list_mut()
+                            .select(Some(if motion == Motion::Down {
+                                selected.saturating_add(count).min(len - 1)
+                            } else {
+                                selected.saturating_sub(count)
+                            }));
                     }
                 }
                 Motion::Right => {
@@ -63,13 +66,14 @@ impl App {
                 _ => {}
             },
             VimAction::FileStart => {
-                self.list.select(Some(0));
+                self.active_list_mut().select(Some(0));
                 self.normalize_selection();
             }
             VimAction::FileEnd => {
-                self.list
-                    .select(self.visible_indices().len().checked_sub(1));
+                let last = self.visible_indices().len().checked_sub(1);
+                self.active_list_mut().select(last);
             }
+            VimAction::SwitchPane => self.switch_task_pane(),
             VimAction::AddChild => {
                 let parent = self.selected_todo().map(|todo| todo.id);
                 self.begin_add(parent);
@@ -113,7 +117,7 @@ impl App {
             }
             VimAction::Delete(count) => {
                 let visible = self.visible_indices();
-                let start = self.list.selected().unwrap_or(0);
+                let start = self.active_list().selected().unwrap_or(0);
                 let deleted: Vec<_> = visible
                     .into_iter()
                     .skip(start)
@@ -154,12 +158,7 @@ impl App {
             }
             VimAction::Cancel => {
                 if self.query.is_empty() {
-                    self.configuring = true;
-                    self.vim.set_mode(VimMode::Normal);
-                    self.message("");
-                    if let Some(config) = &mut self.config {
-                        config.reload()?;
-                    }
+                    self.open_config()?;
                 } else {
                     self.query.clear();
                     self.normalize_selection();
@@ -177,6 +176,7 @@ impl App {
             }
             _ => {}
         }
+        self.normalize_selection();
         Ok(())
     }
 }

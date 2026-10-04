@@ -90,6 +90,7 @@ pub(crate) enum VimAction {
     FileEnd,
     PageUp,
     PageDown,
+    SwitchPane,
     AddChild,
     AddBelow,
     AddAbove,

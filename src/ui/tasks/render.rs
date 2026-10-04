@@ -1,8 +1,11 @@
-use crate::{app::App, vim_motion::InputTarget};
+use crate::{
+    app::{App, TaskPane},
+    vim_motion::InputTarget,
+};
 use ratatui::{
     Frame,
     layout::{Alignment, Rect},
-    style::Style,
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{List, ListItem, Paragraph},
 };
@@ -14,11 +17,11 @@ use super::super::{
 };
 use super::rows::display_rows;
 
-pub(in crate::ui) fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
+pub(super) fn draw_list(frame: &mut Frame, app: &mut App, area: Rect, pane: TaskPane) {
     if area.is_empty() {
         return;
     }
-    let (visible, draft) = display_rows(app);
+    let (visible, draft) = display_rows(app, pane);
     if visible.is_empty() {
         let query = if app.vim.input() == Some(InputTarget::Search) {
             app.editor.text()
@@ -27,6 +30,10 @@ pub(in crate::ui) fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
         };
         let (title, hint) = if !query.is_empty() {
             ("No matching tasks.", "Esc  clear search")
+        } else if pane == TaskPane::Completed {
+            ("No completed tasks.", "Tab  todo")
+        } else if pane == TaskPane::Todo {
+            ("No unfinished todos.", "i  add a task · Tab  completed")
         } else {
             ("Nothing on your list.", "i  add your first task")
         };
@@ -68,9 +75,18 @@ pub(in crate::ui) fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
     }
     let max_depth = (area.width.saturating_sub(18) as usize / 5).max(1);
     let mut ancestors = Vec::new();
-    let mut state = app.list;
+    let mut state = *app.pane_list(pane);
+    let focused = app.task_pane() == pane;
     if let Some(row) = draft {
         state.select(Some(row));
+    } else if let Some(selected) = state.selected() {
+        let row = visible
+            .iter()
+            .enumerate()
+            .filter(|(_, row)| !row.ghost)
+            .nth(selected)
+            .map(|(row, _)| row);
+        state.select(row);
     }
     let mut cursor = None;
     let items: Vec<_> = visible
@@ -78,8 +94,9 @@ pub(in crate::ui) fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
         .enumerate()
         .map(|(row, tree_row)| {
             let todo = tree_row.index.map(|index| &app.todos[index]);
-            let selected = state.selected() == Some(row);
-            let inline = app.vim.input() == Some(InputTarget::Task)
+            let selected = focused && state.selected() == Some(row);
+            let inline = focused
+                && app.vim.input() == Some(InputTarget::Task)
                 && todo.is_none_or(|todo| app.editing_id == Some(todo.id));
             let completed = todo.is_some_and(|todo| todo.done);
             let priority = if inline {
@@ -89,8 +106,20 @@ pub(in crate::ui) fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
             };
             let (done, total) = child_counts[row];
             let root = tree_row.depth == 0;
-            let style = task_title_style(root || total > 0, selected, completed && !inline);
-            let children = if total == 0 {
+            let ghost_style = Style::default().fg(MUTED).add_modifier(Modifier::DIM);
+            let style = if tree_row.ghost {
+                ghost_style
+            } else {
+                task_title_style(root || total > 0, selected, completed && !inline)
+            };
+            let marker_style = if tree_row.ghost {
+                ghost_style
+            } else {
+                Style::default().fg(if selected { ACCENT } else { TEXT })
+            };
+            let children = if tree_row.ghost {
+                "  (parent)".into()
+            } else if total == 0 {
                 String::new()
             } else {
                 format!("  {done}/{total}")
@@ -143,30 +172,44 @@ pub(in crate::ui) fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
                 )]
             };
             let mut spans = vec![
+                Span::styled(branch, marker_style),
                 Span::styled(
-                    branch,
-                    Style::default().fg(if selected { ACCENT } else { TEXT }),
-                ),
-                Span::styled(
-                    if completed { "✓  " } else { "□  " },
-                    Style::default().fg(if selected { ACCENT } else { TEXT }),
+                    if tree_row.ghost {
+                        "·  "
+                    } else if completed {
+                        "✓  "
+                    } else {
+                        "□  "
+                    },
+                    marker_style,
                 ),
                 Span::styled(
                     format!("{:<4} ", priority.label()),
-                    priority_style(priority),
+                    if tree_row.ghost {
+                        ghost_style
+                    } else {
+                        priority_style(priority)
+                    },
                 ),
             ];
             spans.extend(title);
             spans.push(Span::styled(
                 if inline { String::new() } else { children },
-                Style::default().fg(MUTED),
+                if tree_row.ghost {
+                    ghost_style
+                } else {
+                    Style::default().fg(MUTED)
+                },
             ));
             ListItem::new(Line::from(spans))
         })
         .collect();
-    let list = List::new(items).highlight_symbol(Span::styled("› ", Style::default().fg(ACCENT)));
+    let list = List::new(items).highlight_symbol(Span::styled(
+        if focused { "› " } else { "· " },
+        Style::default().fg(if focused { ACCENT } else { MUTED }),
+    ));
     frame.render_stateful_widget(list, area, &mut state);
-    *app.list.offset_mut() = state.offset();
+    *app.pane_list_mut(pane).offset_mut() = state.offset();
     if !app.help
         && let Some((row, column)) = cursor
         && row >= state.offset()

@@ -1,5 +1,6 @@
 use crate::{
     app::App,
+    config::TaskView,
     vim_motion::{InputTarget, VimMode},
 };
 use ratatui::{
@@ -143,6 +144,14 @@ fn footer_hint(app: &App, width: usize) -> &'static str {
             "j/k move · i child · Esc clear · ? help · q quit",
             "Esc clear · ? help · q quit",
             "Esc clear · ? · q",
+        ]
+    } else if app.task_view() != TaskView::Normal {
+        &[
+            "Tab pane · j/k move · h/l tree · i child · Esc config · ? help · q quit",
+            "Tab pane · i child · Esc config · ? help · q quit",
+            "Tab pane · Esc config · ? · q",
+            "Tab pane · ? · q",
+            "Tab · ? · q",
         ]
     } else {
         &[

@@ -1,4 +1,5 @@
+mod panes;
 mod render;
 mod rows;
 
-pub(super) use render::draw_tasks;
+pub(super) use panes::draw_tasks;

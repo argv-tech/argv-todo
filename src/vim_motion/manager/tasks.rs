@@ -1,7 +1,11 @@
-use super::{KeyCode, KeyEvent, Motion, Priority, VimAction, VimManager};
+use super::{KeyCode, KeyEvent, KeyEventKind, Motion, Priority, VimAction, VimManager};
 
 impl VimManager {
     pub(super) fn handle_tasks(&mut self, key: KeyEvent) -> Option<VimAction> {
+        if matches!(key.code, KeyCode::Tab | KeyCode::BackTab) {
+            self.reset();
+            return (key.kind == KeyEventKind::Press).then_some(VimAction::SwitchPane);
+        }
         if let KeyCode::Char(c @ '0'..='9') = key.code
             && (c != '0' || self.count > 0)
             && self.task_pending.is_none()

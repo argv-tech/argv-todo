@@ -78,9 +78,9 @@ Current source layout:
 | Module            | Responsibility                                                  |
 | ----------------- | --------------------------------------------------------------- |
 | `src/main.rs`     | Startup, terminal setup and cleanup                             |
-| `src/app/`        | State, actions, editing, events, navigation, settings, tasks    |
+| `src/app/`        | State, actions, editing, events, navigation, settings, tasks, pane focus and projections |
 | `src/ui/`         | Frame composition, geometry, text, editors, chrome, help, theme |
-| `src/ui/tasks/`   | Draft placement and task-tree rendering                         |
+| `src/ui/tasks/`   | Pane composition, draft placement, and task-tree rendering       |
 | `src/ui/help/`    | Shortcut content, wrapping, and help rendering                  |
 | `src/ui/config/`  | Configuration panes, setting editor, and path details           |
 | `src/db/`         | Database entry point, task model, queries, migrations, trees    |
@@ -123,8 +123,11 @@ visibility rules above when adding or changing module boundaries.
 
 - Use the full terminal with small edge margins, readable text, and restrained
   colors.
-- Keep tasks in one view. Show parents and children together with indentation;
-  avoid tabs, separate task pages, dashboards, and large panels.
+- Keep the normal view as a full task tree with indentation. Optional Split
+  shows todo/completed panes, with unfinished ancestors as nonselectable ghost
+  context for completed children. Tab switches pane focus; settings apply layout
+  changes immediately.
+  Avoid separate task pages, dashboards, and large panels.
 - `j/k` selects tasks. `h` selects the parent. `l` selects the first child and
   stays selected if there are none. `i/a` creates a child, or a root when the
   list is empty.

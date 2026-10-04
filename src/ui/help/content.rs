@@ -20,6 +20,10 @@ const SECTIONS: &[Section] = &[
             ("l / h", "First child / parent; stay if there is no child"),
             ("gg / G", "First / last task"),
             ("3j / 2k", "Repeat a movement"),
+            (
+                "Tab / Shift-Tab",
+                "Switch panes in Split; skip ghost parents",
+            ),
         ],
     },
     Section {
@@ -47,6 +51,12 @@ const SECTIONS: &[Section] = &[
                 "Clear an applied search, otherwise open configuration",
             ),
             ("Ctrl-r", "Reload tasks from disk"),
+            ("Settings j / k", "Select database_path or task_view"),
+            (
+                "Settings Enter",
+                "Edit path or cycle task_view; layouts apply live",
+            ),
+            ("Settings h / l", "Switch normal / split task_view"),
             ("?", "Open help; press again to close"),
             ("q / Ctrl-c", "Quit from the tree / quit anywhere"),
         ],

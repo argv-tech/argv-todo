@@ -51,6 +51,7 @@ fn database_preview_tracks_drafts_and_saved_paths() {
         database_path: "db.sql".into(),
         active_database: active.clone(),
         database_override: false,
+        task_view: crate::config::TaskView::Normal,
     });
     let mut terminal = Terminal::new(TestBackend::new(120, 35)).unwrap();
     let absolute = folder.join("absolute.sql").display().to_string();
@@ -110,6 +111,7 @@ fn database_preview_remains_visible_on_resize() {
         database_path: "storage/界é👩‍💻tasks.sql".into(),
         active_database: "/temporary/db.sql".into(),
         database_override: true,
+        task_view: crate::config::TaskView::Normal,
     });
     let mut terminal = Terminal::new(TestBackend::new(120, 35)).unwrap();
     for (width, height) in [(120, 35), (100, 17), (74, 12), (73, 12), (35, 12)] {
@@ -150,6 +152,7 @@ fn config_view_shows_logo_when_it_fits_and_keeps_editor_visible() {
         database_path: "db.sql".into(),
         active_database: "/temporary/tasks.sql".into(),
         database_override: true,
+        task_view: crate::config::TaskView::Normal,
     });
     for (width, height) in [(20, 5), (35, 12), (60, 16), (80, 24), (120, 35)] {
         let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
@@ -159,6 +162,7 @@ fn config_view_shows_logo_when_it_fits_and_keeps_editor_visible() {
         }
         text_position(&terminal, "configuration");
         text_position(&terminal, "database_path");
+        text_position(&terminal, "task_view");
         text_position(&terminal, "db.sql");
         text_position(&terminal, "Esc");
         if width >= 80 {
@@ -578,6 +582,7 @@ fn configuration_splits_editor_and_paths_then_stacks_on_resize() {
         database_path: "db.sql".into(),
         active_database: "/temporary/tasks.sql".into(),
         database_override: true,
+        task_view: crate::config::TaskView::Normal,
     });
     let mut terminal = Terminal::new(TestBackend::new(100, 17)).unwrap();
     for (width, height) in [(100, 17), (74, 12), (73, 12), (35, 12), (120, 35)] {
