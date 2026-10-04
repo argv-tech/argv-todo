@@ -12,7 +12,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Option<PathBuf>> {
         match arg.to_str() {
             Some("--help" | "-h") => {
                 println!(
-                    "todo-rs — a Vim-style terminal todo list\n\nUsage: todo-rs [--db PATH]\n\nDefault: platform config directory / todo-rs / db.sql\nLinux: ~/.config/todo-rs/db.sql (honors XDG_CONFIG_HOME)\nmacOS: ~/Library/Application Support/todo-rs/db.sql\nWindows: %APPDATA%\\todo-rs\\db.sql\n\nKeys: j/k select · h parent · l child · i/a child · o/O below/above · e edit · t priority · Space toggle\n      dd delete · u undo deletion · / search · ? help · q quit"
+                    "argv-todo — a Vim-style terminal todo list\n\nUsage: argv-todo [--db PATH]\n\nDefault: platform config directory / argv-todo / db.sql\nLinux: ~/.config/argv-todo/db.sql (honors XDG_CONFIG_HOME)\nmacOS: ~/Library/Application Support/argv-todo/db.sql\nWindows: %APPDATA%\\argv-todo\\db.sql\n\nKeys: j/k select · h parent · l child · i/a child · o/O below/above · e edit · t priority · Space toggle\n      dd delete · u undo deletion · / search · ? help · q quit"
                 );
                 return Ok(None);
             }
@@ -22,7 +22,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Option<PathBuf>> {
                 ))
             }
             Some("--version" | "-V") => {
-                println!("todo-rs {}", env!("CARGO_PKG_VERSION"));
+                println!("argv-todo {}", env!("CARGO_PKG_VERSION"));
                 return Ok(None);
             }
             _ => bail!(
@@ -35,7 +35,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Option<PathBuf>> {
         Some(path) => path,
         None => dirs::config_dir()
             .context("Could not determine your config directory; use --db PATH")?
-            .join("todo-rs")
+            .join("argv-todo")
             .join("db.sql"),
     };
     anyhow::ensure!(
@@ -52,7 +52,7 @@ mod tests {
     fn default_uses_platform_config_directory() {
         assert_eq!(
             parse([]).unwrap().unwrap(),
-            dirs::config_dir().unwrap().join("todo-rs/db.sql")
+            dirs::config_dir().unwrap().join("argv-todo/db.sql")
         );
     }
     #[test]

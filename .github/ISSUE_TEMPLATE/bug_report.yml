@@ -1,0 +1,51 @@
+name: Bug report
+description: Report a reproducible problem with argv-todo.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues before filing a report. Use fictional task data and a temporary database.
+        For suspected vulnerabilities, follow [SECURITY.md](https://github.com/argv-tech/argv-todo/blob/main/SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: App version or commit
+      description: Run argv-todo --version. If building from source, include the commit too.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include your OS, terminal emulator, and terminal dimensions. For build issues, add rustc --version.
+      placeholder: |
+        OS:
+        Terminal:
+        Terminal dimensions:
+        Rust version (if relevant):
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List exact commands or keypresses using sample tasks.
+      placeholder: |
+        1. Launch with a temporary database using --db.
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include relevant errors or a terminal capture. Remove personal information.
+    validations:
+      required: true

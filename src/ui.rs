@@ -32,7 +32,7 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     );
     if area.width < 35 || area.height < 12 {
         frame.render_widget(
-            Paragraph::new("todo\n\nResize to 35 × 12 or larger.\nq quit")
+            Paragraph::new("argv-todo\n\nResize to 35 × 12 or larger.\nq quit")
                 .style(Style::default().fg(ACCENT))
                 .wrap(Wrap { trim: true }),
             area,
@@ -67,9 +67,9 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
 
 fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
     let [brand, summary] =
-        Layout::horizontal([Constraint::Length(6), Constraint::Min(0)]).areas(area);
+        Layout::horizontal([Constraint::Length(11), Constraint::Min(0)]).areas(area);
     frame.render_widget(
-        Paragraph::new("todo").style(Style::default().fg(TEXT).add_modifier(Modifier::BOLD)),
+        Paragraph::new("argv-todo").style(Style::default().fg(TEXT).add_modifier(Modifier::BOLD)),
         brand,
     );
     let done = app.todos.iter().filter(|todo| todo.done).count();

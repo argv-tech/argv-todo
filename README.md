@@ -1,14 +1,34 @@
-# todo-rs
+# argv-todo
 
-A terminal todo app built with Rust, Ratatui, Crossterm, and SQLite. Keyboard input and text editing live in `src/vim_motion`, following the action-based structure of `argvcode`.
+A small terminal todo app with Vim-style keys, nested tasks, and local SQLite storage. Built with Rust, Ratatui, and Crossterm.
+
+- Keep parents and children together in one task tree.
+- Create and edit tasks inline, with three priority levels and saved sibling order.
+- Search titles, complete subtrees, and undo deletions.
+- Use Unicode text, bracketed paste, and your terminal's color palette.
+
+[Contributing](CONTRIBUTING.md) · [Support](SUPPORT.md) · [Changelog](CHANGELOG.md) · [MIT license](LICENSE)
+
+## Install from source
+
+A current stable Rust toolchain and a C compiler are required to build. SQLite is bundled; no SQLite server or system SQLite installation is required.
+
+```sh
+git clone https://github.com/argv-tech/argv-todo.git
+cd argv-todo
+cargo install --path . --locked
+argv-todo
+```
+
+Ensure Cargo's binary directory is on your `PATH` (`~/.cargo/bin` on Linux and macOS, `%USERPROFILE%\\.cargo\\bin` on Windows). The clone command will work after the GitHub repository is created. No crates.io release is available from this setup yet.
 
 ## Run
 
 ```sh
-cargo run
+cargo run --locked
 ```
 
-A Rust toolchain and a C compiler are required to build. SQLite is bundled; no SQLite server or system SQLite installation is required.
+An interactive terminal is required. The app uses the full terminal and shows task rows at 35 columns × 12 rows or larger. Press `?` for help and `q` to quit.
 
 ## Storage
 
@@ -16,17 +36,22 @@ Changes are saved immediately. The app creates its config directory and database
 
 | Platform | Default database |
 | --- | --- |
-| Linux | `~/.config/todo-rs/db.sql` |
-| macOS | `~/Library/Application Support/todo-rs/db.sql` |
-| Windows | `%APPDATA%\todo-rs\db.sql` |
+| Linux | `~/.config/argv-todo/db.sql` |
+| macOS | `~/Library/Application Support/argv-todo/db.sql` |
+| Windows | `%APPDATA%\argv-todo\db.sql` |
 
 Linux honors `XDG_CONFIG_HOME`. Despite its `.sql` extension, `db.sql` is a binary SQLite database. SQLite may create `db.sql-wal` and `db.sql-shm` beside it while running.
+
+For an existing database, pass its current path with `--db` or move it to the new default location before launching.
+
+Close the app before moving or backing up a database. Keep any remaining `db.sql-wal` and `db.sql-shm` files together with `db.sql`. Task data is stored without application-level encryption.
 
 Override the location when needed:
 
 ```sh
-cargo run -- --db /tmp/todos.sql
-cargo run -- --help
+argv-todo --db /path/to/tasks.sql
+argv-todo --help
+argv-todo --version
 ```
 
 ## Keys
@@ -66,7 +91,20 @@ Create and edit tasks directly in the tree. A new draft appears at its sorted po
 ## Check
 
 ```sh
-cargo test
-cargo clippy --all-targets -- -D warnings
 cargo fmt --check
+cargo test --locked
+cargo clippy --locked --all-targets -- -D warnings
+cargo build --locked
 ```
+
+CI runs these checks on Linux, macOS, and Windows. For a local test session, use `cargo run --locked -- --db ./target/dev/db.sql` to keep development tasks separate from your personal database.
+
+Keyboard input and Unicode editing live in `src/vim_motion`, following the action-based structure of `argvcode`. See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) for development guidance, and the [maintainer guide](docs/maintaining.md) for repository setup and releases.
+
+## Community
+
+Use [GitHub issues](https://github.com/argv-tech/argv-todo/issues) for reproducible bugs, focused feature proposals, and questions. Follow the [Code of Conduct](CODE_OF_CONDUCT.md), and report vulnerabilities through the process in [SECURITY.md](SECURITY.md).
+
+## License
+
+argv-todo is licensed under the [MIT license](LICENSE).

@@ -1,0 +1,28 @@
+name: Feature request
+description: Propose a focused improvement to argv-todo.
+title: "[Feature] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues first. argv-todo favors a small dependency set and a single task tree.
+        Describe the workflow you need before proposing an implementation.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What are you trying to accomplish, and where does the current workflow fall short?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe how the change would work, including any keybinding or storage impact.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include existing keybindings or other approaches you have tried.

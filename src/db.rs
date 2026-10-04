@@ -307,7 +307,7 @@ mod tests {
 
     #[test]
     fn disk_storage_creates_parent_and_survives_reopen() {
-        let folder = std::env::temp_dir().join(format!("todo-rs-test-{}", std::process::id()));
+        let folder = std::env::temp_dir().join(format!("argv-todo-test-{}", std::process::id()));
         let path = folder.join("nested/db.sql");
         {
             let mut db = Database::open(&path).unwrap();

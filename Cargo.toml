@@ -1,7 +1,15 @@
 [package]
-name = "todo-rs"
+name = "argv-todo"
 version = "0.1.0"
 edition = "2024"
+description = "A minimal Vim-style terminal todo app with nested tasks and SQLite storage"
+license = "MIT"
+repository = "https://github.com/argv-tech/argv-todo"
+homepage = "https://github.com/argv-tech/argv-todo"
+readme = "README.md"
+keywords = ["todo", "tui", "terminal", "sqlite", "vim"]
+categories = ["command-line-utilities"]
+include = ["src/**", "Cargo.toml", "Cargo.lock", "README.md", "LICENSE", "CHANGELOG.md"]
 
 [dependencies]
 anyhow = "1"

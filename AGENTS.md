@@ -21,7 +21,7 @@ Build a minimal Rust todo TUI with Ratatui and SQLite. Prefer small, direct chan
 
 ## Storage
 
-- Use `dirs::config_dir()/todo-rs/db.sql`: Linux `~/.config`, macOS `~/Library/Application Support`, and Windows roaming AppData. Honor `--db` overrides.
+- Use `dirs::config_dir()/argv-todo/db.sql`: Linux `~/.config`, macOS `~/Library/Application Support`, and Windows roaming AppData. Honor `--db` overrides.
 - Save changes immediately with parameterized SQL.
 - Migrate existing databases without losing tasks or parent links.
 - Delete and restore task trees atomically. Keep the terminal usable after errors.
