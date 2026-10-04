@@ -106,7 +106,7 @@ While editing configuration, `Esc` discards the draft and returns to the configu
 | `Ctrl-r` | Reload tasks from disk |
 | `q`, `Ctrl-c` | Quit |
 
-Help uses the same full-screen branding and spacing as settings. On spacious terminals, choose a section in the guide with `j` / `k` or arrows; its shortcuts appear on the right. `Tab` / `Shift-Tab` cycles sections, and `gg` / `G` or `Home` / `End` selects the first / last section. Selection stays in the guide. Use `PgUp` / `PgDn` to scroll the selected section.
+Help covers task navigation, task changes, search, and settings. It uses the same full-screen branding and spacing as settings. On spacious terminals, choose a section in the guide with `j` / `k` or arrows; its shortcuts appear on the right. `Tab` / `Shift-Tab` cycles sections, and `gg` / `G` or `Home` / `End` selects the first / last section. Selection stays in the guide. Use `PgUp` / `PgDn` to scroll the selected section.
 
 Section titles are bold, uppercase, and spaced apart. Narrow or short terminals show all shortcuts in one scrolling column: use `j` / `k` or arrows to scroll, `PgUp` / `PgDn` to move a page, and `gg` / `G` or `Home` / `End` to jump to the beginning or end. Keys and descriptions align in wider panes and stack in narrow ones. A scrollbar and row range show your position. `Esc` or `?` closes help; the close hint stays visible.
 

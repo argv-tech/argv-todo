@@ -559,7 +559,7 @@ fn help_keeps_close_hint_visible_and_clears_underlying_editor() {
         assert!(!terminal.backend().cursor_visible());
         assert!(!(0..12).any(|y| terminal_row(&terminal, y).contains("Draft underneath")));
     }
-    text_position(&terminal, "Visual");
+    text_position(&terminal, "anywhere");
     app.help = false;
     terminal.draw(|frame| draw(frame, &mut app)).unwrap();
     text_position(&terminal, "Draft underneath help");

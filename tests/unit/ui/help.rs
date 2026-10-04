@@ -131,7 +131,7 @@ fn help_wraps_on_narrow_screens_and_clamps_after_resize() {
         }
         terminal.draw(|frame| draw(frame, &mut app)).unwrap();
         text_position(&terminal, "Esc / ? close");
-        text_position(&terminal, "Visual");
+        text_position(&terminal, "anywhere");
         let bottom = app.help_view.offset();
         app.handle_key(KeyEvent::new(KeyCode::PageDown, KeyModifiers::NONE));
         terminal.draw(|frame| draw(frame, &mut app)).unwrap();
@@ -146,7 +146,7 @@ fn help_wraps_on_narrow_screens_and_clamps_after_resize() {
         )
         .1;
         if width == 35 || height == 24 {
-            assert!(terminal_row(&terminal, footer_y - 1).contains("Visual"));
+            assert!(terminal_row(&terminal, footer_y - 1).contains("anywhere"));
         }
         let (_, close_y) = text_position(&terminal, "Esc / ? close");
         assert_eq!(close_y, footer_y + 1);
@@ -172,9 +172,9 @@ fn guide_selection_opens_one_section_and_keeps_its_title_visible() {
     assert_eq!(terminal.backend().buffer()[(36, body_y)].fg, Color::Cyan);
     app.handle_key(KeyEvent::new(KeyCode::End, KeyModifiers::NONE));
     terminal.draw(|frame| draw(frame, &mut app)).unwrap();
-    let title = text_position(&terminal, "› FIELDS / OBJECTS & SELECTION");
+    let title = text_position(&terminal, "› APP / SEARCH & SETTINGS");
     assert!(title.1 < text_position(&terminal, "Esc / ? close").1);
-    assert_eq!(app.help_view.selected_section(), 6);
+    assert_eq!(app.help_view.selected_section(), 2);
     app.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
     terminal.draw(|frame| draw(frame, &mut app)).unwrap();
     assert_eq!(app.help_view.selected_section(), 0);
