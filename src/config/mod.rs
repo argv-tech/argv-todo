@@ -24,6 +24,13 @@ pub(crate) struct Config {
 }
 
 impl Config {
+    pub(crate) fn resolve_database_path(&self, path: &str) -> PathBuf {
+        self.path
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .join(path)
+    }
+
     pub(crate) fn load(default_database: &Path, database_override: bool) -> Result<Self> {
         let folder = default_database
             .parent()

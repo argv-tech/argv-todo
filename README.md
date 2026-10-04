@@ -70,6 +70,8 @@ The app reads settings on startup and preserves existing config files, including
 
 Press `Esc` from the task view to open configuration. At 74 columns or wider, the screen splits into two panes: the database-path setting on the left and the active database and configuration-file paths on the right. Smaller terminals stack these sections. Paths wrap in spacious panes and show an ellipsis when space is limited. The screen shows the ARGV-TODO ASCII logo when the terminal is large enough and a compact heading on smaller terminals. Press `Enter`, `e`, or `i` to edit `database_path`, then `Enter` to save it to TOML. Editing uses the same Unicode text controls and paste support as task titles. Saves preserve comments and apply on the next launch; the current database stays open. `--db` continues to take precedence.
 
+A database preview labeled “after restart” appears below the active database when the draft or saved setting resolves to a different path. Relative paths resolve against the config directory. The preview updates while editing; `--db` still takes precedence on launch.
+
 While editing configuration, `Esc` discards the draft and returns to the configuration view. Press `Esc` again to return to tasks. In the task view, `Esc` first cancels active input, closes help, or clears an applied search; press it again to open configuration.
 
 ## Keys

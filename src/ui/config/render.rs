@@ -28,7 +28,7 @@ pub(in crate::ui) fn draw_config(frame: &mut Frame, app: &App, area: Rect) {
         Constraint::Length(if show_logo { 6 } else { 1 }),
         Constraint::Length(u16::from(spacious)),
         Constraint::Length(1),
-        Constraint::Length(1),
+        Constraint::Length(u16::from(spacious || area.width >= 70)),
         Constraint::Min(3),
         Constraint::Length(1),
         Constraint::Length(1),
