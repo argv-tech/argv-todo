@@ -69,7 +69,7 @@ Use `cargo fmt` to fix formatting. Commit `Cargo.lock` when a dependency change 
 
 After building, run `python3 tests/unit/terminal_smoke.py target/debug/argv-todo` on Linux or macOS, or `python tests/unit/terminal_smoke.py target/debug/argv-todo` on Windows. This check requires Python 3.11 or newer and uses only the standard library. It creates disposable storage and a Unix PTY or Windows console to verify startup, input, persisted tasks and settings, and terminal cleanup. CI runs it on each platform after the build.
 
-The reusable workflows are `.github/workflows/ci.yml` for checks and `.github/workflows/build.yml` for release builds and archives. Other workflows call them with a job-level `uses: ./.github/workflows/ci.yml` or `uses: ./.github/workflows/build.yml`. Builds run on pushes to `main`; `.github/workflows/publish.yml` calls both workflows to test, build, and publish GitHub releases on `v*` tags.
+The reusable workflows are `.github/workflows/ci.yml` for checks and `.github/workflows/build.yml` for release builds and archives. Other workflows call them with a job-level `uses: ./.github/workflows/ci.yml` or `uses: ./.github/workflows/build.yml`. Both workflows support manual runs; `.github/workflows/publish.yml` calls both workflows to test, build, and publish GitHub releases on `v*` tags.
 
 ## Changelog
 

@@ -22,7 +22,7 @@ Review dependency updates before merging. CI checks correctness and compilation;
 
 ## Releasing
 
-Pushes to `main` run the reusable build workflow and upload `argv-todo-<version>-linux.tar.gz`, `argv-todo-<version>-macos.tar.gz`, and `argv-todo-<version>-windows.zip` as workflow artifacts. The version comes from the built binary's Cargo package version, for example `argv-todo-0.1.0-linux.tar.gz`. Each archive contains the release binary for its native GitHub runner.
+Manual runs and calls from other workflows run the reusable build workflow and upload `argv-todo-<version>-linux.tar.gz`, `argv-todo-<version>-macos.tar.gz`, and `argv-todo-<version>-windows.zip` as workflow artifacts. The version comes from the built binary's Cargo package version, for example `argv-todo-0.1.0-linux.tar.gz`. Each archive contains the release binary for its native GitHub runner.
 
 Pushing a `v*` tag runs the reusable checks on all three platforms, builds the release archives, and publishes a GitHub release with generated notes. Rerunning a tag workflow replaces assets on an existing release. Crates.io publication remains manual.
 

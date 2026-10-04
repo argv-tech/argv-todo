@@ -159,7 +159,7 @@ cargo clippy --locked --all-targets -- -D warnings
 cargo build --locked
 ```
 
-CI runs these checks on Linux, macOS, and Windows for pull requests targeting `main` or `dev`. Pushes to `main` build release binaries and upload platform archives named with their Cargo version, such as `argv-todo-0.1.0-linux.tar.gz`, as workflow artifacts. Pushing a `v*` tag runs the same checks and builds before publishing the archives to a GitHub release. The test and build workflows also support `workflow_call` for reuse and manual runs.
+CI runs these checks on Linux, macOS, and Windows for pull requests targeting `main` or `dev`. Pushing a `v*` tag runs the same checks and builds release binaries before publishing platform archives named with their Cargo version, such as `argv-todo-0.1.0-linux.tar.gz`, to a GitHub release. The test and build workflows also support `workflow_call` for reuse and manual runs.
 
 For a local test session, use `cargo run --locked -- --db ./target/dev/db.sql` to keep development tasks separate from your personal database.
 
