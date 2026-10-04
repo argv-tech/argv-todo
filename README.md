@@ -68,6 +68,10 @@ Set `database_path` to an absolute path or a path relative to the config's direc
 
 The app reads settings on startup and preserves existing config files, including comments. An empty config uses `db.sql`. Invalid TOML, unknown settings, and invalid database paths produce an error before the terminal interface opens. `--help` and `--version` do not create files.
 
+Press `Esc` from the task view to open configuration. The screen shows the ARGV-TODO ASCII logo when the terminal is large enough and a compact heading on smaller terminals. Press `Enter`, `e`, or `i` to edit `database_path`, then `Enter` to save it to TOML. Editing uses the same Unicode text controls and paste support as task titles. Saves preserve comments and apply on the next launch; the current database stays open. `--db` continues to take precedence.
+
+While editing configuration, `Esc` discards the draft and returns to the configuration view. Press `Esc` again to return to tasks. In the task view, `Esc` first cancels active input, closes help, or clears an applied search; press it again to open configuration.
+
 ## Keys
 
 | Key | Action |
@@ -88,7 +92,7 @@ The app reads settings on startup and preserves existing config files, including
 | `u` | Restore the last deleted task tree(s) in the current session |
 | `/` | Search all titles, ignoring case; keep ancestors visible for context |
 | `?` | Show help |
-| `Esc` | Cancel input, close help, or clear applied search |
+| `Esc` | Open configuration; cancel input, close help, or clear applied search first |
 | `Ctrl-r` | Reload tasks from disk |
 | `q`, `Ctrl-c` | Quit |
 

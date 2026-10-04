@@ -16,10 +16,12 @@ fn main() -> Result<()> {
     let Some(options) = cli::options()? else {
         return Ok(());
     };
-    let path = config::database_path(&options.database_path, options.database_override)?;
-    let database = db::Database::open(&path)
+    let config = config::Config::load(&options.database_path, options.database_override)?;
+    let path = &config.active_database;
+    let database = db::Database::open(path)
         .with_context(|| format!("Could not open database {}", path.display()))?;
     let mut app = app::App::new(database)?;
+    app.config = Some(config);
     ratatui::run(|terminal| -> Result<()> {
         let _guard = TerminalInputGuard;
         execute!(std::io::stdout(), EnableBracketedPaste)?;

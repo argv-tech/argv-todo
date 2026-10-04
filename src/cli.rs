@@ -18,7 +18,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Option<Options>> {
         match arg.to_str() {
             Some("--help" | "-h") => {
                 println!(
-                    "argv-todo — a Vim-style terminal todo list\n\nUsage: argv-todo [--db PATH]\n\nDefault: platform config directory / argv-todo / db.sql\nLinux: ~/.config/argv-todo/db.sql (honors XDG_CONFIG_HOME)\nmacOS: ~/Library/Application Support/argv-todo/db.sql\nWindows: %APPDATA%\\argv-todo\\db.sql\n\nConfig: config.toml beside the default database, or beside --db PATH.\n        database_path = \"db.sql\" (relative to config); --db takes precedence.\n\nKeys: j/k select · h parent · l child · i/a child · o/O below/above · e edit · t priority · Space toggle\n      dd delete · u undo deletion · / search · ? help · q quit"
+                    "argv-todo — a Vim-style terminal todo list\n\nUsage: argv-todo [--db PATH]\n\nDefault: platform config directory / argv-todo / db.sql\nLinux: ~/.config/argv-todo/db.sql (honors XDG_CONFIG_HOME)\nmacOS: ~/Library/Application Support/argv-todo/db.sql\nWindows: %APPDATA%\\argv-todo\\db.sql\n\nConfig: config.toml beside the default database, or beside --db PATH.\n        database_path = \"db.sql\" (relative to config); --db takes precedence.\n        Esc opens configuration; Enter/e edit · Enter save · Esc cancel/back.\n        Saved settings apply on the next launch.\n\nKeys: j/k select · h parent · l child · i/a child · o/O below/above · e edit · t priority · Space toggle\n      dd delete · u undo deletion · / search · Esc config · ? help · q quit"
                 );
                 return Ok(None);
             }

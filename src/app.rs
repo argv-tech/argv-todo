@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use crossterm::{
     cursor::SetCursorStyle,
     event::{self, Event},
@@ -9,6 +9,7 @@ use crossterm::{
 use ratatui::{DefaultTerminal, widgets::ListState};
 
 use crate::{
+    config::Config,
     db::{DEFAULT_PRIORITY, Database, Priority, Todo},
     vim_motion::{
         editor::Editor,
@@ -39,6 +40,8 @@ pub struct App {
     pub help_scroll: u16,
     pub status: String,
     pub error: bool,
+    pub config: Option<Config>,
+    pub configuring: bool,
     undo: Vec<Vec<Todo>>,
     running: bool,
 }
@@ -61,6 +64,8 @@ impl App {
             help_scroll: 0,
             status: String::new(),
             error: false,
+            config: None,
+            configuring: false,
             undo: Vec::new(),
             running: true,
         };
@@ -304,6 +309,9 @@ impl App {
             self.running = false;
             return Ok(());
         }
+        if self.configuring {
+            return self.apply_config(action);
+        }
         if self.vim.mode() != VimMode::Normal {
             match action {
                 VimAction::Cancel => {
@@ -484,9 +492,18 @@ impl App {
                 self.message("Type to search. Enter applies. Esc cancels.");
             }
             VimAction::Cancel => {
-                self.query.clear();
-                self.normalize_selection();
-                self.message("Search cleared.");
+                if self.query.is_empty() {
+                    self.configuring = true;
+                    self.vim.set_mode(VimMode::Normal);
+                    self.message("");
+                    if let Some(config) = &mut self.config {
+                        config.reload()?;
+                    }
+                } else {
+                    self.query.clear();
+                    self.normalize_selection();
+                    self.message("Search cleared.");
+                }
             }
             VimAction::Help => {
                 self.help = true;
@@ -501,12 +518,54 @@ impl App {
         }
         Ok(())
     }
+
+    fn apply_config(&mut self, action: VimAction) -> Result<()> {
+        if self.vim.mode() != VimMode::Normal {
+            match action {
+                VimAction::Cancel => {
+                    self.vim.set_mode(VimMode::Normal);
+                    self.editor = Editor::default();
+                    self.message("");
+                }
+                VimAction::Submit => {
+                    self.config
+                        .as_mut()
+                        .context("Configuration is unavailable")?
+                        .save_database_path(self.editor.text())?;
+                    self.vim.set_mode(VimMode::Normal);
+                    self.editor = Editor::default();
+                    self.message("Saved. Applies on next launch.");
+                }
+                _ => self.editor.apply(action),
+            }
+        } else {
+            self.vim.set_mode(VimMode::Normal);
+            match action {
+                VimAction::Cancel => {
+                    self.configuring = false;
+                    self.message("");
+                }
+                VimAction::Edit | VimAction::AddChild | VimAction::Toggle => {
+                    let config = self
+                        .config
+                        .as_ref()
+                        .context("Configuration is unavailable")?;
+                    self.editor = Editor::new(config.database_path.clone());
+                    self.vim.set_mode(VimMode::Insert);
+                    self.message("");
+                }
+                _ => {}
+            }
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use std::path::PathBuf;
     fn app() -> App {
         App::new(Database::memory()).unwrap()
     }
@@ -534,6 +593,91 @@ mod tests {
             .handle(KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL))
             .unwrap();
         app.dispatch(action);
+    }
+
+    fn escape(app: &mut App) {
+        let action = app
+            .vim
+            .handle(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE))
+            .unwrap();
+        app.dispatch(action);
+    }
+
+    #[test]
+    fn escape_opens_config_and_edits_settings_without_changing_tasks() {
+        let folder = std::env::temp_dir().join(format!(
+            "argv-todo-config-ui-test-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let config = Config::load(&folder.join("custom.sql"), true).unwrap();
+        let path = config.path.clone();
+        let mut app = app();
+        app.config = Some(config);
+        keys(&mut app, "iKeep this task");
+        enter(&mut app);
+        let tasks = app.todos.clone();
+        let selection = app.list.selected();
+
+        // Input, help and applied searches keep their existing Escape behavior.
+        keys(&mut app, "eChanged task");
+        escape(&mut app);
+        assert!(!app.configuring);
+        assert_eq!(app.todos, tasks);
+        keys(&mut app, "?");
+        escape(&mut app);
+        assert!(!app.help && !app.configuring);
+        keys(&mut app, "/Keep");
+        enter(&mut app);
+        escape(&mut app);
+        assert!(app.query.is_empty() && !app.configuring);
+
+        escape(&mut app);
+        assert!(app.configuring);
+        keys(&mut app, "ddtu");
+        assert_eq!(app.todos, tasks);
+        enter(&mut app);
+        assert_eq!(app.vim.mode(), VimMode::Insert);
+        app.dispatch(VimAction::Clear);
+        enter(&mut app);
+        assert!(app.error && app.configuring);
+        assert_eq!(app.vim.mode(), VimMode::Insert);
+        assert_eq!(parse_config(&path), PathBuf::from("db.sql"));
+        keys(&mut app, "storage/tasks.sql");
+        enter(&mut app);
+        assert!(!app.error && app.configuring);
+        assert_eq!(app.vim.mode(), VimMode::Normal);
+        assert_eq!(parse_config(&path), PathBuf::from("storage/tasks.sql"));
+        assert_eq!(
+            app.config.as_ref().unwrap().active_database,
+            folder.join("custom.sql")
+        );
+        assert!(!folder.join("storage/tasks.sql").exists());
+
+        keys(&mut app, "eDiscard this change");
+        escape(&mut app);
+        assert!(app.configuring);
+        assert_eq!(parse_config(&path), PathBuf::from("storage/tasks.sql"));
+        escape(&mut app);
+        assert!(!app.configuring);
+        assert_eq!(app.todos, tasks);
+        assert_eq!(app.list.selected(), selection);
+
+        std::fs::write(&path, "database_path = 'external.sql'").unwrap();
+        escape(&mut app);
+        assert_eq!(app.config.as_ref().unwrap().database_path, "external.sql");
+        keys(&mut app, "q");
+        assert!(!app.running);
+        std::fs::remove_dir_all(folder).unwrap();
+
+        fn parse_config(path: &std::path::Path) -> std::path::PathBuf {
+            let content = std::fs::read_to_string(path).unwrap();
+            let value = content.parse::<toml::Table>().unwrap();
+            value["database_path"].as_str().unwrap().into()
+        }
     }
 
     #[test]

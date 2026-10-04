@@ -6,6 +6,7 @@ User-visible changes are recorded here. Release entries will be added when a ver
 
 ### Added
 
+- An `Esc` configuration view with the ASCII logo and an inline database-path editor. Saves preserve TOML comments and apply on the next launch.
 - A `config.toml` beside the default or overridden database, with a configurable `database_path` and `--db` precedence.
 - A fullscreen task tree with nested tasks, inline editing, and Vim-style navigation.
 - High, mid, and low priorities with persistent sibling order.

@@ -14,6 +14,15 @@ const MUTED: Color = Color::DarkGray;
 const ACCENT: Color = Color::Cyan;
 const ERROR: Color = Color::Red;
 
+const CONFIG_LOGO: [&str; 6] = [
+    " █████╗ ██████╗  ██████╗ ██╗   ██╗      ████████╗ ██████╗ ██████╗  ██████╗ ",
+    "██╔══██╗██╔══██╗██╔════╝ ██║   ██║      ╚══██╔══╝██╔═══██╗██╔══██╗██╔═══██╗",
+    "███████║██████╔╝██║  ███╗██║   ██║█████╗   ██║   ██║   ██║██║  ██║██║   ██║",
+    "██╔══██║██╔══██╗██║   ██║╚██╗ ██╔╝╚════╝   ██║   ██║   ██║██║  ██║██║   ██║",
+    "██║  ██║██║  ██║╚██████╔╝ ╚████╔╝          ██║   ╚██████╔╝██████╔╝╚██████╔╝",
+    "╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝   ╚═══╝           ╚═╝    ╚═════╝ ╚═════╝  ╚═════╝",
+];
+
 fn workspace(area: Rect) -> Rect {
     let margin = if area.width >= 60 { 2 } else { 1 };
     Rect::new(
@@ -32,11 +41,15 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     );
     if area.width < 35 || area.height < 12 {
         frame.render_widget(
-            Paragraph::new("argv-todo\n\nResize to 35 × 12 or larger.\nq quit")
+            Paragraph::new("argv-todo\n\nResize to 35 × 12 or larger.\nEsc back · Ctrl-c quit")
                 .style(Style::default().fg(ACCENT))
                 .wrap(Wrap { trim: true }),
             area,
         );
+        return;
+    }
+    if app.configuring {
+        draw_config(frame, app, workspace(area));
         return;
     }
     let show_input = app.vim.mode() == VimMode::Search
@@ -63,6 +76,115 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     if app.help {
         draw_help(frame, app);
     }
+}
+
+fn draw_config(frame: &mut Frame, app: &App, area: Rect) {
+    let width = area.width.min(90);
+    let area = Rect::new(
+        area.x + (area.width - width) / 2,
+        area.y,
+        width,
+        area.height,
+    );
+    let show_logo = area.height >= 17
+        && CONFIG_LOGO
+            .iter()
+            .all(|line| unicode_width::UnicodeWidthStr::width(*line) <= usize::from(area.width));
+    let spacious = area.height >= 17;
+    let [logo, _, title, _, label, input, note, paths, status, footer] = Layout::vertical([
+        Constraint::Length(if show_logo { 6 } else { 1 }),
+        Constraint::Length(u16::from(spacious)),
+        Constraint::Length(1),
+        Constraint::Length(u16::from(spacious)),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(if spacious { 2 } else { 1 }),
+        Constraint::Min(0),
+        Constraint::Length(1),
+        Constraint::Length(1),
+    ])
+    .areas(area);
+    let branding = if show_logo {
+        CONFIG_LOGO.into_iter().map(Line::from).collect::<Vec<_>>()
+    } else {
+        vec![Line::from("argv-todo")]
+    };
+    frame.render_widget(
+        Paragraph::new(branding)
+            .alignment(Alignment::Center)
+            .style(Style::default().fg(ACCENT)),
+        logo,
+    );
+    frame.render_widget(
+        Paragraph::new("configuration").style(Style::default().add_modifier(Modifier::BOLD)),
+        title,
+    );
+    frame.render_widget(
+        Paragraph::new("database_path").style(Style::default().fg(MUTED)),
+        label,
+    );
+    let editing = app.vim.mode() != VimMode::Normal;
+    let (value, column) = if editing {
+        app.editor.viewport(input.width.saturating_sub(2))
+    } else {
+        (
+            app.config
+                .as_ref()
+                .map_or("", |config| config.database_path.as_str()),
+            0,
+        )
+    };
+    frame.render_widget(
+        Paragraph::new(Line::from(vec![
+            Span::styled("› ", Style::default().fg(ACCENT)),
+            Span::styled(value, Style::default().add_modifier(Modifier::BOLD)),
+        ])),
+        input,
+    );
+    if editing && input.width > 2 && input.height > 0 {
+        frame.set_cursor_position((input.x + 2 + column, input.y));
+    }
+    frame.render_widget(
+        Paragraph::new(if spacious {
+            "Relative paths use the config folder.\nChanges apply on next launch."
+        } else {
+            "Applies on next launch."
+        })
+        .style(Style::default().fg(MUTED)),
+        note,
+    );
+    if let Some(config) = &app.config {
+        let mut lines = vec![
+            Line::from(format!("config  {}", config.path.display())),
+            Line::from(format!("using   {}", config.active_database.display())),
+        ];
+        if config.database_override {
+            lines.push(Line::from("Current launch uses --db."));
+        }
+        frame.render_widget(
+            Paragraph::new(lines).style(Style::default().fg(MUTED)),
+            paths,
+        );
+    }
+    frame.render_widget(
+        Paragraph::new(app.status.as_str()).style(Style::default().fg(if app.error {
+            ERROR
+        } else {
+            ACCENT
+        })),
+        status,
+    );
+    let hint = if editing {
+        "Enter save · Esc cancel"
+    } else if area.width < 45 {
+        "Enter edit · Esc back · q quit"
+    } else {
+        "Enter/e edit · Esc tasks · q quit"
+    };
+    frame.render_widget(
+        Paragraph::new(hint).style(Style::default().fg(MUTED)),
+        footer,
+    );
 }
 
 fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
@@ -365,13 +487,13 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
             "Enter save  ·  Esc cancel  ·  ←/→ move"
         }
     } else if area.width < 45 {
-        "h/l tree  i  ?  q"
+        "i  Esc config  ?  q"
     } else if area.width < 75 {
-        "i child · o below · ? help"
+        "i child · Esc config · ?"
     } else if area.width < 105 {
-        "i child · o/O below/above · ? help · q quit"
+        "i child · o/O sibling · Esc config · ? help"
     } else {
-        "j/k move · i/a child · o/O below/above · x done · t priority · ? help · q quit"
+        "j/k move · i/a child · o/O sibling · x done · t priority · Esc config · ? help · q quit"
     };
     frame.render_widget(
         Paragraph::new(hint)
@@ -410,7 +532,7 @@ fn draw_help(frame: &mut Frame, app: &App) {
         "u         undo deletion",
         "",
         "/         search all tasks",
-        "Esc       cancel / clear search",
+        "Esc       config / cancel / clear search",
         "Enter     save / apply search",
         "←/→       move input cursor",
         "Home/End  start / end of input",
@@ -454,6 +576,53 @@ mod tests {
             }
         }
         panic!("Text missing from terminal: {text}");
+    }
+
+    #[test]
+    fn config_view_shows_logo_when_it_fits_and_keeps_editor_visible() {
+        let mut app = App::new(Database::memory()).unwrap();
+        app.configuring = true;
+        app.config = Some(crate::config::Config {
+            path: "/temporary/config.toml".into(),
+            database_path: "db.sql".into(),
+            active_database: "/temporary/tasks.sql".into(),
+            database_override: true,
+        });
+        for (width, height) in [(20, 5), (35, 12), (60, 16), (80, 24), (120, 35)] {
+            let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
+            terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+            if width < 35 {
+                continue;
+            }
+            text_position(&terminal, "configuration");
+            text_position(&terminal, "database_path");
+            text_position(&terminal, "db.sql");
+            text_position(&terminal, "Esc");
+            if width >= 80 {
+                let first_row = text_position(&terminal, CONFIG_LOGO[0].trim_end()).1;
+                for (row, line) in CONFIG_LOGO.iter().enumerate() {
+                    assert_eq!(
+                        text_position(&terminal, line.trim_end()).1,
+                        first_row + row as u16
+                    );
+                }
+                text_position(&terminal, "Current launch uses --db.");
+            }
+            app.vim.set_mode(VimMode::Insert);
+            app.editor = crate::vim_motion::editor::Editor::new("界".repeat(80));
+            app.error = true;
+            app.status = "Invalid database path".into();
+            terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+            let cursor = terminal.get_cursor_position().unwrap();
+            assert!(cursor.x < width && cursor.y < height);
+            let label_y = text_position(&terminal, "database_path").1;
+            assert_eq!(cursor.y, label_y + 1);
+            text_position(&terminal, "Invalid database path");
+            text_position(&terminal, "Esc cancel");
+            app.vim.set_mode(VimMode::Normal);
+            app.error = false;
+            app.status.clear();
+        }
     }
 
     #[test]
