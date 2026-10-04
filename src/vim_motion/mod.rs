@@ -1,4 +1,9 @@
-pub mod editor;
-pub mod manager;
-pub mod vim_action;
-pub mod vim_mode;
+mod editor;
+mod manager;
+mod vim_action;
+mod vim_mode;
+
+pub(crate) use editor::Editor;
+pub(crate) use manager::VimManager;
+pub(crate) use vim_action::{Motion, VimAction};
+pub(crate) use vim_mode::VimMode;
