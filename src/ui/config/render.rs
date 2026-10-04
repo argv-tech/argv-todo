@@ -3,29 +3,16 @@ use super::{details::draw_details, form::draw_form};
 use crate::app::App;
 use ratatui::{
     Frame,
-    layout::{Alignment, Constraint, Layout, Margin, Rect},
+    layout::{Constraint, Layout, Margin, Rect},
     style::{Modifier, Style},
-    text::Line,
     widgets::{Block, Borders, Paragraph},
 };
 
-pub(in crate::ui) const CONFIG_LOGO: [&str; 6] = [
-    " █████╗ ██████╗  ██████╗ ██╗   ██╗      ████████╗ ██████╗ ██████╗  ██████╗ ",
-    "██╔══██╗██╔══██╗██╔════╝ ██║   ██║      ╚══██╔══╝██╔═══██╗██╔══██╗██╔═══██╗",
-    "███████║██████╔╝██║  ███╗██║   ██║█████╗   ██║   ██║   ██║██║  ██║██║   ██║",
-    "██╔══██║██╔══██╗██║   ██║╚██╗ ██╔╝╚════╝   ██║   ██║   ██║██║  ██║██║   ██║",
-    "██║  ██║██║  ██║╚██████╔╝ ╚████╔╝          ██║   ╚██████╔╝██████╔╝╚██████╔╝",
-    "╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝   ╚═══╝           ╚═╝    ╚═════╝ ╚═════╝  ╚═════╝",
-];
-
 pub(in crate::ui) fn draw_config(frame: &mut Frame, app: &App, area: Rect) {
-    let show_logo = area.height >= 17
-        && CONFIG_LOGO
-            .iter()
-            .all(|line| unicode_width::UnicodeWidthStr::width(*line) <= usize::from(area.width));
+    let branding_height = super::super::branding::height(area);
     let spacious = area.height >= 17;
     let [logo, _, title, _, body, status, footer] = Layout::vertical([
-        Constraint::Length(if show_logo { 6 } else { 1 }),
+        Constraint::Length(branding_height),
         Constraint::Length(u16::from(spacious)),
         Constraint::Length(1),
         Constraint::Length(u16::from(spacious || area.width >= 70)),
@@ -34,17 +21,7 @@ pub(in crate::ui) fn draw_config(frame: &mut Frame, app: &App, area: Rect) {
         Constraint::Length(1),
     ])
     .areas(area);
-    let branding = if show_logo {
-        CONFIG_LOGO.into_iter().map(Line::from).collect::<Vec<_>>()
-    } else {
-        vec![Line::from("argv-todo")]
-    };
-    frame.render_widget(
-        Paragraph::new(branding)
-            .alignment(Alignment::Center)
-            .style(Style::default().fg(ACCENT)),
-        logo,
-    );
+    super::super::branding::draw(frame, logo);
     frame.render_widget(
         Paragraph::new("configuration").style(Style::default().add_modifier(Modifier::BOLD)),
         title,

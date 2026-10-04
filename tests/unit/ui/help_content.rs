@@ -1,11 +1,11 @@
-use super::{lines, wrap};
+use super::{document, wrap};
 use unicode_width::UnicodeWidthStr;
 
 #[test]
 fn help_content_fits_each_available_width() {
-    assert!(lines(0).is_empty());
+    assert!(document(0).lines.is_empty());
     for width in [1, 2, 16, 29, 51, 52, 74] {
-        let lines = lines(width);
+        let lines = document(width).lines;
         assert!(!lines.is_empty());
         assert!(lines.iter().all(|line| line.width() <= usize::from(width)));
         assert!(!lines.last().unwrap().to_string().is_empty());

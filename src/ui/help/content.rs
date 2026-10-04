@@ -5,7 +5,7 @@ use ratatui::{
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
-use super::super::theme::{ACCENT, TEXT};
+use super::super::theme::ACCENT;
 
 struct Section {
     title: &'static str,
@@ -155,27 +155,55 @@ const SECTIONS: &[Section] = &[
     },
 ];
 
-pub(super) fn lines(width: u16) -> Vec<Line<'static>> {
+pub(super) struct SectionPosition {
+    pub(super) title: &'static str,
+    pub(super) row: usize,
+}
+
+#[derive(Default)]
+pub(super) struct Document {
+    pub(super) lines: Vec<Line<'static>>,
+    pub(super) sections: Vec<SectionPosition>,
+}
+
+impl Document {
+    pub(super) fn section_range(&self, index: usize) -> std::ops::Range<usize> {
+        let start = self.sections.get(index).map_or(0, |section| section.row);
+        let end = self
+            .sections
+            .get(index + 1)
+            .map_or(self.lines.len(), |section| section.row.saturating_sub(1));
+        start..end
+    }
+}
+
+pub(super) fn document(width: u16) -> Document {
     let width = usize::from(width);
     if width == 0 {
-        return Vec::new();
+        return Document::default();
     }
     let key_style = Style::default().fg(ACCENT).add_modifier(Modifier::BOLD);
     let heading_style = Style::default()
-        .fg(TEXT)
+        .fg(ACCENT)
         .add_modifier(Modifier::BOLD | Modifier::UNDERLINED);
     let key_column = 20;
     let aligned = width >= 52;
     let mut lines = Vec::new();
+    let mut sections = Vec::new();
     for section in SECTIONS {
         if !lines.is_empty() {
             lines.push(Line::default());
         }
+        sections.push(SectionPosition {
+            title: section.title,
+            row: lines.len(),
+        });
         lines.extend(
-            wrap(section.title, width)
+            wrap(&section.title.to_uppercase(), width)
                 .into_iter()
                 .map(|text| Line::styled(text, heading_style)),
         );
+        lines.push(Line::default());
         for &(keys, description) in section.shortcuts {
             if aligned {
                 for (index, text) in wrap(description, width - key_column)
@@ -204,7 +232,7 @@ pub(super) fn lines(width: u16) -> Vec<Line<'static>> {
             }
         }
     }
-    lines
+    Document { lines, sections }
 }
 
 // Wrap before rendering so scrolling and page limits count actual terminal rows.

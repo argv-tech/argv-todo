@@ -24,6 +24,7 @@ impl VimManager {
             KeyCode::Esc | KeyCode::Char('?') => VimAction::Cancel,
             KeyCode::PageDown => VimAction::PageDown,
             KeyCode::PageUp => VimAction::PageUp,
+            KeyCode::Tab | KeyCode::BackTab => return self.handle_tasks(key),
             KeyCode::Char('0'..='9' | 'g' | 'G' | 'h' | 'j' | 'k' | 'l' | 'q')
             | KeyCode::Up
             | KeyCode::Down

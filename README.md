@@ -106,7 +106,9 @@ While editing configuration, `Esc` discards the draft and returns to the configu
 | `Ctrl-r` | Reload tasks from disk |
 | `q`, `Ctrl-c` | Quit |
 
-Help groups shortcuts by task navigation, task changes, app controls, and field editing. Keys and descriptions align in wider terminals and stack on narrow screens. Use `j` / `k` or arrows to scroll, `PgUp` / `PgDn` to move a page, and `gg` / `G` or `Home` / `End` to jump to the beginning or end. A scrollbar and row range show your position. `Esc` or `?` closes help; the close hint stays visible while scrolling.
+Help uses the same full-screen branding and spacing as settings. On spacious terminals, choose a section in the guide with `j` / `k` or arrows; its shortcuts appear on the right. `Tab` / `Shift-Tab` cycles sections, and `gg` / `G` or `Home` / `End` selects the first / last section. Selection stays in the guide. Use `PgUp` / `PgDn` to scroll the selected section.
+
+Section titles are bold, uppercase, and spaced apart. Narrow or short terminals show all shortcuts in one scrolling column: use `j` / `k` or arrows to scroll, `PgUp` / `PgDn` to move a page, and `gg` / `G` or `Home` / `End` to jump to the beginning or end. Keys and descriptions align in wider panes and stack in narrow ones. A scrollbar and row range show your position. `Esc` or `?` closes help; the close hint stays visible.
 
 Every input field—task titles, search, and the configuration database path—supports **Insert**, **Normal**, **Visual**, **Visual Line**, and **Replace** modes. Fields open in Insert, where letters are text. `Esc` returns to Normal without closing the field; another `Esc` cancels it. In Visual or Replace, `Esc` also returns to Normal. When a command is pending, `Esc` cancels the command first. `Enter` saves or applies search from any field mode. The footer shows the mode and pending command; Visual selections use reverse video.
 

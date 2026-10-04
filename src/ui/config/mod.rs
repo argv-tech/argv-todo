@@ -6,7 +6,7 @@ mod render;
 pub(super) use render::draw_config;
 
 #[cfg(test)]
-pub(super) use render::CONFIG_LOGO;
+pub(super) use super::branding::LOGO as CONFIG_LOGO;
 
 #[cfg(test)]
 #[path = "../../../tests/unit/ui/config.rs"]

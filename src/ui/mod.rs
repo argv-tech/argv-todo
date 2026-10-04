@@ -1,3 +1,4 @@
+mod branding;
 mod chrome;
 mod config;
 mod frame;
