@@ -82,7 +82,7 @@ Current source layout:
 | `src/ui/`         | Frame composition, geometry, text, editors, chrome, help, theme |
 | `src/ui/tasks/`   | Pane composition, draft placement, and task-tree rendering       |
 | `src/ui/help/`    | Shortcut content, wrapping, and help rendering                  |
-| `src/ui/config/`  | Configuration panes, setting editor, and path details           |
+| `src/ui/config/`  | Configuration panes, setting editor, selected-setting details and layout previews |
 | `src/db/`         | Database entry point, task model, queries, migrations, trees    |
 | `src/cli.rs`      | Command-line options and path overrides                         |
 | `src/config/`     | Configuration paths, loading, validation, and atomic saving     |

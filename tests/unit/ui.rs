@@ -41,6 +41,51 @@ pub(super) fn terminal_row(terminal: &Terminal<TestBackend>, y: u16) -> String {
 }
 
 #[test]
+fn header_keeps_version_and_completion_count_visible_on_resize() {
+    let mut app = App::new(Database::memory()).unwrap();
+    let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
+    let version = concat!("v", env!("CARGO_PKG_VERSION"));
+    for (width, height) in [(80, 24), (35, 12), (1, 1), (0, 0), (120, 35)] {
+        terminal.backend_mut().resize(width, height);
+        terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+        if width < 35 {
+            continue;
+        }
+        let (brand_x, brand_y) = text_position(&terminal, "argv-todo");
+        let (version_x, version_y) = text_position(&terminal, version);
+        let (summary_x, summary_y) = text_position(&terminal, "0 tasks");
+        assert_eq!(version_x, brand_x + 10);
+        assert_eq!(version_y, brand_y);
+        assert_eq!(summary_y, brand_y);
+        assert!(summary_x > version_x + version.width() as u16);
+        let buffer = terminal.backend().buffer();
+        assert!(buffer[(brand_x, brand_y)].modifier.contains(Modifier::BOLD));
+        for x in version_x..version_x + version.width() as u16 {
+            assert_eq!(buffer[(x, version_y)].fg, Color::DarkGray);
+            assert!(!buffer[(x, version_y)].modifier.contains(Modifier::BOLD));
+        }
+    }
+
+    let mut database = Database::memory();
+    let task = database.add("Task", None, Priority::Mid).unwrap();
+    database.toggle(task).unwrap();
+    let mut app = App::new(database).unwrap();
+    let area = Rect::new(7, 4, 35, 12);
+    let mut terminal = Terminal::with_options(
+        TestBackend::new(55, 25),
+        TerminalOptions {
+            viewport: Viewport::Fixed(area),
+        },
+    )
+    .unwrap();
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    assert_eq!(text_position(&terminal, version), (18, 5));
+    let (summary_x, summary_y) = text_position(&terminal, "1/1 done");
+    assert_eq!(summary_y, 5);
+    assert_eq!(summary_x + 8, area.right() - 1);
+}
+
+#[test]
 fn database_preview_tracks_drafts_and_saved_paths() {
     let folder = std::env::temp_dir().join("argv-todo-preview");
     let active = folder.join("db.sql");

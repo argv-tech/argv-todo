@@ -19,12 +19,20 @@ use super::{
 use unicode_width::UnicodeWidthStr;
 
 pub(super) fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
-    let [brand, summary] =
-        Layout::horizontal([Constraint::Length(11), Constraint::Min(0)]).areas(area);
-    frame.render_widget(
-        Paragraph::new("argv-todo").style(Style::default().fg(TEXT).add_modifier(Modifier::BOLD)),
-        brand,
-    );
+    let brand = Line::from(vec![
+        Span::styled(
+            "argv-todo",
+            Style::default().fg(TEXT).add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            concat!(" v", env!("CARGO_PKG_VERSION")),
+            Style::default().fg(MUTED),
+        ),
+    ]);
+    let brand_width = (brand.width() + 2) as u16;
+    let [brand_area, summary] =
+        Layout::horizontal([Constraint::Length(brand_width), Constraint::Min(0)]).areas(area);
+    frame.render_widget(Paragraph::new(brand), brand_area);
     let done = app.todos.iter().filter(|todo| todo.done).count();
     let text = if app.todos.is_empty() {
         "0 tasks".into()
