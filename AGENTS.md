@@ -194,6 +194,10 @@ visibility rules above when adding or changing module boundaries.
 - Add a concise `CHANGELOG.md` entry for user-visible changes.
 - Preserve uncommitted user changes. Avoid unrelated refactors and commit only
   when requested.
+- Always use Conventional Commits for commit messages: `type(scope): description`,
+  with an optional scope (for example, `feat(ui): add layout previews` or
+  `fix: preserve selection`). Use `!` or a `BREAKING CHANGE:` footer for breaking
+  changes.
 
 ## Validation
 
