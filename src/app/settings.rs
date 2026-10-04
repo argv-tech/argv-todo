@@ -1,30 +1,34 @@
 use anyhow::{Context, Result};
 
 use super::App;
-use crate::vim_motion::{Editor, VimAction, VimMode};
+use crate::vim_motion::{InputTarget, VimAction};
 
 impl App {
     pub(super) fn apply_config(&mut self, action: VimAction) -> Result<()> {
-        if self.vim.mode() != VimMode::Normal {
+        if self.vim.input().is_some() {
             match action {
                 VimAction::Cancel => {
-                    self.vim.set_mode(VimMode::Normal);
-                    self.editor = Editor::default();
+                    self.vim.end_input();
+                    self.editor.reset(String::new());
                     self.message("");
                 }
                 VimAction::Submit => {
+                    self.editor.prepare_submit();
                     self.config
                         .as_mut()
                         .context("Configuration is unavailable")?
                         .save_database_path(self.editor.text())?;
-                    self.vim.set_mode(VimMode::Normal);
-                    self.editor = Editor::default();
+                    self.vim.end_input();
+                    self.editor.reset(String::new());
                     self.message("Saved. Applies on next launch.");
                 }
-                _ => self.editor.apply(action),
+                _ => {
+                    self.editor.apply(action);
+                    self.vim.set_mode(self.editor.mode());
+                }
             }
         } else {
-            self.vim.set_mode(VimMode::Normal);
+            self.vim.end_input();
             match action {
                 VimAction::Cancel => {
                     self.configuring = false;
@@ -35,8 +39,8 @@ impl App {
                         .config
                         .as_ref()
                         .context("Configuration is unavailable")?;
-                    self.editor = Editor::new(config.database_path.clone());
-                    self.vim.set_mode(VimMode::Insert);
+                    self.editor.reset(config.database_path.clone());
+                    self.vim.begin_input(InputTarget::DatabasePath);
                     self.message("");
                 }
                 _ => {}

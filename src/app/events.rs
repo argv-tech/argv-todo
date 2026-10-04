@@ -12,10 +12,10 @@ use crate::vim_motion::VimMode;
 impl App {
     pub(crate) fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
         while self.running {
-            let shape = if self.vim.mode() == VimMode::Normal {
-                SetCursorStyle::SteadyBlock
-            } else {
-                SetCursorStyle::SteadyBar
+            let shape = match self.vim.mode() {
+                VimMode::Insert => SetCursorStyle::SteadyBar,
+                VimMode::Replace => SetCursorStyle::SteadyUnderScore,
+                _ => SetCursorStyle::SteadyBlock,
             };
             execute!(std::io::stdout(), shape)?;
             terminal.draw(|frame| crate::ui::draw(frame, self))?;
@@ -25,8 +25,9 @@ impl App {
                         self.dispatch(action);
                     }
                 }
-                Event::Paste(text) if self.vim.mode() != VimMode::Normal && !self.help => {
+                Event::Paste(text) if self.vim.input().is_some() && !self.help => {
                     self.editor.insert(&text);
+                    self.vim.set_mode(self.editor.mode());
                     self.normalize_selection();
                 }
                 _ => {}

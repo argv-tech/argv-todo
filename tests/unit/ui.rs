@@ -2,7 +2,10 @@ use super::config::CONFIG_LOGO;
 use super::*;
 use crate::db::Database;
 use crate::db::Priority;
-use crate::{app::App, vim_motion::VimMode};
+use crate::{
+    app::App,
+    vim_motion::{InputTarget, VimMode},
+};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::{Terminal, TerminalOptions, Viewport, backend::TestBackend, layout::Rect};
 use unicode_width::UnicodeWidthStr;
@@ -67,7 +70,7 @@ fn config_view_shows_logo_when_it_fits_and_keeps_editor_visible() {
             }
             text_position(&terminal, "Current launch uses --db.");
         }
-        app.vim.set_mode(VimMode::Insert);
+        app.vim.begin_input(InputTarget::DatabasePath);
         app.editor = crate::vim_motion::Editor::new("界".repeat(80));
         app.error = true;
         app.status = "Invalid database path".into();
@@ -77,8 +80,8 @@ fn config_view_shows_logo_when_it_fits_and_keeps_editor_visible() {
         let label_y = text_position(&terminal, "database_path").1;
         assert_eq!(cursor.y, label_y + 1);
         text_position(&terminal, "Invalid database path");
-        text_position(&terminal, "Esc cancel");
-        app.vim.set_mode(VimMode::Normal);
+        text_position(&terminal, "Esc normal");
+        app.vim.end_input();
         app.error = false;
         app.status.clear();
     }
@@ -88,7 +91,7 @@ fn config_view_shows_logo_when_it_fits_and_keeps_editor_visible() {
 fn inline_editor_matches_tree_position_and_scrolls_into_view() {
     let mut terminal = Terminal::new(TestBackend::new(80, 20)).unwrap();
     let mut empty = App::new(Database::memory()).unwrap();
-    empty.vim.set_mode(VimMode::Insert);
+    empty.vim.begin_input(InputTarget::Task);
     empty.editor.insert("Draft task");
     terminal.draw(|frame| draw(frame, &mut empty)).unwrap();
     assert_eq!(text_position(&terminal, "Draft task"), (12, 3));
@@ -104,7 +107,7 @@ fn inline_editor_matches_tree_position_and_scrolls_into_view() {
         .unwrap();
     database.add("Other root", None, Priority::Mid).unwrap();
     let mut app = App::new(database).unwrap();
-    app.vim.set_mode(VimMode::Insert);
+    app.vim.begin_input(InputTarget::Task);
     app.editor.insert("Draft task");
     for (adding_parent, expected) in [
         (None, (12, 8)),
@@ -168,14 +171,14 @@ fn inline_editor_matches_tree_position_and_scrolls_into_view() {
             .unwrap();
     }
     let mut app = App::new(database).unwrap();
-    app.vim.set_mode(VimMode::Insert);
+    app.vim.begin_input(InputTarget::Task);
     app.editor.insert("Draft task");
     terminal.draw(|frame| draw(frame, &mut app)).unwrap();
     let (_, y) = text_position(&terminal, "Draft task");
     assert!(y < 18);
     assert_eq!(terminal.get_cursor_position().unwrap().y, y);
     assert!(app.list.offset() > 0);
-    app.vim.set_mode(VimMode::Normal);
+    app.vim.end_input();
     terminal.draw(|frame| draw(frame, &mut app)).unwrap();
     assert_eq!(text_position(&terminal, "Root 0"), (12, 3));
 }
@@ -246,10 +249,10 @@ fn renders_small_and_large_terminals_and_input_modes() {
         }
         app.list.select(Some(app.todos.len() - 1));
         terminal.draw(|frame| draw(frame, &mut app)).unwrap();
-        app.vim.set_mode(VimMode::Insert);
+        app.vim.begin_input(InputTarget::Task);
         app.editor.insert("A long task with Unicode 界 👩‍💻");
         terminal.draw(|frame| draw(frame, &mut app)).unwrap();
-        app.vim.set_mode(VimMode::Normal);
+        app.vim.end_input();
         app.error = true;
         app.status = "Could not save task".into();
         terminal.draw(|frame| draw(frame, &mut app)).unwrap();
@@ -334,12 +337,17 @@ fn footer_hints_fit_and_describe_the_active_mode() {
     let mut app = App::new(Database::memory()).unwrap();
     for width in [35, 44, 45, 59, 60, 74, 75, 79, 80, 104, 105, 120] {
         let mut terminal = Terminal::new(TestBackend::new(width, 12)).unwrap();
-        for (mode, expected) in [
-            (VimMode::Normal, "q"),
-            (VimMode::Search, "Enter apply"),
-            (VimMode::Insert, "Enter save"),
+        for (target, expected) in [
+            (None, "q"),
+            (Some(InputTarget::Search), "Enter apply"),
+            (Some(InputTarget::Task), "Enter save"),
         ] {
-            app.vim.set_mode(mode);
+            if let Some(target) = target {
+                app.vim.begin_input(target);
+            } else {
+                app.vim.end_input();
+            }
+            let mode = app.vim.mode();
             terminal.draw(|frame| draw(frame, &mut app)).unwrap();
             let row = terminal_row(&terminal, 10);
             assert!(row.contains(expected), "{width}: {row}");
@@ -351,6 +359,7 @@ fn footer_hints_fit_and_describe_the_active_mode() {
                 } else {
                     "cancel"
                 }) || row.trim_end().ends_with("Esc")
+                    || row.trim_end().ends_with("normal")
                     || row.trim_end().ends_with("move")
                     || row.trim_end().ends_with("priority")
                     || row.trim_end().ends_with("quit"),
@@ -358,7 +367,7 @@ fn footer_hints_fit_and_describe_the_active_mode() {
             );
         }
     }
-    app.vim.set_mode(VimMode::Normal);
+    app.vim.end_input();
     app.query = "A very long applied search 界 ".repeat(8);
     let mut terminal = Terminal::new(TestBackend::new(35, 12)).unwrap();
     terminal.draw(|frame| draw(frame, &mut app)).unwrap();
@@ -370,13 +379,13 @@ fn footer_hints_fit_and_describe_the_active_mode() {
 #[test]
 fn help_keeps_close_hint_visible_and_clears_underlying_editor() {
     let mut app = App::new(Database::memory()).unwrap();
-    app.vim.set_mode(VimMode::Insert);
+    app.vim.begin_input(InputTarget::Task);
     app.editor.insert("Draft underneath help");
     let mut terminal = Terminal::new(TestBackend::new(35, 12)).unwrap();
     terminal.draw(|frame| draw(frame, &mut app)).unwrap();
     assert!(terminal.backend().cursor_visible());
     app.help = true;
-    for scroll in [0, 10, 20] {
+    for scroll in [0, 10, HELP_LINES.len().saturating_sub(6) as u16] {
         app.help_scroll = scroll;
         terminal.draw(|frame| draw(frame, &mut app)).unwrap();
         let (x, y) = text_position(&terminal, "j/k scroll · Esc close");
@@ -385,7 +394,7 @@ fn help_keeps_close_hint_visible_and_clears_underlying_editor() {
         assert!(!terminal.backend().cursor_visible());
         assert!(!(0..12).any(|y| terminal_row(&terminal, y).contains("Draft underneath")));
     }
-    text_position(&terminal, "q/ctrl-c");
+    text_position(&terminal, "ctrl-c");
     app.help = false;
     terminal.draw(|frame| draw(frame, &mut app)).unwrap();
     text_position(&terminal, "Draft underneath help");
@@ -395,7 +404,7 @@ fn help_keeps_close_hint_visible_and_clears_underlying_editor() {
 #[test]
 fn resize_and_nonzero_viewport_keep_editor_inside_workspace() {
     let mut app = App::new(Database::memory()).unwrap();
-    app.vim.set_mode(VimMode::Search);
+    app.vim.begin_input(InputTarget::Search);
     app.editor.insert(&"é界👩‍💻".repeat(30));
     let area = Rect::new(7, 4, 35, 12);
     let mut terminal = Terminal::with_options(
@@ -493,12 +502,115 @@ fn configuration_splits_editor_and_paths_then_stacks_on_resize() {
             assert_eq!(paths_x, label_x);
             assert!(paths_y > editor_y);
         }
-        app.vim.set_mode(VimMode::Insert);
+        app.vim.begin_input(InputTarget::DatabasePath);
         app.editor = crate::vim_motion::Editor::new("界é👩‍💻".repeat(40));
         terminal.draw(|frame| draw(frame, &mut app)).unwrap();
         let cursor = terminal.backend().cursor_position();
         assert_eq!(cursor.y, editor_y);
         assert!(cursor.x < if width >= 74 { width / 2 } else { width - 1 });
-        app.vim.set_mode(VimMode::Normal);
+        app.vim.end_input();
     }
+}
+
+fn field_keys(app: &mut App, text: &str) {
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    for character in text.chars() {
+        let code = if character == '\u{1b}' {
+            KeyCode::Esc
+        } else {
+            KeyCode::Char(character)
+        };
+        if let Some(action) = app.vim.handle(KeyEvent::new(code, KeyModifiers::NONE)) {
+            app.editor.apply(action);
+            app.vim.set_mode(app.editor.mode());
+        }
+    }
+}
+
+#[test]
+fn every_field_keeps_normal_cursor_and_renders_visual_selection_styles_on_resize() {
+    for target in [
+        InputTarget::Task,
+        InputTarget::Search,
+        InputTarget::DatabasePath,
+    ] {
+        let mut app = App::new(Database::memory()).unwrap();
+        app.configuring = target == InputTarget::DatabasePath;
+        app.vim.begin_input(target);
+        app.editor = crate::vim_motion::Editor::new("é界👩‍💻 tail".into());
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
+        field_keys(&mut app, "\u{1b}0");
+        terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+        let (x, y) = text_position(&terminal, "é");
+        assert_eq!(terminal.backend().cursor_position(), (x, y).into());
+        assert!(terminal.backend().cursor_visible());
+        text_position(&terminal, "normal");
+
+        field_keys(&mut app, "v2l");
+        terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+        let buffer = terminal.backend().buffer();
+        for column in [x, x + 1, x + 3] {
+            assert!(buffer[(column, y)].modifier.contains(Modifier::REVERSED));
+        }
+        assert!(!buffer[(x + 5, y)].modifier.contains(Modifier::REVERSED));
+        assert_eq!(terminal.backend().cursor_position(), (x + 3, y).into());
+        text_position(&terminal, "visual");
+
+        for (width, height) in [(35, 12), (1, 1), (0, 0), (120, 35)] {
+            terminal.backend_mut().resize(width, height);
+            terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+            if width >= 35 {
+                assert!(terminal.backend().cursor_visible());
+                assert!(
+                    terminal
+                        .backend()
+                        .buffer()
+                        .area
+                        .contains(terminal.backend().cursor_position())
+                );
+                assert!(
+                    terminal
+                        .backend()
+                        .buffer()
+                        .content
+                        .iter()
+                        .any(|cell| cell.modifier.contains(Modifier::REVERSED))
+                );
+            } else {
+                assert!(!terminal.backend().cursor_visible());
+            }
+        }
+        field_keys(&mut app, "\u{1b}");
+        terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+        assert!(
+            terminal
+                .backend()
+                .buffer()
+                .content
+                .iter()
+                .all(|cell| !cell.modifier.contains(Modifier::REVERSED))
+        );
+        assert_eq!(app.vim.input(), Some(target));
+    }
+}
+
+#[test]
+fn visual_line_styles_cover_only_field_text_and_pending_commands_stay_visible() {
+    let mut app = App::new(Database::memory()).unwrap();
+    app.vim.begin_input(InputTarget::Search);
+    app.editor = crate::vim_motion::Editor::new("first second".into());
+    field_keys(&mut app, "\u{1b}V");
+    let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    let (x, y) = text_position(&terminal, "first second");
+    let buffer = terminal.backend().buffer();
+    assert!(!buffer[(x - 1, y)].modifier.contains(Modifier::REVERSED));
+    for column in x..x + 12 {
+        assert!(buffer[(column, y)].modifier.contains(Modifier::REVERSED));
+    }
+    assert!(!buffer[(x + 12, y)].modifier.contains(Modifier::REVERSED));
+    text_position(&terminal, "v-line");
+    field_keys(&mut app, "\u{1b}2d3i");
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    text_position(&terminal, "normal  2d3i");
 }

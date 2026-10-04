@@ -3,7 +3,7 @@ use anyhow::Result;
 use super::App;
 use crate::{
     db::Priority,
-    vim_motion::{Editor, Motion, VimAction, VimMode},
+    vim_motion::{InputTarget, Motion, VimAction, VimMode},
 };
 
 impl App {
@@ -80,11 +80,13 @@ impl App {
                 if let Some(todo) = self.selected_todo() {
                     let id = todo.id;
                     let priority = todo.priority;
-                    self.editor = Editor::new(todo.title.clone());
+                    self.editor.reset(todo.title.clone());
                     self.editing_id = Some(id);
                     self.input_priority = priority;
-                    self.vim.set_mode(VimMode::Insert);
-                    self.message("Editing task. Enter saves. Esc cancels.");
+                    self.vim.begin_input(InputTarget::Task);
+                    self.message(
+                        "Editing task. Enter saves. Esc enters Normal; Esc again cancels.",
+                    );
                 } else {
                     self.message("Select a task to edit.");
                 }
@@ -144,9 +146,11 @@ impl App {
                 }
             }
             VimAction::Search => {
-                self.editor = Editor::new(self.query.clone());
-                self.vim.set_mode(VimMode::Search);
-                self.message("Type to search. Enter applies. Esc cancels.");
+                self.editor.reset(self.query.clone());
+                self.vim.begin_input(InputTarget::Search);
+                self.message(
+                    "Type to search. Enter applies. Esc enters Normal; Esc again cancels.",
+                );
             }
             VimAction::Cancel => {
                 if self.query.is_empty() {

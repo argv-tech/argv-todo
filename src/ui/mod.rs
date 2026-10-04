@@ -13,3 +13,4 @@ mod theme;
 mod tests;
 
 pub(crate) use frame::draw;
+pub(crate) use help::HELP_LINES;

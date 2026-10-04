@@ -17,7 +17,10 @@ impl App {
                 VimAction::Cancel | VimAction::Help => self.help = false,
                 VimAction::Quit => self.running = false,
                 VimAction::Move(Motion::Down | Motion::Right, count) => {
-                    self.help_scroll = self.help_scroll.saturating_add(count as u16).min(20);
+                    self.help_scroll = self
+                        .help_scroll
+                        .saturating_add(count as u16)
+                        .min(crate::ui::HELP_LINES.len().saturating_sub(1) as u16);
                 }
                 VimAction::Move(Motion::Up | Motion::Left, count) => {
                     self.help_scroll = self.help_scroll.saturating_sub(count as u16);
@@ -35,7 +38,7 @@ impl App {
         if self.configuring {
             return self.apply_config(action);
         }
-        if self.vim.mode() != VimMode::Normal {
+        if self.vim.input().is_some() {
             return self.apply_input(action);
         }
         self.apply_tasks(action)

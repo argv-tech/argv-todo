@@ -1,4 +1,4 @@
-use crate::{app::App, vim_motion::VimMode};
+use crate::{app::App, vim_motion::InputTarget};
 use ratatui::{
     Frame,
     layout::{Constraint, Layout},
@@ -34,8 +34,8 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
         draw_config(frame, app, workspace(area));
         return;
     }
-    let show_input = app.vim.mode() == VimMode::Search
-        || (app.vim.mode() == VimMode::Normal && !app.query.is_empty());
+    let show_input = app.vim.input() == Some(InputTarget::Search)
+        || (app.vim.input().is_none() && !app.query.is_empty());
     let [header, _, body, message, input, footer] = Layout::vertical([
         Constraint::Length(1),
         Constraint::Length(1),

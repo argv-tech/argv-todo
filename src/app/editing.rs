@@ -3,7 +3,7 @@ use anyhow::Result;
 use super::App;
 use crate::{
     db::DEFAULT_PRIORITY,
-    vim_motion::{Editor, VimAction, VimMode},
+    vim_motion::{InputTarget, VimAction},
 };
 
 impl App {
@@ -17,15 +17,15 @@ impl App {
         self.input_priority = parent_id
             .and_then(|id| self.todos.iter().find(|todo| todo.id == id))
             .map_or(DEFAULT_PRIORITY, |todo| todo.priority);
-        self.editor = Editor::default();
-        self.vim.set_mode(VimMode::Insert);
+        self.editor.reset(String::new());
+        self.vim.begin_input(InputTarget::Task);
         if let Some(id) = selected_id {
             self.select_id(id);
         }
         self.message(if parent_id.is_some() {
-            "New child task. Enter saves. Esc cancels."
+            "New child task. Enter saves. Esc enters Normal; Esc again cancels."
         } else {
-            "Enter saves your task. Esc cancels."
+            "Enter saves. Esc enters Normal; Esc again cancels."
         });
     }
 
@@ -43,8 +43,8 @@ impl App {
     pub(super) fn apply_input(&mut self, action: VimAction) -> Result<()> {
         match action {
             VimAction::Cancel => {
-                self.vim.set_mode(VimMode::Normal);
-                self.editor = Editor::default();
+                self.vim.end_input();
+                self.editor.reset(String::new());
                 self.editing_id = None;
                 self.adding_parent = None;
                 self.adding_relative = None;
@@ -52,10 +52,12 @@ impl App {
                 self.message("Cancelled.");
             }
             VimAction::Submit => {
+                self.editor.prepare_submit();
                 let text = self.editor.text().trim().to_owned();
-                if self.vim.mode() == VimMode::Search {
+                if self.vim.input() == Some(InputTarget::Search) {
                     self.query = text;
-                    self.vim.set_mode(VimMode::Normal);
+                    self.vim.end_input();
+                    self.editor.reset(String::new());
                     self.normalize_selection();
                     self.message(if self.query.is_empty() {
                         "Search cleared."
@@ -78,11 +80,11 @@ impl App {
                     if !was_edit {
                         self.query.clear();
                     }
-                    self.vim.set_mode(VimMode::Normal);
+                    self.vim.end_input();
                     self.editing_id = None;
                     self.adding_parent = None;
                     self.adding_relative = None;
-                    self.editor = Editor::default();
+                    self.editor.reset(String::new());
                     self.reload(Some(id))?;
                     self.message(if was_edit {
                         "Task updated."
@@ -91,12 +93,13 @@ impl App {
                     });
                 }
             }
-            VimAction::CyclePriority if self.vim.mode() == VimMode::Insert => {
+            VimAction::CyclePriority if self.vim.input() == Some(InputTarget::Task) => {
                 self.input_priority = self.input_priority.next();
             }
             _ => {
                 self.editor.apply(action);
-                if self.vim.mode() == VimMode::Search {
+                self.vim.set_mode(self.editor.mode());
+                if self.vim.input() == Some(InputTarget::Search) {
                     self.normalize_selection();
                 }
             }

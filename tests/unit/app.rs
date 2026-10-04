@@ -58,8 +58,11 @@ fn escape_opens_config_and_edits_settings_without_changing_tasks() {
     let tasks = app.todos.clone();
     let selection = app.list.selected();
 
-    // Input, help and applied searches keep their existing Escape behavior.
+    // Input exits Insert before cancellation; help and applied search close directly.
     keys(&mut app, "eChanged task");
+    escape(&mut app);
+    assert_eq!(app.vim.mode(), VimMode::Normal);
+    assert!(app.vim.input().is_some());
     escape(&mut app);
     assert!(!app.configuring);
     assert_eq!(app.todos, tasks);
@@ -97,6 +100,8 @@ fn escape_opens_config_and_edits_settings_without_changing_tasks() {
     escape(&mut app);
     assert!(app.configuring);
     assert_eq!(parse_config(&path), PathBuf::from("storage/tasks.sql"));
+    escape(&mut app);
+    assert!(app.configuring && app.vim.input().is_none());
     escape(&mut app);
     assert!(!app.configuring);
     assert_eq!(app.todos, tasks);
@@ -441,4 +446,100 @@ fn tree_order_groups_children_and_cancel_keeps_parent_selected() {
     app.apply(VimAction::Refresh).unwrap();
     assert_eq!(app.selected_todo().unwrap().title, "Other root");
     assert_eq!(app.visible_indices().len(), 1);
+}
+
+#[test]
+fn normal_and_visual_input_commands_save_titles_and_keep_task_actions_isolated() {
+    let mut app = app();
+    keys(&mut app, "iOne two three four");
+    escape(&mut app);
+    assert_eq!(app.vim.mode(), VimMode::Normal);
+    assert_eq!(app.editor.text(), "One two three four");
+    assert!(app.todos.is_empty());
+    keys(&mut app, "03dw");
+    assert_eq!(app.editor.text(), "four");
+    assert!(app.todos.is_empty());
+    enter(&mut app);
+    assert_eq!(app.selected_todo().unwrap().title, "four");
+    let saved = app.todos.clone();
+    keys(&mut app, "e");
+    escape(&mut app);
+    keys(&mut app, "0viwr2");
+    assert_eq!(app.editor.text(), "2222");
+    assert_eq!(app.todos, saved);
+    keys(&mut app, "q/?");
+    assert!(app.running && !app.help);
+    assert_eq!(app.todos, saved);
+    escape(&mut app);
+    assert!(app.vim.input().is_none());
+    assert_eq!(app.todos, saved);
+
+    keys(&mut app, "e");
+    escape(&mut app);
+    keys(&mut app, "dd");
+    enter(&mut app);
+    assert!(app.error && app.vim.input().is_some());
+    assert_eq!(app.todos, saved);
+    keys(&mut app, "3iX");
+    enter(&mut app);
+    assert_eq!(app.selected_todo().unwrap().title, "XXX");
+}
+
+#[test]
+fn search_remains_live_in_normal_and_visual_modes_and_cancel_restores_query() {
+    let mut app = app();
+    keys(&mut app, "iBuy coffee");
+    enter(&mut app);
+    keys(&mut app, "oRead Rust");
+    enter(&mut app);
+    let saved = app.todos.clone();
+    keys(&mut app, "/coffee");
+    escape(&mut app);
+    assert_eq!(app.visible_indices().len(), 1);
+    keys(&mut app, "0viwcRust");
+    assert_eq!(app.selected_todo().unwrap().title, "Read Rust");
+    escape(&mut app);
+    enter(&mut app);
+    assert_eq!(app.query, "Rust");
+    keys(&mut app, "/");
+    escape(&mut app);
+    keys(&mut app, "dd");
+    assert_eq!(app.visible_indices().len(), 2);
+    escape(&mut app);
+    assert_eq!(app.query, "Rust");
+    assert_eq!(app.visible_indices().len(), 1);
+    assert_eq!(app.todos, saved);
+}
+
+#[test]
+fn configuration_field_supports_normal_visual_undo_and_submit_from_visual() {
+    let folder = std::env::temp_dir().join(format!(
+        "argv-todo-modal-config-test-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let config = Config::load(&folder.join("custom.sql"), true).unwrap();
+    let mut app = app();
+    app.config = Some(config);
+    escape(&mut app);
+    enter(&mut app);
+    escape(&mut app);
+    keys(&mut app, "dd");
+    enter(&mut app);
+    assert!(app.error && app.vim.input().is_some());
+    keys(&mut app, "u");
+    assert_eq!(app.editor.text(), "db.sql");
+    keys(&mut app, "0viwcstorage");
+    escape(&mut app);
+    assert_eq!(app.editor.text(), "storage.sql");
+    keys(&mut app, "0V");
+    enter(&mut app);
+    assert!(app.configuring && app.vim.input().is_none());
+    assert_eq!(app.config.as_ref().unwrap().database_path, "storage.sql");
+    assert!(!folder.join("storage.sql").exists());
+    assert!(app.todos.is_empty());
+    std::fs::remove_dir_all(folder).unwrap();
 }

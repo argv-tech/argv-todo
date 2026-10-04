@@ -1,6 +1,6 @@
 use super::super::theme::{ACCENT, ERROR, MUTED};
 use super::{form::draw_form, paths::draw_paths};
-use crate::{app::App, vim_motion::VimMode};
+use crate::app::App;
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Layout, Margin, Rect},
@@ -83,8 +83,9 @@ pub(in crate::ui) fn draw_config(frame: &mut Frame, app: &App, area: Rect) {
         })),
         status,
     );
-    let hint = if app.vim.mode() != VimMode::Normal {
-        "Enter save · Esc cancel"
+    let hint = if app.vim.input().is_some() {
+        super::super::chrome::draw_footer(frame, app, footer);
+        return;
     } else if area.width < 45 {
         "Enter edit · Esc back · q quit"
     } else {

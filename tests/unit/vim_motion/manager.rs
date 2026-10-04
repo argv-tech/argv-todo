@@ -27,7 +27,7 @@ fn motions_counts_and_sequences() {
 #[test]
 fn insert_mode_treats_commands_as_text_and_ignores_release() {
     let mut vim = VimManager::default();
-    vim.set_mode(VimMode::Insert);
+    vim.begin_input(InputTarget::Task);
     for c in ['h', 'j', 'k', 'l', 'q', 't', 'p', 'i', 'a', 'o', 'O', 'é'] {
         assert_eq!(vim.handle(key(c)), Some(VimAction::Insert(c)));
     }
@@ -36,7 +36,7 @@ fn insert_mode_treats_commands_as_text_and_ignores_release() {
     assert_eq!(vim.handle(release), None);
     assert_eq!(
         vim.handle(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE)),
-        Some(VimAction::Cancel)
+        Some(VimAction::Input(EditAction::Normal))
     );
 }
 
@@ -76,13 +76,13 @@ fn priority_keys_preserve_vim_counts_and_title_input() {
     vim.handle(key('p'));
     vim.handle(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
     assert_eq!(vim.handle(key('h')), Some(VimAction::Move(Motion::Left, 1)));
-    vim.set_mode(VimMode::Insert);
+    vim.begin_input(InputTarget::Task);
     assert_eq!(vim.handle(key('t')), Some(VimAction::Insert('t')));
     assert_eq!(
         vim.handle(KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL)),
         Some(VimAction::CyclePriority)
     );
-    vim.set_mode(VimMode::Search);
+    vim.begin_input(InputTarget::Search);
     assert_eq!(
         vim.handle(KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL)),
         None
@@ -97,4 +97,91 @@ fn escape_clears_pending_delete() {
     assert_eq!(vim.handle(key('d')), None);
     assert_eq!(vim.handle(key('j')), Some(VimAction::Move(Motion::Down, 1)));
     assert_eq!(vim.handle(key('d')), None);
+}
+
+#[test]
+fn input_sequences_track_counts_and_escape_without_losing_focus() {
+    let mut vim = VimManager::default();
+    vim.begin_input(InputTarget::Task);
+    vim.set_mode(VimMode::Normal);
+    for c in "2d3i".chars() {
+        assert_eq!(vim.handle(key(c)), None);
+    }
+    assert_eq!(vim.pending_label(), "2d3i");
+    assert_eq!(
+        vim.handle(key('w')),
+        Some(VimAction::Input(EditAction::Operate(
+            Operator::Delete,
+            EditTarget::Object(TextObject::Word(false), false),
+            6
+        )))
+    );
+    for c in "3d2".chars() {
+        vim.handle(key(c));
+    }
+    assert_eq!(vim.pending_label(), "3d2");
+    assert_eq!(
+        vim.handle(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE)),
+        Some(VimAction::Input(EditAction::Normal))
+    );
+    assert!(vim.pending_label().is_empty());
+    assert_eq!(vim.input(), Some(InputTarget::Task));
+    assert_eq!(
+        vim.handle(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE)),
+        Some(VimAction::Cancel)
+    );
+
+    for c in "999999999999999999999".chars() {
+        vim.handle(key(c));
+    }
+    assert_eq!(
+        vim.handle(key('x')),
+        Some(VimAction::Input(EditAction::Operate(
+            Operator::Delete,
+            EditTarget::Motion(Motion::Right),
+            9999
+        )))
+    );
+    vim.handle(key('d'));
+    assert_eq!(vim.handle(key('?')), None);
+    assert!(vim.pending_label().is_empty());
+    assert_eq!(vim.handle(key('q')), None);
+}
+
+#[test]
+fn input_modes_ignore_releases_and_route_repeat_submit_and_replacement_digits() {
+    let mut vim = VimManager::default();
+    for target in [
+        InputTarget::Task,
+        InputTarget::Search,
+        InputTarget::DatabasePath,
+    ] {
+        vim.begin_input(target);
+        for mode in [
+            VimMode::Normal,
+            VimMode::Insert,
+            VimMode::Visual,
+            VimMode::VisualLine,
+            VimMode::Replace,
+        ] {
+            vim.set_mode(mode);
+            let mut release = key('d');
+            release.kind = KeyEventKind::Release;
+            assert_eq!(vim.handle(release), None);
+            assert_eq!(
+                vim.handle(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+                Some(VimAction::Submit)
+            );
+            assert_eq!(vim.input(), Some(target));
+        }
+        vim.set_mode(VimMode::Normal);
+        vim.handle(key('r'));
+        assert_eq!(
+            vim.handle(key('2')),
+            Some(VimAction::Input(EditAction::Replace('2', 1)))
+        );
+        let mut repeat = key('l');
+        repeat.kind = KeyEventKind::Repeat;
+        assert_eq!(vim.handle(repeat), Some(VimAction::Move(Motion::Right, 1)));
+    }
 }

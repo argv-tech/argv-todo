@@ -1,4 +1,4 @@
-use crate::{app::App, vim_motion::VimMode};
+use crate::{app::App, vim_motion::InputTarget};
 use ratatui::{
     Frame,
     layout::{Alignment, Rect},
@@ -8,6 +8,7 @@ use ratatui::{
 };
 
 use super::super::{
+    input::editor_spans,
     text::truncate,
     theme::{ACCENT, MUTED, TEXT, priority_style, task_title_style},
 };
@@ -19,7 +20,7 @@ pub(in crate::ui) fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
     }
     let (visible, draft) = display_rows(app);
     if visible.is_empty() {
-        let query = if app.vim.mode() == VimMode::Search {
+        let query = if app.vim.input() == Some(InputTarget::Search) {
             app.editor.text()
         } else {
             &app.query
@@ -78,7 +79,7 @@ pub(in crate::ui) fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
         .map(|(row, tree_row)| {
             let todo = tree_row.index.map(|index| &app.todos[index]);
             let selected = state.selected() == Some(row);
-            let inline = app.vim.mode() == VimMode::Insert
+            let inline = app.vim.input() == Some(InputTarget::Task)
                 && todo.is_none_or(|todo| app.editing_id == Some(todo.id));
             let completed = todo.is_some_and(|todo| todo.done);
             let priority = if inline {
@@ -120,17 +121,18 @@ pub(in crate::ui) fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
             let prefix_width =
                 2 + unicode_width::UnicodeWidthStr::width(branch.as_str()) as u16 + 8;
             let title = if inline {
-                let (text, column) = app.editor.viewport(area.width.saturating_sub(prefix_width));
+                let (spans, column) =
+                    editor_spans(&app.editor, area.width.saturating_sub(prefix_width), style);
                 if prefix_width < area.width {
                     cursor = Some((row, prefix_width + column));
                 }
                 if app.editor.text().is_empty() {
-                    Span::styled("New task…", Style::default().fg(MUTED))
+                    vec![Span::styled("New task…", Style::default().fg(MUTED))]
                 } else {
-                    Span::styled(text, style)
+                    spans
                 }
             } else {
-                Span::styled(
+                vec![Span::styled(
                     truncate(
                         todo.map_or("", |todo| todo.title.as_str()),
                         usize::from(area.width.saturating_sub(prefix_width)).saturating_sub(
@@ -138,9 +140,9 @@ pub(in crate::ui) fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
                         ),
                     ),
                     style,
-                )
+                )]
             };
-            let line = Line::from(vec![
+            let mut spans = vec![
                 Span::styled(
                     branch,
                     Style::default().fg(if selected { ACCENT } else { TEXT }),
@@ -153,13 +155,13 @@ pub(in crate::ui) fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
                     format!("{:<4} ", priority.label()),
                     priority_style(priority),
                 ),
-                title,
-                Span::styled(
-                    if inline { String::new() } else { children },
-                    Style::default().fg(MUTED),
-                ),
-            ]);
-            ListItem::new(line)
+            ];
+            spans.extend(title);
+            spans.push(Span::styled(
+                if inline { String::new() } else { children },
+                Style::default().fg(MUTED),
+            ));
+            ListItem::new(Line::from(spans))
         })
         .collect();
     let list = List::new(items).highlight_symbol(Span::styled("› ", Style::default().fg(ACCENT)));

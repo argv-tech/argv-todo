@@ -67,31 +67,33 @@ change them; avoid adding features beyond the request.
   when new code would make a file harder to navigate or mix unrelated behavior.
   Create modules for implemented needs rather than empty future placeholders.
 - Keep cross-module imports on the owning module's interface. Use explicit
-  imports and intentional re-exports; avoid wildcard imports in production
-  code and exposing internal modules merely to make imports compile.
+  imports and intentional re-exports; avoid wildcard imports in production code
+  and exposing internal modules merely to make imports compile.
 - Coordinate application behavior in `app`. Keep terminal rendering out of
   persistence and configuration modules, and keep SQL out of UI and keyboard
   handling modules.
 
 Current source layout:
 
-| Module            | Responsibility                                             |
-| ----------------- | ---------------------------------------------------------- |
-| `src/main.rs`     | Startup, terminal setup and cleanup                         |
-| `src/app/`        | State, actions, editing, events, navigation, settings, tasks |
+| Module            | Responsibility                                                  |
+| ----------------- | --------------------------------------------------------------- |
+| `src/main.rs`     | Startup, terminal setup and cleanup                             |
+| `src/app/`        | State, actions, editing, events, navigation, settings, tasks    |
 | `src/ui/`         | Frame composition, geometry, text, editors, chrome, help, theme |
-| `src/ui/tasks/`   | Draft placement and task-tree rendering                     |
-| `src/ui/config/`  | Configuration panes, setting editor, and path details       |
-| `src/db/`         | Database entry point, task model, queries, migrations, trees |
-| `src/cli.rs`      | Command-line options and path overrides                    |
-| `src/config/`     | Configuration paths, loading, validation, and atomic saving |
-| `src/vim_motion/` | Keyboard mapping, modes, actions, and Unicode text editing |
-| `tests/unit/`    | Unit suites and test helpers, grouped by owning module      |
+| `src/ui/tasks/`   | Draft placement and task-tree rendering                         |
+| `src/ui/config/`  | Configuration panes, setting editor, and path details           |
+| `src/db/`         | Database entry point, task model, queries, migrations, trees    |
+| `src/cli.rs`      | Command-line options and path overrides                         |
+| `src/config/`     | Configuration paths, loading, validation, and atomic saving     |
+| `src/vim_motion/` | Keyboard mapping, modes, actions, and Unicode text editing      |
+| `src/vim_motion/manager/` | Task and field key mapping, counts, pending command parsing |
+| `src/vim_motion/editor/` | Unicode cursor and selection, edits, motions, objects, history, viewport |
+| `tests/unit/`     | Unit suites and test helpers, grouped by owning module          |
 
 Directory modules keep their shared state and interface in `mod.rs`, with
-focused private implementation modules alongside it. All test suites and
-test helpers live under `tests/unit/`, grouped by owning module. Source modules
-load their suites with `#[cfg(test)]` and `#[path = "..."] mod tests;` so tests
+focused private implementation modules alongside it. All test suites and test
+helpers live under `tests/unit/`, grouped by owning module. Source modules load
+their suites with `#[cfg(test)]` and `#[path = "..."] mod tests;` so tests
 retain access to private code without expanding the production API.
 
 Route keyboard input through `vim_motion`. Callers use its re-exported editor,
@@ -102,10 +104,10 @@ visibility rules above when adding or changing module boundaries.
 
 1. Identify the owning module and read its `mod.rs`, relevant implementation
    files, and tests before editing.
-2. Extend an existing file when the change fits its focused responsibility.
-   Give a distinct responsibility its own module from the start; extract
-   related code as needed, and add a subdirectory with `mod.rs` when the new
-   concern needs several files.
+2. Extend an existing file when the change fits its focused responsibility. Give
+   a distinct responsibility its own module from the start; extract related code
+   as needed, and add a subdirectory with `mod.rs` when the new concern needs
+   several files.
 3. Register new files in the parent's `mod.rs`. Keep helpers private, use the
    narrowest visibility needed, and re-export only the interface callers use.
 4. Put tests and test helpers under `tests/unit/`, grouped by owning module.
