@@ -19,6 +19,7 @@ User-visible changes are recorded here. Release entries will be added when a ver
 
 ### Changed
 
+- Group help shortcuts with highlighted keys, responsive descriptions, page navigation, a scrollbar, and a position indicator. Keep scrolling within the last full page and isolate help input from task commands.
 - Split configuration into an editor pane and a paths pane, with stacked sections on narrow terminals and readable path values.
 - Keep child counts visible beside long task titles, underline selection, and strike through completed titles. Footer hints fit their available width, and help keeps its close instructions visible while scrolling.
 - Renamed the project and executable to `argv-todo`. The default database is now in the platform config directory under `argv-todo/db.sql`. Existing databases can be opened with `--db`.

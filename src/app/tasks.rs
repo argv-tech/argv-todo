@@ -168,7 +168,7 @@ impl App {
             }
             VimAction::Help => {
                 self.help = true;
-                self.help_scroll = 0;
+                self.help_view = Default::default();
             }
             VimAction::Refresh => {
                 let id = self.selected_todo().map(|todo| todo.id);

@@ -1,7 +1,7 @@
 use anyhow::Result;
 
 use super::App;
-use crate::vim_motion::{Motion, VimAction, VimMode};
+use crate::vim_motion::VimAction;
 
 impl App {
     pub(super) fn dispatch(&mut self, action: VimAction) {
@@ -13,22 +13,7 @@ impl App {
 
     pub(super) fn apply(&mut self, action: VimAction) -> Result<()> {
         if self.help {
-            match action {
-                VimAction::Cancel | VimAction::Help => self.help = false,
-                VimAction::Quit => self.running = false,
-                VimAction::Move(Motion::Down | Motion::Right, count) => {
-                    self.help_scroll = self
-                        .help_scroll
-                        .saturating_add(count as u16)
-                        .min(crate::ui::HELP_LINES.len().saturating_sub(1) as u16);
-                }
-                VimAction::Move(Motion::Up | Motion::Left, count) => {
-                    self.help_scroll = self.help_scroll.saturating_sub(count as u16);
-                }
-                VimAction::FileStart => self.help_scroll = 0,
-                _ => {}
-            }
-            self.vim.set_mode(VimMode::Normal);
+            self.apply_help(action);
             return Ok(());
         }
         if action == VimAction::Quit {

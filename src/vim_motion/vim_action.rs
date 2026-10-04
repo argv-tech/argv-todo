@@ -88,6 +88,8 @@ pub(crate) enum VimAction {
     Move(Motion, usize),
     FileStart,
     FileEnd,
+    PageUp,
+    PageDown,
     AddChild,
     AddBelow,
     AddAbove,

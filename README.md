@@ -93,10 +93,12 @@ While editing configuration, `Esc` discards the draft and returns to the configu
 | `dd`, `3dd` | Delete one / three tasks and all their children starting at selection |
 | `u` | Restore the last deleted task tree(s) in the current session |
 | `/` | Search all titles, ignoring case; keep ancestors visible for context |
-| `?` | Show help |
+| `?` | Open help; press again to close |
 | `Esc` | Open configuration; close help or clear applied search first. In a field, return to Normal, then press again to cancel |
 | `Ctrl-r` | Reload tasks from disk |
 | `q`, `Ctrl-c` | Quit |
+
+Help groups shortcuts by task navigation, task changes, app controls, and field editing. Keys and descriptions align in wider terminals and stack on narrow screens. Use `j` / `k` or arrows to scroll, `PgUp` / `PgDn` to move a page, and `gg` / `G` or `Home` / `End` to jump to the beginning or end. A scrollbar and row range show your position. `Esc` or `?` closes help; the close hint stays visible while scrolling.
 
 Every input field—task titles, search, and the configuration database path—supports **Insert**, **Normal**, **Visual**, **Visual Line**, and **Replace** modes. Fields open in Insert, where letters are text. `Esc` returns to Normal without closing the field; another `Esc` cancels it. In Visual or Replace, `Esc` also returns to Normal. When a command is pending, `Esc` cancels the command first. `Enter` saves or applies search from any field mode. The footer shows the mode and pending command; Visual selections use reverse video.
 

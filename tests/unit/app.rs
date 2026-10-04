@@ -7,13 +7,76 @@ fn app() -> App {
 }
 fn keys(app: &mut App, text: &str) {
     for c in text.chars() {
-        if let Some(action) = app
-            .vim
-            .handle(KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE))
-        {
-            app.dispatch(action);
-        }
+        app.handle_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE));
     }
+}
+
+#[test]
+fn help_scrolls_by_rows_and_pages_without_changing_tasks() {
+    let mut app = app();
+    keys(&mut app, "iKeep this task");
+    enter(&mut app);
+    let todos = app.todos.clone();
+    let selection = app.list.selected();
+    keys(&mut app, "?");
+    app.help_view.set_viewport(50, 10);
+    keys(&mut app, "3j");
+    assert_eq!(app.help_view.offset(), 3);
+    app.handle_key(KeyEvent::new(KeyCode::PageDown, KeyModifiers::NONE));
+    assert_eq!(app.help_view.offset(), 12);
+    app.handle_key(KeyEvent::new(KeyCode::PageUp, KeyModifiers::NONE));
+    assert_eq!(app.help_view.offset(), 3);
+    keys(&mut app, "G9999j");
+    assert_eq!(app.help_view.offset(), 40);
+    app.help_view.set_viewport(50, 25);
+    assert_eq!(app.help_view.offset(), 25);
+    keys(&mut app, "gg9999k");
+    assert_eq!(app.help_view.offset(), 0);
+    keys(&mut app, "ddioptux/ecc");
+    assert!(app.help);
+    assert!(app.vim.input().is_none());
+    assert!(app.vim.pending_label().is_empty());
+    assert_eq!(app.todos, todos);
+    assert_eq!(app.list.selected(), selection);
+    keys(&mut app, "g?");
+    assert!(!app.help && !app.configuring);
+    assert!(app.vim.pending_label().is_empty());
+    keys(&mut app, "?");
+    assert_eq!(app.help_view.offset(), 0);
+    escape(&mut app);
+    assert!(!app.help && app.running);
+}
+
+#[test]
+fn help_preserves_underlying_field_and_handles_key_kinds() {
+    let mut app = app();
+    keys(&mut app, "iDraft 界é👩‍💻");
+    let draft = app.editor.text().to_owned();
+    let cursor = app.editor.viewport(80).1;
+    app.help = true;
+    app.help_view.set_viewport(50, 10);
+    let mut release = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
+    release.kind = crossterm::event::KeyEventKind::Release;
+    app.handle_key(release);
+    assert!(app.help);
+    let mut repeat = KeyEvent::new(KeyCode::Down, KeyModifiers::NONE);
+    repeat.kind = crossterm::event::KeyEventKind::Repeat;
+    app.handle_key(repeat);
+    assert_eq!(app.help_view.offset(), 1);
+    keys(&mut app, "ddia/tu");
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert!(app.todos.is_empty());
+    assert_eq!(app.editor.text(), draft);
+    assert_eq!(app.editor.viewport(80).1, cursor);
+    app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+    assert!(!app.help);
+    assert_eq!(app.vim.mode(), VimMode::Insert);
+    assert!(app.vim.input().is_some());
+    keys(&mut app, "!");
+    assert_eq!(app.editor.text(), format!("{draft}!"));
+    app.help = true;
+    app.handle_key(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL));
+    assert!(!app.running);
 }
 fn enter(app: &mut App) {
     let action = app
