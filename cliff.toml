@@ -1,0 +1,61 @@
+# Generate CHANGELOG.md from Conventional Commits with git-cliff 2.14 or newer.
+# Documentation: https://git-cliff.org/docs/configuration/
+
+[changelog]
+output = "CHANGELOG.md"
+header = """
+# Changelog
+
+Notable changes to argv-todo, grouped by release.
+
+"""
+body = """
+{% if version %}\
+## {{ version | trim_start_matches(pat="v") | trim_start_matches(pat=".") }} - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+## Unreleased
+{% endif %}
+{% for entry in commits | commit_groups(groups=commit_parsers_groups) %}
+### {{ entry.group }}
+
+{% for commit in entry.commits %}\
+- {% if commit.scope %}**{{ commit.scope }}:** {% endif %}\
+{% if commit.breaking %}**Breaking change:** {% endif %}\
+{{ commit.message | upper_first }}\
+{% if commit.breaking_description %} **Migration:** {{ commit.breaking_description | trim | replace(from="\n", to=" ") }}{% endif %}\
+{% if commit.id %} ([{{ commit.id | truncate(length=7, end="") }}](https://github.com/argv-tech/argv-todo/commit/{{ commit.id }})){% endif %}
+{% endfor %}
+{% endfor %}
+"""
+trim = true
+format = true
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+protect_breaking_commits = true
+filter_commits = false
+commit_parsers = [
+    { field = "breaking", pattern = '^true$', group = "Breaking Changes" },
+    { message = '^chore\(release\):', skip = true },
+    { message = '^security(\(|!?:)', group = "Security" },
+    { message = '^feat(\(|!?:)', group = "Added" },
+    { message = '^fix(\(|!?:)', group = "Fixed" },
+    { message = '^perf(\(|!?:)', group = "Performance" },
+    { message = '^refactor(\(|!?:)', group = "Changed" },
+    { message = '^revert(\(|!?:)', group = "Reverted" },
+    { message = '^docs?(\(|!?:)', group = "Documentation" },
+    { message = '^chore\(deps[^)]*\)', group = "Dependencies" },
+    { message = '^test(\(|!?:)', group = "Testing" },
+    { message = '^build(\(|!?:)', group = "Build" },
+    { message = '^ci(\(|!?:)', group = "Continuous Integration" },
+    { message = '^(chore|style)(\(|!?:)', group = "Maintenance" },
+    { message = '.*', group = "Other" },
+]
+# Accept normal release tags and the repository's existing v.0.1.0 tag.
+tag_pattern = '^v\.?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
+use_branch_tags = true
+topo_order = true
+topo_order_commits = true
+sort_commits = "oldest"

@@ -35,7 +35,7 @@ Do not use your personal database for verification. Database tests must use temp
 - Preserve existing data, parent links, priorities, and sibling order during migrations.
 - Update `README.md` and help text when behavior or keybindings change.
 - Add a regression test for a bug or changed behavior when it provides useful coverage. Documentation-only changes do not need new tests.
-- Add a concise entry to the appropriate section of `CHANGELOG.md` for user-visible changes.
+- Describe user-visible changes in clear Conventional Commit messages so they appear in the generated changelog.
 
 The source layout and project constraints are described in [AGENTS.md](AGENTS.md).
 
@@ -70,6 +70,18 @@ Use `cargo fmt` to fix formatting. Commit `Cargo.lock` when a dependency change 
 After building, run `python3 tests/unit/terminal_smoke.py target/debug/argv-todo` on Linux or macOS, or `python tests/unit/terminal_smoke.py target/debug/argv-todo` on Windows. This check requires Python 3.11 or newer and uses only the standard library. It creates disposable storage and a Unix PTY or Windows console to verify startup, input, persisted tasks and settings, and terminal cleanup. CI runs it on each platform after the build.
 
 The reusable workflows are `.github/workflows/ci.yml` for checks and `.github/workflows/build.yml` for release builds and archives. Other workflows call them with a job-level `uses: ./.github/workflows/ci.yml` or `uses: ./.github/workflows/build.yml`. Builds run on pushes to `main`; `.github/workflows/publish.yml` calls both workflows to test, build, and publish GitHub releases on `v*` tags.
+
+## Changelog
+
+Install git-cliff 2.14 or newer, then generate the changelog from committed history:
+
+```sh
+git-cliff --offline
+```
+
+The repository's `cliff.toml` writes to `CHANGELOG.md`. Entries use plain headings, scopes, commit links, and explicit breaking-change markers. Release tags use `vMAJOR.MINOR.PATCH`; the existing `v.0.1.0` tag is also recognized. Unreleased commits appear above dated releases. Release-preparation commits are omitted, dependency changes are retained, and breaking changes are never skipped.
+
+Review the generated diff before committing it. Regeneration replaces `CHANGELOG.md`, so describe changes in commit messages instead of editing generated entries. To preview unreleased changes in a separate file, run `git-cliff --offline --unreleased --output release-notes.md`.
 
 ## Pull requests
 
