@@ -1,5 +1,5 @@
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub enum VimMode {
+pub(crate) enum VimMode {
     #[default]
     Normal,
     Insert,
@@ -7,7 +7,7 @@ pub enum VimMode {
 }
 
 impl VimMode {
-    pub fn label(self) -> &'static str {
+    pub(crate) fn label(self) -> &'static str {
         match self {
             Self::Normal => "NORMAL",
             Self::Insert => "INSERT",

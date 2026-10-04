@@ -8,18 +8,18 @@ use super::{
 
 /// Routes all keyboard input into actions before it reaches the app.
 #[derive(Default)]
-pub struct VimManager {
+pub(crate) struct VimManager {
     mode: VimMode,
     count: usize,
     pending: Option<char>,
 }
 
 impl VimManager {
-    pub fn mode(&self) -> VimMode {
+    pub(crate) fn mode(&self) -> VimMode {
         self.mode
     }
 
-    pub fn set_mode(&mut self, mode: VimMode) {
+    pub(crate) fn set_mode(&mut self, mode: VimMode) {
         self.mode = mode;
         self.reset();
     }
@@ -29,7 +29,7 @@ impl VimManager {
         self.pending = None;
     }
 
-    pub fn pending_label(&self) -> String {
+    pub(crate) fn pending_label(&self) -> String {
         let count = if self.count == 0 {
             String::new()
         } else {
@@ -41,7 +41,7 @@ impl VimManager {
         )
     }
 
-    pub fn handle(&mut self, key: KeyEvent) -> Option<VimAction> {
+    pub(crate) fn handle(&mut self, key: KeyEvent) -> Option<VimAction> {
         if key.kind == KeyEventKind::Release {
             return None;
         }

@@ -39,6 +39,18 @@ Do not use your personal database for verification. Database tests must use temp
 
 The source layout and project constraints are described in [AGENTS.md](AGENTS.md).
 
+## Source layout
+
+`src/main.rs` owns startup and terminal cleanup; `src/cli.rs` parses command-line options. Larger concerns use directory modules:
+
+- `src/app/`: state, action routing, editing, events, tree navigation, settings, and task operations.
+- `src/ui/`: full-frame composition, task rows, header and footer, configuration, help, and theme.
+- `src/db/`: task types, queries, schema migrations, and atomic tree operations.
+- `src/config/`: configuration loading, validation, and atomic saving.
+- `src/vim_motion/`: keyboard mapping, modes, actions, and Unicode text editing.
+
+Each directory's `mod.rs` defines its interface. Keep implementation modules private with `mod`; use `pub(super)` or `pub(crate)` for the access callers need and re-export shared types. Add focused files within the appropriate directory instead of expanding unrelated modules. Larger test suites live in `tests.rs` beside the code they exercise.
+
 ## Checks
 
 Run these before submitting code changes:

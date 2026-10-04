@@ -5,18 +5,18 @@ use super::vim_action::{Motion, VimAction};
 
 /// Byte cursor always sits on a grapheme boundary, including after a paste.
 #[derive(Default)]
-pub struct Editor {
+pub(crate) struct Editor {
     text: String,
     cursor: usize,
 }
 
 impl Editor {
-    pub fn new(text: String) -> Self {
+    pub(crate) fn new(text: String) -> Self {
         let cursor = text.len();
         Self { text, cursor }
     }
 
-    pub fn text(&self) -> &str {
+    pub(crate) fn text(&self) -> &str {
         &self.text
     }
 
@@ -34,7 +34,7 @@ impl Editor {
             .map_or(self.cursor, |g| self.cursor + g.len())
     }
 
-    pub fn insert(&mut self, text: &str) {
+    pub(crate) fn insert(&mut self, text: &str) {
         let clean: String = text
             .chars()
             .map(|c| if c.is_control() { ' ' } else { c })
@@ -54,7 +54,7 @@ impl Editor {
             .unwrap_or(self.text.len());
     }
 
-    pub fn apply(&mut self, action: VimAction) {
+    pub(crate) fn apply(&mut self, action: VimAction) {
         match action {
             VimAction::Insert(c) => self.insert(&c.to_string()),
             VimAction::Clear => {
@@ -114,7 +114,7 @@ impl Editor {
     }
 
     /// Returns visible text and cursor column without splitting wide graphemes.
-    pub fn viewport(&self, width: u16) -> (&str, u16) {
+    pub(crate) fn viewport(&self, width: u16) -> (&str, u16) {
         if width == 0 {
             return ("", 0);
         }

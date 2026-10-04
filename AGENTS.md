@@ -35,14 +35,23 @@ change them; avoid adding features beyond the request.
 
 ## Files and modules
 
-- Keep `src/main.rs` focused on startup, the event loop, and terminal cleanup.
+- Preserve the directory modules in `src/app/`, `src/ui/`, `src/db/`,
+  `src/config/`, and `src/vim_motion/`. Extend them with focused files; keep
+  their responsibilities separate as the app grows.
+- Add more modules as future work introduces distinct responsibilities. The
+  current source layout is a starting point and should evolve with the app.
+  Create new top-level modules when a concern does not fit an existing owner;
+  otherwise add focused submodules under that owner.
+- Keep `src/main.rs` focused on startup and terminal cleanup. Application event
+  handling belongs in `src/app/events.rs`.
 - Split substantial responsibilities into multiple files and subdirectories
   rather than growing one large file.
 - A small leaf module can remain `src/name.rs`. When it needs submodules, use
   `src/name/mod.rs` with focused sibling files and further subdirectories as
   needed. Do not keep both forms for the same module.
 - Keep `mod.rs` focused on module declarations, intentional re-exports, and the
-  shared types or coordination belonging to that module.
+  shared types or coordination belonging to that module. Put substantial
+  implementations in named sibling files.
 - Declare implementation details with private `mod name;`. Use `pub(super)` for
   parent access or `pub(crate)` for access elsewhere in this crate.
 - Use `pub mod name;` only when the module is intentionally part of a public
@@ -52,23 +61,54 @@ change them; avoid adding features beyond the request.
   internal file paths.
 - Split code along responsibility boundaries, not arbitrary line counts. Avoid
   one-file-per-function fragmentation and unrelated restructuring.
+- Add a nested directory with its own `mod.rs` when a concern needs several
+  related files. Name files and directories after their responsibility.
+- Review module size and cohesion during each change. Extract a responsibility
+  when new code would make a file harder to navigate or mix unrelated behavior.
+  Create modules for implemented needs rather than empty future placeholders.
+- Keep cross-module imports on the owning module's interface. Use explicit
+  imports and intentional re-exports; avoid wildcard imports in production
+  code and exposing internal modules merely to make imports compile.
+- Coordinate application behavior in `app`. Keep terminal rendering out of
+  persistence and configuration modules, and keep SQL out of UI and keyboard
+  handling modules.
 
-Current responsibilities, whether implemented as leaf files or directory
-modules:
+Current source layout:
 
 | Module            | Responsibility                                             |
 | ----------------- | ---------------------------------------------------------- |
-| `src/main.rs`     | Startup, event loop, terminal setup and cleanup            |
-| `src/app.rs`      | Task state and action handling                             |
-| `src/ui.rs`       | Ratatui rendering                                          |
-| `src/db.rs`       | SQLite queries and schema migrations                       |
+| `src/main.rs`     | Startup, terminal setup and cleanup                         |
+| `src/app/`        | State, actions, editing, events, navigation, settings, tasks |
+| `src/ui/`         | Frame composition, chrome, configuration, help, tasks, theme |
+| `src/db/`         | Database entry point, task model, queries, migrations, trees |
 | `src/cli.rs`      | Command-line options and path overrides                    |
-| `src/config.rs`   | Configuration paths, loading, validation, and saving       |
+| `src/config/`     | Configuration paths, loading, validation, and atomic saving |
 | `src/vim_motion/` | Keyboard mapping, modes, actions, and Unicode text editing |
 
-Route keyboard input through `vim_motion`. Its existing `mod.rs` files
-demonstrate directory modules; follow the visibility rules above when adding or
-changing module boundaries.
+Directory modules keep their shared state and interface in `mod.rs`, with
+focused private implementation modules alongside it. Substantial test suites
+live in each directory's `tests.rs`.
+
+Route keyboard input through `vim_motion`. Callers use its re-exported editor,
+manager, actions, and modes rather than internal module paths. Follow the
+visibility rules above when adding or changing module boundaries.
+
+## Workflow for modular changes
+
+1. Identify the owning module and read its `mod.rs`, relevant implementation
+   files, and tests before editing.
+2. Extend an existing file when the change fits its focused responsibility.
+   Give a distinct responsibility its own module from the start; extract
+   related code as needed, and add a subdirectory with `mod.rs` when the new
+   concern needs several files.
+3. Register new files in the parent's `mod.rs`. Keep helpers private, use the
+   narrowest visibility needed, and re-export only the interface callers use.
+4. Keep tests with their owning module. Use inline tests for small leaf modules
+   and `#[cfg(test)] mod tests;` with `tests.rs` for larger suites. Preserve
+   existing regression coverage when moving code.
+5. Review module boundaries and imports as well as behavior. Update this
+   source-layout map and `CONTRIBUTING.md` when responsibilities change, then
+   run the required validation below.
 
 ## Interface
 

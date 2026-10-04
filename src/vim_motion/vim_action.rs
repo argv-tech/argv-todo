@@ -1,7 +1,7 @@
 use crate::db::Priority;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Motion {
+pub(crate) enum Motion {
     Left,
     Down,
     Up,
@@ -13,7 +13,7 @@ pub enum Motion {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum VimAction {
+pub(crate) enum VimAction {
     Move(Motion, usize),
     FileStart,
     FileEnd,
