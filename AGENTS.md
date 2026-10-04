@@ -86,10 +86,13 @@ Current source layout:
 | `src/cli.rs`      | Command-line options and path overrides                    |
 | `src/config/`     | Configuration paths, loading, validation, and atomic saving |
 | `src/vim_motion/` | Keyboard mapping, modes, actions, and Unicode text editing |
+| `tests/unit/`    | Unit suites and test helpers, grouped by owning module      |
 
 Directory modules keep their shared state and interface in `mod.rs`, with
-focused private implementation modules alongside it. Substantial test suites
-live in each directory's `tests.rs`.
+focused private implementation modules alongside it. All test suites and
+test helpers live under `tests/unit/`, grouped by owning module. Source modules
+load their suites with `#[cfg(test)]` and `#[path = "..."] mod tests;` so tests
+retain access to private code without expanding the production API.
 
 Route keyboard input through `vim_motion`. Callers use its re-exported editor,
 manager, actions, and modes rather than internal module paths. Follow the
@@ -105,9 +108,10 @@ visibility rules above when adding or changing module boundaries.
    concern needs several files.
 3. Register new files in the parent's `mod.rs`. Keep helpers private, use the
    narrowest visibility needed, and re-export only the interface callers use.
-4. Keep tests with their owning module. Use inline tests for small leaf modules
-   and `#[cfg(test)] mod tests;` with `tests.rs` for larger suites. Preserve
-   existing regression coverage when moving code.
+4. Put tests and test helpers under `tests/unit/`, grouped by owning module.
+   Register each suite in its source module with `#[cfg(test)]` and a relative
+   `#[path = "..."]` attribute. Preserve existing regression coverage when
+   moving code; avoid inline tests or test suites under `src/`.
 5. Review module boundaries and imports as well as behavior. Update this
    source-layout map and `CONTRIBUTING.md` when responsibilities change, then
    run the required validation below.

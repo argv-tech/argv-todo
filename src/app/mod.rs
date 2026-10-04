@@ -6,6 +6,7 @@ mod settings;
 mod tasks;
 
 #[cfg(test)]
+#[path = "../../tests/unit/app.rs"]
 mod tests;
 
 use anyhow::Result;

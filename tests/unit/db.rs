@@ -1,4 +1,11 @@
 use super::*;
+
+impl Database {
+    pub(crate) fn memory() -> Self {
+        Self::initialize(Connection::open_in_memory().unwrap()).unwrap()
+    }
+}
+
 #[test]
 fn crud_and_undo_preserve_original_record() {
     let mut db = Database::memory();
