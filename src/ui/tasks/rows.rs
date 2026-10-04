@@ -1,4 +1,4 @@
-use crate::{app::App, vim_motion::VimMode};
+use crate::{app::App, vim_motion::InputTarget};
 
 pub(super) struct DisplayRow {
     pub(super) index: Option<usize>,
@@ -14,7 +14,7 @@ pub(super) fn display_rows(app: &App) -> (Vec<DisplayRow>, Option<usize>) {
             depth: row.depth,
         })
         .collect();
-    let adding = app.vim.mode() == VimMode::Insert && app.editing_id.is_none();
+    let adding = app.vim.input() == Some(InputTarget::Task) && app.editing_id.is_none();
     let draft = if adding {
         let (start, end, depth) = app
             .adding_parent

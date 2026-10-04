@@ -3,7 +3,9 @@ pub(crate) enum VimMode {
     #[default]
     Normal,
     Insert,
-    Search,
+    Visual,
+    VisualLine,
+    Replace,
 }
 
 impl VimMode {
@@ -11,7 +13,17 @@ impl VimMode {
         match self {
             Self::Normal => "NORMAL",
             Self::Insert => "INSERT",
-            Self::Search => "SEARCH",
+            Self::Visual => "VISUAL",
+            Self::VisualLine => "V-LINE",
+            Self::Replace => "REPLACE",
         }
+    }
+
+    pub(crate) fn typing(self) -> bool {
+        matches!(self, Self::Insert | Self::Replace)
+    }
+
+    pub(crate) fn visual(self) -> bool {
+        matches!(self, Self::Visual | Self::VisualLine)
     }
 }

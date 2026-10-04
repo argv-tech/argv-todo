@@ -3,7 +3,7 @@ use super::super::{
     text::truncate,
     theme::{ACCENT, MUTED},
 };
-use crate::{app::App, vim_motion::VimMode};
+use crate::app::App;
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
@@ -25,7 +25,7 @@ pub(super) fn draw_form(frame: &mut Frame, app: &App, area: Rect, spacious: bool
         Paragraph::new("database_path").style(Style::default().fg(MUTED)),
         label,
     );
-    let editing = app.vim.mode() != VimMode::Normal;
+    let editing = app.vim.input().is_some();
     let style = Style::default().add_modifier(Modifier::BOLD);
     if editing {
         draw_editor(frame, &app.editor, "› ", style, input, true);

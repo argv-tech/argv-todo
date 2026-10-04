@@ -1,12 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
 use super::{App, TreeRow};
-use crate::{db::Todo, vim_motion::VimMode};
+use crate::{db::Todo, vim_motion::InputTarget};
 
 impl App {
     /// All tasks in tree order. Searches retain the ancestors of matching tasks.
     pub(crate) fn visible_rows(&self) -> Vec<TreeRow> {
-        let query = if self.vim.mode() == VimMode::Search {
+        let query = if self.vim.input() == Some(InputTarget::Search) {
             self.editor.text()
         } else {
             &self.query

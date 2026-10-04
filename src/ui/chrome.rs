@@ -1,4 +1,7 @@
-use crate::{app::App, vim_motion::VimMode};
+use crate::{
+    app::App,
+    vim_motion::{InputTarget, VimMode},
+};
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Layout, Rect},
@@ -39,7 +42,7 @@ pub(super) fn draw_input(frame: &mut Frame, app: &App, area: Rect) {
     if area.is_empty() {
         return;
     }
-    if app.vim.mode() == VimMode::Normal {
+    if app.vim.input().is_none() {
         if !app.query.is_empty() {
             frame.render_widget(
                 Paragraph::new(Line::from(vec![
@@ -55,14 +58,14 @@ pub(super) fn draw_input(frame: &mut Frame, app: &App, area: Rect) {
         }
         return;
     }
-    if app.vim.mode() != VimMode::Search {
+    if app.vim.input() != Some(InputTarget::Search) {
         return;
     }
     draw_editor(frame, &app.editor, "/ ", Style::default(), area, !app.help);
 }
 
 pub(super) fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
-    let editing = app.vim.mode() != VimMode::Normal;
+    let editing = app.vim.input().is_some();
     let pending = app.vim.pending_label();
     let label = format!("{}  {pending}", app.vim.mode().label().to_lowercase());
     let label = label.trim_end();
@@ -87,24 +90,51 @@ pub(super) fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
 }
 
 fn footer_hint(app: &App, width: usize) -> &'static str {
-    let candidates: &[&str] = if app.vim.pending_label().ends_with('p') {
+    let candidates: &[&str] = if app.vim.input().is_some() && app.vim.mode().visual() {
+        &[
+            "d delete · c change · y yank · Esc normal",
+            "d/c/y · Esc normal",
+            "d/c/y · Esc",
+        ]
+    } else if app.vim.input().is_some() && app.vim.mode() == VimMode::Normal {
+        if app.vim.input() == Some(InputTarget::Search) {
+            &[
+                "i/a insert · v select · Enter apply · Esc cancel",
+                "i/a · v · Enter apply · Esc",
+                "i · v · Enter · Esc",
+            ]
+        } else {
+            &[
+                "i/a insert · v select · Enter save · Esc cancel",
+                "i/a · v · Enter save · Esc cancel",
+                "i · v · Enter · Esc",
+            ]
+        }
+    } else if app.vim.input().is_none() && app.vim.pending_label().ends_with('p') {
         &[
             "h high · m mid · l low",
             "h high m mid l low",
             "h/m/l priority",
             "h/m/l",
         ]
-    } else if app.vim.mode() == VimMode::Search {
+    } else if app.vim.input() == Some(InputTarget::Search) {
         &[
-            "Enter apply · Esc cancel · ←/→ move",
-            "Enter apply · Esc cancel",
+            "Enter apply · Esc normal · ←/→ move",
+            "Enter apply · Esc normal",
             "Enter apply · Esc",
             "Enter · Esc",
         ]
-    } else if app.vim.mode() == VimMode::Insert {
+    } else if app.vim.input() == Some(InputTarget::Task) {
         &[
-            "Enter save · Esc cancel · Ctrl-p priority",
-            "Enter save · Esc cancel",
+            "Enter save · Esc normal · Ctrl-p priority",
+            "Enter save · Esc normal",
+            "Enter save · Esc",
+            "Enter · Esc",
+        ]
+    } else if app.vim.input().is_some() {
+        &[
+            "Enter save · Esc normal · ←/→ move",
+            "Enter save · Esc normal",
             "Enter save · Esc",
             "Enter · Esc",
         ]

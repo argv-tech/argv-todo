@@ -92,11 +92,35 @@ While editing configuration, `Esc` discards the draft and returns to the configu
 | `u` | Restore the last deleted task tree(s) in the current session |
 | `/` | Search all titles, ignoring case; keep ancestors visible for context |
 | `?` | Show help |
-| `Esc` | Open configuration; cancel input, close help, or clear applied search first |
+| `Esc` | Open configuration; close help or clear applied search first. In a field, return to Normal, then press again to cancel |
 | `Ctrl-r` | Reload tasks from disk |
 | `q`, `Ctrl-c` | Quit |
 
-In insert and search modes, letters are text. `Enter` saves or applies search. Arrow keys, `Home`, and `End` move the input cursor; `Ctrl-Left` / `Ctrl-Right` move by word. `Backspace`, `Delete`, `Ctrl-w`, and `Ctrl-u` edit text. Bracketed paste is supported. Text editing handles Unicode graphemes and wide characters.
+Every input field—task titles, search, and the configuration database path—supports **Insert**, **Normal**, **Visual**, **Visual Line**, and **Replace** modes. Fields open in Insert, where letters are text. `Esc` returns to Normal without closing the field; another `Esc` cancels it. In Visual or Replace, `Esc` also returns to Normal. When a command is pending, `Esc` cancels the command first. `Enter` saves or applies search from any field mode. The footer shows the mode and pending command; Visual selections use reverse video.
+
+| Field keys | Action |
+| --- | --- |
+| `i`, `a`, `I`, `A` | Insert before the cursor, after it, before the first nonblank, or at the end |
+| `h`, `l`, arrows, `0`, `^`, `$`, `Home`, `End` | Move left/right or to the start, first nonblank, or end |
+| `w`, `b`, `e`; `W`, `B`, `E`; `ge`, `gE` | Move by word or space-separated WORD, including word ends |
+| `gg`, `G`, `3\|`, `%` | Field start/end, display column, or matching bracket |
+| `f`, `F`, `t`, `T` followed by a character | Find or stop just before/after a character, forward/backward |
+| `;`, `,` | Repeat the last find, or reverse it |
+| `d`, `c`, `y` followed by a motion or text object | Delete, change and enter Insert, or yank |
+| `dd`, `cc`, `yy` | Delete, change, or yank the whole field |
+| `iw`, `aw`, `iW`, `aW` after an operator or in Visual | Inner/around word or WORD; around includes adjacent whitespace |
+| `i`/`a` followed by `(`, `)`, `[`, `]`, `{`, `}`, `<`, `>`, quotes, or backtick | Inside/around matching delimiters; `b` aliases parentheses and `B` braces |
+| `v`, `V`, `o` | Character Visual, whole-field Visual, or swap selection ends |
+| Visual `d`, `c`, `y`, `r` + character | Delete, change, yank, or replace the selection |
+| `x`, `X`, `D`, `C`, `s`, `S` | Delete at/before the cursor, delete/change to the end, substitute characters, or change the whole field |
+| `r2`, `3r2`, `R` | Replace one/three graphemes with `2`, or enter Replace mode |
+| `p`, `P` | Put the session's yank buffer after/before the cursor, or replace a Visual selection |
+| `u`, `Ctrl-r`, `.` | Undo, redo, or repeat the last field change |
+| `gu`, `gU`, `g~` + motion/object; Visual `u`, `U`, `~` | Lowercase, uppercase, or swap case |
+
+Motions and operators accept counts: `3dw` deletes three words and `2d3w` deletes six. Counts are capped at 9999. Nested bracket objects accept a count to choose an enclosing pair, such as `d2i{`. These are single-line fields: `dd` clears the current field while task-list `dd` still deletes task trees. Vertical motions stay in the field. The supported commands above cover field editing; Vim's file, window, Ex-command, macro, and block-Visual features are outside this editor.
+
+While typing, arrow keys, `Home`, and `End` move the cursor; `Ctrl-Left` / `Ctrl-Right` move by word. `Backspace`, `Delete`, `Ctrl-w`, and `Ctrl-u` edit text. Replace-mode `Backspace` restores the overwritten grapheme. Insert/Replace sessions undo as one change. `Ctrl-p` cycles task priority in any task-field mode. Bracketed paste inserts text, puts it after the cursor in Normal, or replaces a Visual selection. Newlines and other control characters become spaces. Editing and selection respect Unicode grapheme boundaries and display widths.
 
 Tasks can contain nested child tasks. Existing databases are upgraded automatically, keeping existing tasks at the top level. Deleting a parent also deletes its descendants; `u` restores the entire tree. Completing or reopening a parent gives all its descendants the same state, including tasks hidden by search. Toggling a child affects its own subtree without changing its ancestors or siblings. Changes are saved atomically.
 
@@ -104,7 +128,7 @@ Tasks have **high**, **mid**, or **low** priority; new roots and existing tasks 
 
 The fullscreen interface uses your terminal's background and ANSI color palette. Tasks occupy one row each, with bold parents and indented connecting branches. A small cyan caret and an underlined title mark the selection; checkmarks and tree lines use normal text color and turn cyan when selected. Focus and completion preserve title and priority colors; a checkmark and a struck-through title identify completed tasks. A `done/total` count beside a parent shows its direct children. Long titles show an ellipsis so the count stays visible, without splitting Unicode graphemes. The header contains only the app name and completion count. Short key hints stay at the bottom and fit the available width; input and errors appear when needed. Help keeps its scroll and close instructions visible. Layout and key hints adapt to the terminal size.
 
-Create and edit tasks directly in the tree. A new draft appears at its sorted position among siblings or directly beneath a parent when creating its first child. `Ctrl-p` changes the draft priority and its position before saving. Starting a new task clears search to show its context. `Enter` saves the inline row; `Esc` cancels it. Search stays at the bottom.
+Create and edit tasks directly in the tree. A new draft appears at its sorted position among siblings or directly beneath a parent when creating its first child. `Ctrl-p` changes the draft priority and its position before saving. Starting a new task clears search to show its context. `Enter` saves the inline row; `Esc` enters Normal and another `Esc` cancels it. Search stays at the bottom and remains live in every field mode.
 
 ## Check
 
