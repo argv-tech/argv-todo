@@ -6,6 +6,24 @@
       "sourceType": "github",
       "skillPath": "skill/opentui/SKILL.md",
       "computedHash": "7244056422f5d578beaffc95ae20a4b421923f70a8eb6a4decf49b3d79c0d2db"
+    },
+    "ratatui": {
+      "source": "a-poor/skills",
+      "sourceType": "github",
+      "skillPath": "skills/ratatui/SKILL.md",
+      "computedHash": "1a08724acd364d10f51733a0b582020cc262a4c256c987b6074387220d7c6dfc"
+    },
+    "ratatui-knowledge-patch": {
+      "source": "nevaberry/nevaberry-plugins",
+      "sourceType": "github",
+      "skillPath": "plugins/knowledge-patch/patches-claude/ratatui-knowledge-patch/SKILL.md",
+      "computedHash": "120dc64241c721d49eaba01b7f258b3083da1a20a462f029305094942c639aee"
+    },
+    "rust-tui-ratatui": {
+      "source": "bjornmelin/dev-skills",
+      "sourceType": "github",
+      "skillPath": "skills/rust-tui-ratatui/SKILL.md",
+      "computedHash": "0bcf369a961ca2178161584becf49e5a36286d58cf375e0f9f82f74c45b3aa34"
     }
   }
 }
