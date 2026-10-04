@@ -2,20 +2,39 @@ use super::config::CONFIG_LOGO;
 use super::*;
 use crate::db::Database;
 use crate::db::Priority;
-use ratatui::style::Color;
-use ratatui::{Terminal, backend::TestBackend};
+use crate::{app::App, vim_motion::VimMode};
+use ratatui::style::{Color, Modifier, Style};
+use ratatui::{Terminal, TerminalOptions, Viewport, backend::TestBackend, layout::Rect};
+use unicode_width::UnicodeWidthStr;
 
 fn text_position(terminal: &Terminal<TestBackend>, text: &str) -> (u16, u16) {
     let buffer = terminal.backend().buffer();
     for y in 0..buffer.area.height {
-        let line: String = (0..buffer.area.width)
-            .map(|x| buffer[(x, y)].symbol())
-            .collect();
+        let mut line = String::new();
+        let mut columns = Vec::new();
+        for x in 0..buffer.area.width {
+            columns.push((line.len(), x));
+            line.push_str(buffer[(x, y)].symbol());
+        }
         if let Some(byte) = line.find(text) {
-            return (line[..byte].chars().count() as u16, y);
+            return (
+                columns
+                    .iter()
+                    .find(|(offset, _)| *offset == byte)
+                    .unwrap()
+                    .1,
+                y,
+            );
         }
     }
     panic!("Text missing from terminal: {text}");
+}
+
+fn terminal_row(terminal: &Terminal<TestBackend>, y: u16) -> String {
+    let buffer = terminal.backend().buffer();
+    (0..buffer.area.width)
+        .map(|x| buffer[(x, y)].symbol())
+        .collect()
 }
 
 #[test]
@@ -238,5 +257,248 @@ fn renders_small_and_large_terminals_and_input_modes() {
         app.help = true;
         terminal.draw(|frame| draw(frame, &mut app)).unwrap();
         app.help = false;
+    }
+}
+
+#[test]
+fn long_titles_keep_child_counts_and_semantic_styles() {
+    let database = Database::memory();
+    let parent = database
+        .add(&"Long parent 界 é 👩‍💻 ".repeat(10), None, Priority::High)
+        .unwrap();
+    database.add("Child", Some(parent), Priority::Low).unwrap();
+    let mut app = App::new(database).unwrap();
+    app.todos[0].done = true;
+    app.todos[1].done = true;
+    let mut terminal = Terminal::new(TestBackend::new(35, 12)).unwrap();
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    let (x, y) = text_position(&terminal, "Long parent");
+    let row = terminal_row(&terminal, y);
+    assert!(row.contains('…'));
+    text_position(&terminal, "1/1");
+    let buffer = terminal.backend().buffer();
+    let title = &buffer[(x, y)];
+    assert!(
+        title
+            .modifier
+            .contains(Modifier::BOLD | Modifier::UNDERLINED | Modifier::CROSSED_OUT)
+    );
+    assert_eq!(title.fg, Color::Reset);
+    let (priority_x, _) = text_position(&terminal, "high");
+    assert_eq!(buffer[(priority_x, y)].fg, Color::Red);
+    let (child_x, child_y) = text_position(&terminal, "Child");
+    assert!(
+        buffer[(child_x, child_y)]
+            .modifier
+            .contains(Modifier::CROSSED_OUT)
+    );
+    assert!(
+        !buffer[(child_x, child_y)]
+            .modifier
+            .contains(Modifier::UNDERLINED)
+    );
+    assert_eq!(app.list.selected(), Some(0));
+
+    app.list.select(Some(1));
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    assert!(
+        !terminal.backend().buffer()[(x, y)]
+            .modifier
+            .contains(Modifier::UNDERLINED)
+    );
+    assert!(
+        terminal.backend().buffer()[(child_x, child_y)]
+            .modifier
+            .contains(Modifier::UNDERLINED)
+    );
+}
+
+#[test]
+fn truncation_preserves_graphemes_and_display_width() {
+    for (text, width, expected) in [
+        ("hello", 0, ""),
+        ("hello", 1, "…"),
+        ("hello", 5, "hello"),
+        ("界界界", 4, "界…"),
+        ("éxyz", 2, "é…"),
+        ("👩‍💻abc", 3, "👩‍💻…"),
+    ] {
+        let actual = text::truncate(text, width);
+        assert_eq!(actual, expected);
+        assert!(actual.width() <= width);
+    }
+}
+
+#[test]
+fn footer_hints_fit_and_describe_the_active_mode() {
+    let mut app = App::new(Database::memory()).unwrap();
+    for width in [35, 44, 45, 59, 60, 74, 75, 79, 80, 104, 105, 120] {
+        let mut terminal = Terminal::new(TestBackend::new(width, 12)).unwrap();
+        for (mode, expected) in [
+            (VimMode::Normal, "q"),
+            (VimMode::Search, "Enter apply"),
+            (VimMode::Insert, "Enter save"),
+        ] {
+            app.vim.set_mode(mode);
+            terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+            let row = terminal_row(&terminal, 10);
+            assert!(row.contains(expected), "{width}: {row}");
+            assert!(row.contains("Esc"), "{width}: {row}");
+            assert!(row.contains(mode.label().to_lowercase().as_str()));
+            assert!(
+                row.trim_end().ends_with(if mode == VimMode::Normal {
+                    "q"
+                } else {
+                    "cancel"
+                }) || row.trim_end().ends_with("Esc")
+                    || row.trim_end().ends_with("move")
+                    || row.trim_end().ends_with("priority")
+                    || row.trim_end().ends_with("quit"),
+                "Clipped hint at {width}: {row}"
+            );
+        }
+    }
+    app.vim.set_mode(VimMode::Normal);
+    app.query = "A very long applied search 界 ".repeat(8);
+    let mut terminal = Terminal::new(TestBackend::new(35, 12)).unwrap();
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    text_position(&terminal, "Esc clear");
+    assert!(terminal_row(&terminal, 9).contains('…'));
+    assert!(!terminal.backend().cursor_visible());
+}
+
+#[test]
+fn help_keeps_close_hint_visible_and_clears_underlying_editor() {
+    let mut app = App::new(Database::memory()).unwrap();
+    app.vim.set_mode(VimMode::Insert);
+    app.editor.insert("Draft underneath help");
+    let mut terminal = Terminal::new(TestBackend::new(35, 12)).unwrap();
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    assert!(terminal.backend().cursor_visible());
+    app.help = true;
+    for scroll in [0, 10, 20] {
+        app.help_scroll = scroll;
+        terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+        let (x, y) = text_position(&terminal, "j/k scroll · Esc close");
+        assert_eq!(y, 9);
+        assert_eq!(terminal.backend().buffer()[(x, y)].fg, Color::Cyan);
+        assert!(!terminal.backend().cursor_visible());
+        assert!(!(0..12).any(|y| terminal_row(&terminal, y).contains("Draft underneath")));
+    }
+    text_position(&terminal, "q/ctrl-c");
+    app.help = false;
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    text_position(&terminal, "Draft underneath help");
+    assert!(terminal.backend().cursor_visible());
+}
+
+#[test]
+fn resize_and_nonzero_viewport_keep_editor_inside_workspace() {
+    let mut app = App::new(Database::memory()).unwrap();
+    app.vim.set_mode(VimMode::Search);
+    app.editor.insert(&"é界👩‍💻".repeat(30));
+    let area = Rect::new(7, 4, 35, 12);
+    let mut terminal = Terminal::with_options(
+        TestBackend::new(55, 25),
+        TerminalOptions {
+            viewport: Viewport::Fixed(area),
+        },
+    )
+    .unwrap();
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    let cursor = terminal.backend().cursor_position();
+    assert!(area.contains(cursor));
+    assert_eq!(cursor.y, 13);
+    let buffer = terminal.backend().buffer();
+    for y in 0..25 {
+        for x in 0..55 {
+            if !area.contains((x, y).into()) {
+                assert_eq!(buffer[(x, y)].symbol(), " ");
+            }
+        }
+    }
+
+    let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
+    for (width, height) in [(35, 12), (1, 1), (0, 0), (34, 12), (35, 11), (120, 35)] {
+        terminal.backend_mut().resize(width, height);
+        terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+        assert_eq!(
+            terminal.backend().buffer().area,
+            Rect::new(0, 0, width, height)
+        );
+        if width >= 35 && height >= 12 {
+            let cursor = terminal.backend().cursor_position();
+            assert!(cursor.x < width - 1 && cursor.y < height - 1);
+            assert!(terminal.backend().cursor_visible());
+        } else {
+            assert!(!terminal.backend().cursor_visible());
+        }
+    }
+}
+
+#[test]
+fn shared_editor_tolerates_empty_and_tiny_areas() {
+    let editor = crate::vim_motion::Editor::new("界é👩‍💻".into());
+    let mut terminal = Terminal::new(TestBackend::new(10, 5)).unwrap();
+    for area in [
+        Rect::new(7, 4, 0, 0),
+        Rect::new(7, 4, 1, 1),
+        Rect::new(7, 4, 2, 1),
+        Rect::new(7, 4, 3, 1),
+    ] {
+        terminal
+            .draw(|frame| input::draw_editor(frame, &editor, "/ ", Style::default(), area, true))
+            .unwrap();
+        assert_eq!(terminal.backend().cursor_visible(), area.width > 2);
+        if terminal.backend().cursor_visible() {
+            assert!(area.contains(terminal.backend().cursor_position()));
+        }
+    }
+}
+
+#[test]
+fn configuration_splits_editor_and_paths_then_stacks_on_resize() {
+    let mut app = App::new(Database::memory()).unwrap();
+    app.configuring = true;
+    app.config = Some(crate::config::Config {
+        path: "/temporary/config.toml".into(),
+        database_path: "db.sql".into(),
+        active_database: "/temporary/tasks.sql".into(),
+        database_override: true,
+    });
+    let mut terminal = Terminal::new(TestBackend::new(100, 17)).unwrap();
+    for (width, height) in [(100, 17), (74, 12), (73, 12), (35, 12), (120, 35)] {
+        terminal.backend_mut().resize(width, height);
+        terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+        let (label_x, label_y) = text_position(&terminal, "database_path");
+        let (_, editor_y) = text_position(&terminal, "db.sql");
+        assert_eq!(editor_y, label_y + 1);
+        if width >= 74 {
+            let (paths_x, paths_y) = text_position(&terminal, "active database");
+            assert!(paths_x > label_x + 25);
+            assert_eq!(paths_y, label_y);
+            text_position(&terminal, "configuration file");
+            let (database_x, database_y) = text_position(&terminal, "/temporary/tasks.sql");
+            assert_eq!(database_x, paths_x);
+            assert_eq!(database_y, paths_y + 1);
+            assert_eq!(
+                terminal.backend().buffer()[(database_x, database_y)].fg,
+                Color::Reset
+            );
+            let buffer = terminal.backend().buffer();
+            assert!((label_x + 25..paths_x).any(|x| buffer[(x, paths_y)].symbol() == "│"));
+            text_position(&terminal, "Current launch uses --db.");
+        } else {
+            let (paths_x, paths_y) = text_position(&terminal, "config  ");
+            assert_eq!(paths_x, label_x);
+            assert!(paths_y > editor_y);
+        }
+        app.vim.set_mode(VimMode::Insert);
+        app.editor = crate::vim_motion::Editor::new("界é👩‍💻".repeat(40));
+        terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+        let cursor = terminal.backend().cursor_position();
+        assert_eq!(cursor.y, editor_y);
+        assert!(cursor.x < if width >= 74 { width / 2 } else { width - 1 });
+        app.vim.set_mode(VimMode::Normal);
     }
 }

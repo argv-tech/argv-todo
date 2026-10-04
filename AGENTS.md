@@ -79,7 +79,9 @@ Current source layout:
 | ----------------- | ---------------------------------------------------------- |
 | `src/main.rs`     | Startup, terminal setup and cleanup                         |
 | `src/app/`        | State, actions, editing, events, navigation, settings, tasks |
-| `src/ui/`         | Frame composition, chrome, configuration, help, tasks, theme |
+| `src/ui/`         | Frame composition, geometry, text, editors, chrome, help, theme |
+| `src/ui/tasks/`   | Draft placement and task-tree rendering                     |
+| `src/ui/config/`  | Configuration panes, setting editor, and path details       |
 | `src/db/`         | Database entry point, task model, queries, migrations, trees |
 | `src/cli.rs`      | Command-line options and path overrides                    |
 | `src/config/`     | Configuration paths, loading, validation, and atomic saving |

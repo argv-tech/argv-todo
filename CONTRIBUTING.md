@@ -44,7 +44,7 @@ The source layout and project constraints are described in [AGENTS.md](AGENTS.md
 `src/main.rs` owns startup and terminal cleanup; `src/cli.rs` parses command-line options. Larger concerns use directory modules:
 
 - `src/app/`: state, action routing, editing, events, tree navigation, settings, and task operations.
-- `src/ui/`: full-frame composition, task rows, header and footer, configuration, help, and theme.
+- `src/ui/`: full-frame composition, shared geometry, Unicode labels and editor rendering, header and footer, help, and theme. `tasks/` separates draft placement from row rendering; `config/` composes the setting editor and path details into responsive panes.
 - `src/db/`: task types, queries, schema migrations, and atomic tree operations.
 - `src/config/`: configuration loading, validation, and atomic saving.
 - `src/vim_motion/`: keyboard mapping, modes, actions, and Unicode text editing.
