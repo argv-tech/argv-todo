@@ -192,7 +192,8 @@ visibility rules above when adding or changing module boundaries.
 
 - Keep `README.md`, help text, and development guidance consistent with behavior
   and keybindings.
-- Add a concise `CHANGELOG.md` entry for user-visible changes.
+- Describe user-visible changes in Conventional Commits and regenerate
+  `CHANGELOG.md` with `git-cliff`. Do not hand-edit generated entries.
 - Preserve uncommitted user changes. Avoid unrelated refactors and commit only
   when requested.
 - Always use Conventional Commits for commit messages: `type(scope): description`,
