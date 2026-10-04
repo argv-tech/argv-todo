@@ -1,10 +1,7 @@
 use anyhow::Result;
 
 use super::App;
-use crate::{
-    db::DEFAULT_PRIORITY,
-    vim_motion::{InputTarget, VimAction},
-};
+use crate::vim_motion::{InputTarget, VimAction};
 
 impl App {
     pub(super) fn begin_add(&mut self, parent_id: Option<i64>) {
@@ -16,7 +13,7 @@ impl App {
         self.editing_id = None;
         self.input_priority = parent_id
             .and_then(|id| self.todos.iter().find(|todo| todo.id == id))
-            .map_or(DEFAULT_PRIORITY, |todo| todo.priority);
+            .map_or(self.default_priority(), |todo| todo.priority);
         self.editor.reset(String::new());
         self.vim.begin_input(InputTarget::Task);
         if let Some(id) = selected_id {

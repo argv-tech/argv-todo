@@ -1,5 +1,6 @@
 use crate::{
     app::{App, TaskPane},
+    config::SortOrder,
     vim_motion::InputTarget,
 };
 
@@ -54,9 +55,17 @@ pub(super) fn display_rows(app: &App, pane: TaskPane) -> (Vec<DisplayRow>, Optio
                 };
                 let todo = &app.todos[index];
                 visible[row].depth == depth
-                    && (todo.priority > app.input_priority
-                        || (todo.priority == app.input_priority
-                            && relative_position.is_some_and(|position| todo.position >= position)))
+                    && match app.sort_order() {
+                        SortOrder::Priority => {
+                            todo.priority > app.input_priority
+                                || (todo.priority == app.input_priority
+                                    && relative_position
+                                        .is_some_and(|position| todo.position >= position))
+                        }
+                        SortOrder::Manual => {
+                            relative_position.is_some_and(|position| todo.position >= position)
+                        }
+                    }
             })
             .unwrap_or(end);
         visible.insert(

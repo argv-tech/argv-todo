@@ -35,6 +35,7 @@ impl App {
 
     pub(super) fn apply_tasks(&mut self, action: VimAction) -> Result<()> {
         match action {
+            VimAction::MoveTask(movement, count) => self.move_task(movement, count)?,
             VimAction::Move(motion, count) => match motion {
                 Motion::Up | Motion::Down => {
                     let len = self.visible_indices().len();
@@ -73,7 +74,7 @@ impl App {
                 let last = self.visible_indices().len().checked_sub(1);
                 self.active_list_mut().select(last);
             }
-            VimAction::SwitchPane => self.switch_task_pane(),
+            VimAction::SwitchPane | VimAction::SwitchPaneBackward => self.switch_task_pane(),
             VimAction::AddChild => {
                 let parent = self.selected_todo().map(|todo| todo.id);
                 self.begin_add(parent);

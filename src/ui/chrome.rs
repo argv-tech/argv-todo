@@ -89,6 +89,9 @@ pub(super) fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
         })),
         mode,
     );
+    if !app.show_hints() {
+        return;
+    }
     let hint = footer_hint(app, usize::from(keys.width));
     frame.render_widget(
         Paragraph::new(hint)

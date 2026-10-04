@@ -1,10 +1,16 @@
 use super::{KeyCode, KeyEvent, KeyEventKind, Motion, Priority, VimAction, VimManager};
+use crate::db::TaskMove;
+use crossterm::event::KeyModifiers;
 
 impl VimManager {
     pub(super) fn handle_tasks(&mut self, key: KeyEvent) -> Option<VimAction> {
         if matches!(key.code, KeyCode::Tab | KeyCode::BackTab) {
             self.reset();
-            return (key.kind == KeyEventKind::Press).then_some(VimAction::SwitchPane);
+            return (key.kind == KeyEventKind::Press).then_some(if key.code == KeyCode::BackTab {
+                VimAction::SwitchPaneBackward
+            } else {
+                VimAction::SwitchPane
+            });
         }
         if let KeyCode::Char(c @ '0'..='9') = key.code
             && (c != '0' || self.count > 0)
@@ -35,6 +41,27 @@ impl VimManager {
                 self.reset();
                 return action;
             }
+        }
+        let movement = match key.code {
+            KeyCode::Char('H') => Some(TaskMove::Outdent),
+            KeyCode::Char('J') => Some(TaskMove::Down),
+            KeyCode::Char('K') => Some(TaskMove::Up),
+            KeyCode::Char('L') => Some(TaskMove::Indent),
+            KeyCode::Char('h') if key.modifiers.contains(KeyModifiers::SHIFT) => {
+                Some(TaskMove::Outdent)
+            }
+            KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::SHIFT) => {
+                Some(TaskMove::Down)
+            }
+            KeyCode::Char('k') if key.modifiers.contains(KeyModifiers::SHIFT) => Some(TaskMove::Up),
+            KeyCode::Char('l') if key.modifiers.contains(KeyModifiers::SHIFT) => {
+                Some(TaskMove::Indent)
+            }
+            _ => None,
+        };
+        if let Some(movement) = movement {
+            self.reset();
+            return Some(VimAction::MoveTask(movement, count));
         }
         let action = match key.code {
             KeyCode::Char(c @ ('g' | 'd' | 'c' | 'p')) => {

@@ -1,4 +1,4 @@
-use crate::db::Priority;
+use crate::db::{Priority, TaskMove};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Motion {
@@ -86,11 +86,13 @@ pub(crate) enum EditAction {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum VimAction {
     Move(Motion, usize),
+    MoveTask(TaskMove, usize),
     FileStart,
     FileEnd,
     PageUp,
     PageDown,
     SwitchPane,
+    SwitchPaneBackward,
     AddChild,
     AddBelow,
     AddAbove,

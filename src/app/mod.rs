@@ -3,6 +3,8 @@ mod editing;
 mod events;
 mod help;
 mod navigation;
+mod ordering;
+mod preferences;
 mod settings;
 mod tasks;
 mod views;

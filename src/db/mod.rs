@@ -1,4 +1,5 @@
 mod model;
+mod ordering;
 mod queries;
 mod schema;
 mod trees;
@@ -8,6 +9,7 @@ mod trees;
 mod tests;
 
 pub(crate) use model::{DEFAULT_PRIORITY, Priority, Todo};
+pub(crate) use ordering::TaskMove;
 
 use anyhow::{Context, Result};
 use rusqlite::Connection;

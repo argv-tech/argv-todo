@@ -8,6 +8,10 @@ fn database_path(path: &Path, overridden: bool) -> Result<PathBuf> {
 fn accepts_toml_and_rejects_invalid_settings() {
     assert_eq!(parse("").unwrap().database_path, PathBuf::from("db.sql"));
     assert_eq!(parse("").unwrap().task_view, TaskView::Normal);
+    let defaults = parse("").unwrap();
+    assert_eq!(defaults.default_priority, Priority::Mid);
+    assert!(defaults.show_completed && defaults.show_hints);
+    assert_eq!(defaults.sort_order, SortOrder::Priority);
     assert_eq!(
         parse("task_view = 'nested'").unwrap().task_view,
         TaskView::Normal
@@ -29,6 +33,14 @@ fn accepts_toml_and_rejects_invalid_settings() {
         "task_view = 3",
         "task_view = 'other'",
         "task_view = ''",
+        "default_priority = 1",
+        "default_priority = 'urgent'",
+        "show_completed = 'false'",
+        "show_completed = 0",
+        "show_hints = 'true'",
+        "show_hints = []",
+        "sort_order = 'title'",
+        "sort_order = false",
     ] {
         assert!(parse(content).is_err(), "Accepted {content}");
     }
@@ -40,6 +52,54 @@ fn accepts_toml_and_rejects_invalid_settings() {
             view
         );
     }
+}
+
+#[test]
+fn preferences_save_typed_values_preserve_comments_and_reload_atomically() {
+    let folder = std::env::temp_dir().join(format!(
+        "argv-todo-preferences-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let mut config = Config::load(&folder.join("db.sql"), false).unwrap();
+    fs::write(&config.path, "# header\ndefault_priority = 'mid' # priority\nshow_completed = true # visibility\nshow_hints = true # hints\nsort_order = 'priority' # order\n# footer\n").unwrap();
+    config.save_default_priority(Priority::Low).unwrap();
+    config.save_show_completed(false).unwrap();
+    config.save_show_hints(false).unwrap();
+    config.save_sort_order(SortOrder::Manual).unwrap();
+    let saved = fs::read_to_string(&config.path).unwrap();
+    assert_eq!(
+        saved,
+        "# header\ndefault_priority = \"low\" # priority\nshow_completed = false # visibility\nshow_hints = false # hints\nsort_order = \"manual\" # order\n# footer\n"
+    );
+    config.reload().unwrap();
+    assert_eq!(config.default_priority, Priority::Low);
+    assert!(!config.show_completed && !config.show_hints);
+    assert_eq!(config.sort_order, SortOrder::Manual);
+    let blocked = config
+        .path
+        .with_file_name(format!(".config.toml.{}.tmp", std::process::id()));
+    fs::write(&blocked, "blocked").unwrap();
+    assert!(config.save_default_priority(Priority::High).is_err());
+    assert!(config.save_show_completed(true).is_err());
+    assert!(config.save_show_hints(true).is_err());
+    assert!(config.save_sort_order(SortOrder::Priority).is_err());
+    assert_eq!(config.default_priority, Priority::Low);
+    assert!(!config.show_completed && !config.show_hints);
+    assert_eq!(config.sort_order, SortOrder::Manual);
+    assert_eq!(fs::read_to_string(&config.path).unwrap(), saved);
+    fs::remove_file(blocked).unwrap();
+    fs::write(
+        &config.path,
+        "default_priority = 'high'\nshow_hints = 'bad'",
+    )
+    .unwrap();
+    assert!(config.reload().is_err());
+    assert_eq!(config.default_priority, Priority::Low);
+    fs::remove_dir_all(folder).unwrap();
 }
 
 #[test]

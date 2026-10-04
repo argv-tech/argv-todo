@@ -21,6 +21,10 @@ fn app() -> App {
         active_database: "/temporary/db.sql".into(),
         database_override: false,
         task_view: TaskView::Normal,
+        default_priority: crate::db::Priority::Mid,
+        show_completed: true,
+        sort_order: crate::config::SortOrder::Priority,
+        show_hints: true,
     });
     app
 }
@@ -152,4 +156,100 @@ fn task_view_details_survive_resize_and_nonzero_origins() {
             }
         }
     }
+}
+
+#[test]
+fn new_settings_scroll_into_view_and_details_follow_selection_on_resize() {
+    let mut app = app();
+    app.config.as_mut().unwrap().task_view = TaskView::Split;
+    let mut terminal = Terminal::new(TestBackend::new(120, 35)).unwrap();
+    for setting in [
+        ConfigSetting::DefaultPriority,
+        ConfigSetting::ShowCompleted,
+        ConfigSetting::SortOrder,
+        ConfigSetting::ShowHints,
+    ] {
+        app.config_setting = setting;
+        for (width, height) in [(120, 35), (80, 24), (74, 12), (73, 12), (35, 12)] {
+            terminal.backend_mut().resize(width, height);
+            terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+            let (label_x, label_y) = text_position(&terminal, &format!("{}  ", setting.name()));
+            let (details_x, details_y) = text_position(
+                &terminal,
+                &format!("{} · {}", setting.name(), setting.value(&app)),
+            );
+            if width >= 74 {
+                assert!(details_x > label_x);
+            } else {
+                assert!(details_y > label_y);
+            }
+            let (value_x, value_y) = (label_x + setting.name().len() as u16 + 2, label_y);
+            assert!(
+                terminal.backend().buffer()[(value_x, value_y)]
+                    .modifier
+                    .contains(Modifier::UNDERLINED)
+            );
+            if setting == ConfigSetting::ShowCompleted {
+                text_position(&terminal, "Always false in Split.");
+            }
+            assert!(!contains(&terminal, "active database"));
+        }
+    }
+    let area = Rect::new(7, 4, 35, 12);
+    let mut terminal = Terminal::with_options(
+        TestBackend::new(55, 25),
+        TerminalOptions {
+            viewport: Viewport::Fixed(area),
+        },
+    )
+    .unwrap();
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    assert!(area.contains(text_position(&terminal, "show_hints · true").into()));
+}
+
+#[test]
+fn hiding_hints_keeps_mode_errors_and_help_usable() {
+    let mut app = app();
+    app.config.as_mut().unwrap().show_hints = false;
+    app.configuring = false;
+    let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    text_position(&terminal, "normal");
+    assert!(!contains(&terminal, "q quit"));
+    assert!(!contains(&terminal, "? help"));
+    app.configuring = true;
+    app.config_setting = ConfigSetting::ShowHints;
+    app.error = true;
+    app.status = "Could not save config".into();
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    text_position(&terminal, "show_hints · false");
+    text_position(&terminal, "Could not save config");
+    assert!(!contains(&terminal, "j/k setting"));
+    app.help = true;
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    text_position(&terminal, "Esc / ? close");
+}
+
+#[test]
+fn manual_sort_places_inline_sibling_drafts_at_the_saved_position() {
+    use crate::{config::SortOrder, db::Priority, vim_motion::InputTarget};
+    let database = Database::memory();
+    let first = database.add("Low root", None, Priority::Low).unwrap();
+    database.add("Child", Some(first), Priority::Low).unwrap();
+    let second = database.add("High root", None, Priority::High).unwrap();
+    let config = app().config;
+    let mut app = App::new(database).unwrap();
+    app.config = config;
+    app.config.as_mut().unwrap().sort_order = SortOrder::Manual;
+    app.adding_relative = Some((second, true));
+    app.input_priority = Priority::Mid;
+    app.vim.begin_input(InputTarget::Task);
+    app.editor.insert("Draft sibling");
+    let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    let child_y = text_position(&terminal, "Child").1;
+    let draft_y = text_position(&terminal, "Draft sibling").1;
+    let second_y = text_position(&terminal, "High root").1;
+    assert_eq!(draft_y, child_y + 1);
+    assert_eq!(second_y, draft_y + 1);
 }

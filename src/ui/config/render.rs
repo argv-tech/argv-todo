@@ -56,7 +56,7 @@ pub(in crate::ui) fn draw_config(frame: &mut Frame, app: &App, area: Rect) {
             Constraint::Min(0),
         ])
         .areas(body);
-        draw_form(frame, app, form, spacious);
+        draw_form(frame, app, form);
         let divider = Block::default()
             .borders(Borders::LEFT)
             .border_style(Style::default().fg(MUTED));
@@ -68,11 +68,11 @@ pub(in crate::ui) fn draw_config(frame: &mut Frame, app: &App, area: Rect) {
         draw_details(frame, app, content, false);
     } else {
         let [form, details] = Layout::vertical([
-            Constraint::Length(if spacious { 6 } else { 3 }),
+            Constraint::Length(body.height.saturating_sub(3).clamp(3, 10)),
             Constraint::Min(0),
         ])
         .areas(body);
-        draw_form(frame, app, form, spacious);
+        draw_form(frame, app, form);
         draw_details(frame, app, details, true);
     }
     frame.render_widget(
@@ -85,6 +85,8 @@ pub(in crate::ui) fn draw_config(frame: &mut Frame, app: &App, area: Rect) {
     );
     let hint = if app.vim.input().is_some() {
         super::super::chrome::draw_footer(frame, app, footer);
+        return;
+    } else if !app.show_hints() {
         return;
     } else if area.width < 45 {
         "j/k setting · Enter change · Esc"

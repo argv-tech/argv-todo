@@ -40,6 +40,11 @@ const SECTIONS: &[Section] = &[
             ("u", "Restore the last deletion in this session"),
             ("t / Ctrl-p", "Cycle priority: low > mid > high > low"),
             ("ph / pm / pl", "Set high / mid / low priority"),
+            ("Shift-J / K", "Move a task tree down / up in manual sort"),
+            (
+                "Shift-H / L",
+                "Outdent / indent under previous sibling in manual sort",
+            ),
         ],
     },
     Section {
@@ -51,12 +56,18 @@ const SECTIONS: &[Section] = &[
                 "Clear an applied search, otherwise open configuration",
             ),
             ("Ctrl-r", "Reload tasks from disk"),
-            ("Settings j / k", "Select database_path or task_view"),
+            (
+                "Settings j / k",
+                "Select a setting; Tab / Shift-Tab cycles settings",
+            ),
             (
                 "Settings Enter",
-                "Edit path or cycle task_view; layouts apply live",
+                "Edit path or change a setting; changes apply live",
             ),
-            ("Settings h / l", "Switch normal / split task_view"),
+            (
+                "Settings h / l",
+                "Cycle the selected setting backward / forward",
+            ),
             ("?", "Open help; press again to close"),
             ("q / Ctrl-c", "Quit from the tree / quit anywhere"),
         ],

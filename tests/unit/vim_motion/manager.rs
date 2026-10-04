@@ -10,7 +10,11 @@ fn tab_switches_panes_only_on_press_and_keeps_fields_isolated() {
         vim.handle(key('p'));
         assert_eq!(
             vim.handle(KeyEvent::new(code, KeyModifiers::NONE)),
-            Some(VimAction::SwitchPane)
+            Some(if code == KeyCode::BackTab {
+                VimAction::SwitchPaneBackward
+            } else {
+                VimAction::SwitchPane
+            })
         );
         assert!(vim.pending_label().is_empty());
         for kind in [KeyEventKind::Repeat, KeyEventKind::Release] {
@@ -39,6 +43,35 @@ fn tab_switches_panes_only_on_press_and_keeps_fields_isolated() {
             );
             assert_eq!(vim.input(), Some(target));
         }
+    }
+}
+
+#[test]
+fn shifted_task_movement_keeps_counts_key_kinds_and_editor_input_distinct() {
+    use crate::db::TaskMove;
+    let mut vim = VimManager::default();
+    for (letter, movement) in [
+        ('H', TaskMove::Outdent),
+        ('J', TaskMove::Down),
+        ('K', TaskMove::Up),
+        ('L', TaskMove::Indent),
+    ] {
+        for code in [letter, letter.to_ascii_lowercase()] {
+            vim.handle(key('3'));
+            let mut event = KeyEvent::new(KeyCode::Char(code), KeyModifiers::SHIFT);
+            assert_eq!(vim.handle(event), Some(VimAction::MoveTask(movement, 3)));
+            event.kind = KeyEventKind::Repeat;
+            assert_eq!(vim.handle(event), Some(VimAction::MoveTask(movement, 1)));
+            event.kind = KeyEventKind::Release;
+            assert_eq!(vim.handle(event), None);
+        }
+        assert_eq!(
+            vim.handle(key(letter)),
+            Some(VimAction::MoveTask(movement, 1))
+        );
+        vim.begin_input(InputTarget::Task);
+        assert_eq!(vim.handle(key(letter)), Some(VimAction::Insert(letter)));
+        vim.end_input();
     }
 }
 

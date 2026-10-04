@@ -35,6 +35,10 @@ fn app(view: TaskView) -> App {
         active_database: "/unused/db.sql".into(),
         database_override: false,
         task_view: view,
+        default_priority: crate::db::Priority::Mid,
+        show_completed: true,
+        sort_order: crate::config::SortOrder::Priority,
+        show_hints: true,
     });
     app
 }

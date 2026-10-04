@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use super::{App, TreeRow};
-use crate::{db::Todo, vim_motion::InputTarget};
+use crate::{config::TaskView, db::Todo, vim_motion::InputTarget};
 
 impl App {
     /// All tasks in tree order. Searches retain the ancestors of matching tasks.
@@ -23,7 +23,11 @@ impl App {
         for (index, todo) in self.todos.iter().enumerate() {
             let parent = todo.parent_id.filter(|id| by_id.contains_key(id));
             children.entry(parent).or_default().push(index);
-            if query.is_empty() || todo.title.to_lowercase().contains(&query) {
+            let visible_completion =
+                self.task_view() == TaskView::Split || self.show_completed() || !todo.done;
+            if visible_completion
+                && (query.is_empty() || todo.title.to_lowercase().contains(&query))
+            {
                 let mut ancestor = Some(index);
                 while let Some(index) = ancestor {
                     if !included.insert(index) {
@@ -34,6 +38,9 @@ impl App {
                         .and_then(|id| by_id.get(&id).copied());
                 }
             }
+        }
+        for siblings in children.values_mut() {
+            siblings.sort_by_key(|&index| self.sibling_sort_key(&self.todos[index]));
         }
         let mut stack: Vec<_> = children
             .get(&None)
@@ -100,7 +107,11 @@ impl App {
         if let Some(child) = self
             .todos
             .iter()
-            .find(|todo| todo.parent_id == Some(id))
+            .filter(|todo| {
+                todo.parent_id == Some(id)
+                    && (self.task_view() == TaskView::Split || self.show_completed() || !todo.done)
+            })
+            .min_by_key(|todo| self.sibling_sort_key(todo))
             .map(|todo| todo.id)
         {
             self.query.clear();

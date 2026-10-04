@@ -97,6 +97,10 @@ fn database_preview_tracks_drafts_and_saved_paths() {
         active_database: active.clone(),
         database_override: false,
         task_view: crate::config::TaskView::Normal,
+        default_priority: crate::db::Priority::Mid,
+        show_completed: true,
+        sort_order: crate::config::SortOrder::Priority,
+        show_hints: true,
     });
     let mut terminal = Terminal::new(TestBackend::new(120, 35)).unwrap();
     let absolute = folder.join("absolute.sql").display().to_string();
@@ -157,6 +161,10 @@ fn database_preview_remains_visible_on_resize() {
         active_database: "/temporary/db.sql".into(),
         database_override: true,
         task_view: crate::config::TaskView::Normal,
+        default_priority: crate::db::Priority::Mid,
+        show_completed: true,
+        sort_order: crate::config::SortOrder::Priority,
+        show_hints: true,
     });
     let mut terminal = Terminal::new(TestBackend::new(120, 35)).unwrap();
     for (width, height) in [(120, 35), (100, 17), (74, 12), (73, 12), (35, 12)] {
@@ -198,6 +206,10 @@ fn config_view_shows_logo_when_it_fits_and_keeps_editor_visible() {
         active_database: "/temporary/tasks.sql".into(),
         database_override: true,
         task_view: crate::config::TaskView::Normal,
+        default_priority: crate::db::Priority::Mid,
+        show_completed: true,
+        sort_order: crate::config::SortOrder::Priority,
+        show_hints: true,
     });
     for (width, height) in [(20, 5), (35, 12), (60, 16), (80, 24), (120, 35)] {
         let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
@@ -628,6 +640,10 @@ fn configuration_splits_editor_and_paths_then_stacks_on_resize() {
         active_database: "/temporary/tasks.sql".into(),
         database_override: true,
         task_view: crate::config::TaskView::Normal,
+        default_priority: crate::db::Priority::Mid,
+        show_completed: true,
+        sort_order: crate::config::SortOrder::Priority,
+        show_hints: true,
     });
     let mut terminal = Terminal::new(TestBackend::new(100, 17)).unwrap();
     for (width, height) in [(100, 17), (74, 12), (73, 12), (35, 12), (120, 35)] {
