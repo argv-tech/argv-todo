@@ -4,6 +4,97 @@ fn key(c: char) -> KeyEvent {
 }
 
 #[test]
+fn return_folds_only_on_press_and_completion_keeps_its_own_keys() {
+    let mut vim = VimManager::default();
+    vim.handle(key('3'));
+    assert_eq!(
+        vim.handle(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+        Some(VimAction::ToggleCollapse)
+    );
+    assert!(vim.pending_label().is_empty());
+    for kind in [KeyEventKind::Repeat, KeyEventKind::Release] {
+        let mut key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
+        key.kind = kind;
+        assert_eq!(vim.handle(key), None);
+    }
+    for c in [' ', 'x'] {
+        assert_eq!(vim.handle(key(c)), Some(VimAction::Toggle));
+    }
+}
+
+#[test]
+fn tab_switches_panes_only_on_press_and_keeps_fields_isolated() {
+    let mut vim = VimManager::default();
+    for code in [KeyCode::Tab, KeyCode::BackTab] {
+        vim.handle(key('p'));
+        assert_eq!(
+            vim.handle(KeyEvent::new(code, KeyModifiers::NONE)),
+            Some(if code == KeyCode::BackTab {
+                VimAction::SwitchPaneBackward
+            } else {
+                VimAction::SwitchPane
+            })
+        );
+        assert!(vim.pending_label().is_empty());
+        for kind in [KeyEventKind::Repeat, KeyEventKind::Release] {
+            let mut event = KeyEvent::new(code, KeyModifiers::NONE);
+            event.kind = kind;
+            assert_eq!(vim.handle(event), None);
+        }
+    }
+    for target in [
+        InputTarget::Task,
+        InputTarget::Search,
+        InputTarget::DatabasePath,
+    ] {
+        vim.begin_input(target);
+        for mode in [
+            VimMode::Insert,
+            VimMode::Normal,
+            VimMode::Visual,
+            VimMode::VisualLine,
+            VimMode::Replace,
+        ] {
+            vim.set_mode(mode);
+            assert_eq!(
+                vim.handle(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE)),
+                None
+            );
+            assert_eq!(vim.input(), Some(target));
+        }
+    }
+}
+
+#[test]
+fn shifted_task_movement_keeps_counts_key_kinds_and_editor_input_distinct() {
+    use crate::db::TaskMove;
+    let mut vim = VimManager::default();
+    for (letter, movement) in [
+        ('H', TaskMove::Outdent),
+        ('J', TaskMove::Down),
+        ('K', TaskMove::Up),
+        ('L', TaskMove::Indent),
+    ] {
+        for code in [letter, letter.to_ascii_lowercase()] {
+            vim.handle(key('3'));
+            let mut event = KeyEvent::new(KeyCode::Char(code), KeyModifiers::SHIFT);
+            assert_eq!(vim.handle(event), Some(VimAction::MoveTask(movement, 3)));
+            event.kind = KeyEventKind::Repeat;
+            assert_eq!(vim.handle(event), Some(VimAction::MoveTask(movement, 1)));
+            event.kind = KeyEventKind::Release;
+            assert_eq!(vim.handle(event), None);
+        }
+        assert_eq!(
+            vim.handle(key(letter)),
+            Some(VimAction::MoveTask(movement, 1))
+        );
+        vim.begin_input(InputTarget::Task);
+        assert_eq!(vim.handle(key(letter)), Some(VimAction::Insert(letter)));
+        vim.end_input();
+    }
+}
+
+#[test]
 fn motions_counts_and_sequences() {
     let mut vim = VimManager::default();
     for (c, motion) in [

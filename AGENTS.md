@@ -78,18 +78,18 @@ Current source layout:
 | Module            | Responsibility                                                  |
 | ----------------- | --------------------------------------------------------------- |
 | `src/main.rs`     | Startup, terminal setup and cleanup                             |
-| `src/app/`        | State, actions, editing, events, navigation, settings, tasks    |
-| `src/ui/`         | Frame composition, geometry, text, editors, chrome, help, theme |
-| `src/ui/tasks/`   | Draft placement and task-tree rendering                         |
-| `src/ui/help/`    | Shortcut content, wrapping, and help rendering                  |
-| `src/ui/config/`  | Configuration panes, setting editor, and path details           |
+| `src/app/`        | State, actions, editing, events, tree navigation, folding, settings, tasks, pane focus and projections |
+| `src/ui/`         | Frame composition, shared branding, geometry, text, editors, chrome, help, theme |
+| `src/ui/tasks/`   | Pane composition, draft placement, and task-tree rendering       |
+| `src/ui/help/`    | Shortcut content, wrapping, section guide, footer, and help rendering                  |
+| `src/ui/config/`  | Configuration panes, setting editor, selected-setting details and layout previews |
 | `src/db/`         | Database entry point, task model, queries, migrations, trees    |
 | `src/cli.rs`      | Command-line options and path overrides                         |
 | `src/config/`     | Configuration paths, loading, validation, and atomic saving     |
 | `src/vim_motion/` | Keyboard mapping, modes, actions, and Unicode text editing      |
 | `src/vim_motion/manager/` | Task, field, and help key mapping, counts, pending command parsing |
 | `src/vim_motion/editor/` | Unicode cursor and selection, edits, motions, objects, history, viewport |
-| `tests/unit/`     | Unit suites and test helpers, grouped by owning module          |
+| `tests/unit/`     | Unit suites, test helpers, and the platform terminal smoke check |
 
 Directory modules keep their shared state and interface in `mod.rs`, with
 focused private implementation modules alongside it. All test suites and test
@@ -123,9 +123,13 @@ visibility rules above when adding or changing module boundaries.
 
 - Use the full terminal with small edge margins, readable text, and restrained
   colors.
-- Keep tasks in one view. Show parents and children together with indentation;
-  avoid tabs, separate task pages, dashboards, and large panels.
-- `j/k` selects tasks. `h` selects the parent. `l` selects the first child and
+- Keep the normal view as a full task tree with indentation. Optional Split
+  shows todo/completed panes, with unfinished ancestors as nonselectable ghost
+  context for completed children. Tab switches pane focus; settings apply layout
+  changes immediately.
+  Avoid separate task pages, dashboards, and large panels.
+- `j/k` selects visible tasks at every level. Return collapses or expands
+  children. `h` selects the parent. `l` expands and selects the first child and
   stays selected if there are none. `i/a` creates a child, or a root when the
   list is empty.
 - Keep input hints short and adapt the layout to narrow terminals.
@@ -191,6 +195,10 @@ visibility rules above when adding or changing module boundaries.
 - Add a concise `CHANGELOG.md` entry for user-visible changes.
 - Preserve uncommitted user changes. Avoid unrelated refactors and commit only
   when requested.
+- Always use Conventional Commits for commit messages: `type(scope): description`,
+  with an optional scope (for example, `feat(ui): add layout previews` or
+  `fix: preserve selection`). Use `!` or a `BREAKING CHANGE:` footer for breaking
+  changes.
 
 ## Validation
 

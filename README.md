@@ -3,6 +3,7 @@
 A small terminal todo app with Vim-style keys, nested tasks, and local SQLite storage. Built with Rust, Ratatui, and Crossterm.
 
 - Keep parents and children together in one task tree.
+- Choose normal or split todo/completed layouts in Settings.
 - Create and edit tasks inline, with three priority levels and saved sibling order.
 - Search titles, complete subtrees, and undo deletions.
 - Use Unicode text, bracketed paste, and your terminal's color palette.
@@ -12,6 +13,8 @@ A small terminal todo app with Vim-style keys, nested tasks, and local SQLite st
 ## Install from source
 
 A current stable Rust toolchain and a C compiler are required to build. SQLite is bundled; no SQLite server or system SQLite installation is required.
+
+On macOS, install the Xcode Command Line Tools with `xcode-select --install`. On Windows, use the Rust MSVC toolchain and Visual Studio Build Tools with the **Desktop development with C++** workload.
 
 ```sh
 git clone https://github.com/argv-tech/argv-todo.git
@@ -29,6 +32,8 @@ cargo run --locked
 ```
 
 An interactive terminal is required. The app uses the full terminal and shows task rows at 35 columns × 12 rows or larger. Press `?` for help and `q` to quit.
+
+Run in Terminal or iTerm2 on macOS, or Windows Terminal with PowerShell or Command Prompt on Windows. Linux and macOS use bracketed paste; Windows uses native console text input because Crossterm 0.29 does not parse bracketed-paste events there. Paste a single line into Windows input fields; a pasted newline acts as Enter.
 
 ## Storage
 
@@ -62,13 +67,20 @@ The generated config contains:
 
 ```toml
 database_path = "db.sql"
+task_view = "normal"
 ```
 
 Set `database_path` to an absolute path or a path relative to the config's directory. `--db` takes precedence over this setting. Changing the setting selects a database; it does not move existing tasks. The config stays in its original directory even when the database path points elsewhere.
 
-The app reads settings on startup and preserves existing config files, including comments. An empty config uses `db.sql`. Invalid TOML, unknown settings, and invalid database paths produce an error before the terminal interface opens. `--help` and `--version` do not create files.
+For Windows paths in TOML, use literal strings such as `database_path = 'C:\Users\example\task storage\db.sql'`, or forward slashes such as `database_path = "C:/Users/example/task storage/db.sql"`.
 
-Press `Esc` from the task view to open configuration. At 74 columns or wider, the screen splits into two panes: the database-path setting on the left and the active database and configuration-file paths on the right. Smaller terminals stack these sections. Paths wrap in spacious panes and show an ellipsis when space is limited. The screen shows the ARGV-TODO ASCII logo when the terminal is large enough and a compact heading on smaller terminals. Press `Enter`, `e`, or `i` to edit `database_path`, then `Enter` to save it to TOML. Editing uses the same Unicode text controls and paste support as task titles. Saves preserve comments and apply on the next launch; the current database stays open. `--db` continues to take precedence.
+The app reads settings on startup and when opening configuration, preserving existing config files and comments. An empty config uses `db.sql` and the normal task view. Invalid TOML, unknown settings, invalid layout names, and invalid database paths produce an error before the terminal interface opens. `--help` and `--version` do not create files.
+
+Press `Esc` from the task view to open configuration. Use `j` / `k`, arrows, or `Tab` to select a setting. At 74 columns or wider, the screen shows settings on the left and details for the selected setting on the right. Selecting `database_path` shows database and configuration-file paths; selecting `task_view` shows the active layout, its controls, and a small layout preview when space permits. Details update as you select or change a setting. Smaller terminals stack these sections and keep the details concise. Paths wrap in spacious panes and show an ellipsis when space is limited. The screen shows the ARGV-TODO ASCII logo when space permits. On `database_path`, press `Enter`, `e`, or `i` to edit, then `Enter` to save. Editing uses the same Unicode controls and paste support as task titles. Database-path changes apply on the next launch; the current database stays open, and `--db` retains precedence.
+
+On `task_view`, press `Enter`, `e`, `i`, `h` / `l`, or Left / Right to switch between `normal` and `split`. The choice saves to TOML and applies immediately. Press `Esc` to return to tasks without restarting. Normal keeps the full task tree. Split shows unfinished todos on the left and completed tasks on the right, stacking them below 74 columns. Unfinished ancestors of completed children appear in the Completed pane as dimmed ghost rows labeled `(parent)`. These rows provide context and are skipped by selection and task commands. An obsolete `nested` setting falls back to Normal.
+
+In Split, `Tab` or `Shift-Tab` switches pane focus. Each pane keeps its own selection and scroll position; task commands operate on the focused pane. Completing or reopening a task moves it to the corresponding pane and keeps it selected. Search filters both panes. Tab leaves focus in an active editor while typing.
 
 A database preview labeled “after restart” appears below the active database when the draft or saved setting resolves to a different path. Relative paths resolve against the config directory. The preview updates while editing; `--db` still takes precedence on launch.
 
@@ -78,8 +90,9 @@ While editing configuration, `Esc` discards the draft and returns to the configu
 
 | Key | Action |
 | --- | --- |
-| `j` / `k` | Next / previous row in the task tree |
-| `l` | Select the first child; stay selected if there are none |
+| `j` / `k` | Next / previous visible row in the task tree (also Up / Down) |
+| `Tab`, `Shift-Tab` | Switch panes in Split; select a setting in configuration |
+| `l` | Expand and select the first child; stay selected if there are none |
 | `h` | Select the parent task |
 | `gg` / `G` | First / last task |
 | `3j`, `2k` | Repeat a motion |
@@ -89,7 +102,8 @@ While editing configuration, `Esc` discards the draft and returns to the configu
 | `t` | Cycle priority: low → mid → high → low |
 | `ph`, `pm`, `pl` | Set priority to high, mid, or low |
 | `Ctrl-p` | Cycle priority, including while creating or editing inline |
-| `Space`, `x`, `Enter` | Toggle the selected task and all its descendants in normal mode |
+| `Enter` | Collapse or expand the selected task's children |
+| `Space`, `x` | Toggle the selected task and all its descendants in normal mode |
 | `dd`, `3dd` | Delete one / three tasks and all their children starting at selection |
 | `u` | Restore the last deleted task tree(s) in the current session |
 | `/` | Search all titles, ignoring case; keep ancestors visible for context |
@@ -98,7 +112,9 @@ While editing configuration, `Esc` discards the draft and returns to the configu
 | `Ctrl-r` | Reload tasks from disk |
 | `q`, `Ctrl-c` | Quit |
 
-Help groups shortcuts by task navigation, task changes, app controls, and field editing. Keys and descriptions align in wider terminals and stack on narrow screens. Use `j` / `k` or arrows to scroll, `PgUp` / `PgDn` to move a page, and `gg` / `G` or `Home` / `End` to jump to the beginning or end. A scrollbar and row range show your position. `Esc` or `?` closes help; the close hint stays visible while scrolling.
+Help covers task navigation, task changes, search, and settings. It uses the same full-screen branding and spacing as settings. On spacious terminals, choose a section in the guide with `j` / `k` or arrows; its shortcuts appear on the right. `Tab` / `Shift-Tab` cycles sections, and `gg` / `G` or `Home` / `End` selects the first / last section. Selection stays in the guide. Use `PgUp` / `PgDn` to scroll the selected section.
+
+Section titles are bold, uppercase, and spaced apart. Narrow or short terminals show all shortcuts in one scrolling column: use `j` / `k` or arrows to scroll, `PgUp` / `PgDn` to move a page, and `gg` / `G` or `Home` / `End` to jump to the beginning or end. Keys and descriptions align in wider panes and stack in narrow ones. A scrollbar and row range show your position. `Esc` or `?` closes help; the close hint stays visible.
 
 Every input field—task titles, search, and the configuration database path—supports **Insert**, **Normal**, **Visual**, **Visual Line**, and **Replace** modes. Fields open in Insert, where letters are text. `Esc` returns to Normal without closing the field; another `Esc` cancels it. In Visual or Replace, `Esc` also returns to Normal. When a command is pending, `Esc` cancels the command first. `Enter` saves or applies search from any field mode. The footer shows the mode and pending command; Visual selections use reverse video.
 
@@ -126,11 +142,11 @@ Motions and operators accept counts: `3dw` deletes three words and `2d3w` delete
 
 While typing, arrow keys, `Home`, and `End` move the cursor; `Ctrl-Left` / `Ctrl-Right` move by word. `Backspace`, `Delete`, `Ctrl-w`, and `Ctrl-u` edit text. Replace-mode `Backspace` restores the overwritten grapheme. Insert/Replace sessions undo as one change. `Ctrl-p` cycles task priority in any task-field mode. Bracketed paste inserts text, puts it after the cursor in Normal, or replaces a Visual selection. Newlines and other control characters become spaces. Editing and selection respect Unicode grapheme boundaries and display widths.
 
-Tasks can contain nested child tasks. Existing databases are upgraded automatically, keeping existing tasks at the top level. Deleting a parent also deletes its descendants; `u` restores the entire tree. Completing or reopening a parent gives all its descendants the same state, including tasks hidden by search. Toggling a child affects its own subtree without changing its ancestors or siblings. Changes are saved atomically.
+Tasks can contain nested child tasks. `j` / `k` moves through visible rows at every level; use `h` / `l` to select the parent or first child. `Enter` hides or reveals descendants without changing task data; a `+` beside the child count marks a collapsed branch. Collapse state lasts for the current session and is shared across panes. Starting a search expands branches so hidden tasks can appear in the results. Existing databases are upgraded automatically, keeping existing tasks at the top level. Deleting a parent also deletes its descendants; `u` restores the entire tree. Completing or reopening a parent gives all its descendants the same state, including tasks hidden by search. Toggling a child affects its own subtree without changing its ancestors or siblings. Changes are saved atomically.
 
 Tasks have **high**, **mid**, or **low** priority; new roots and existing tasks default to **mid**. New children inherit their parent's priority. Siblings created with `o` or `O` start with the selected task's priority so they appear beside it. Roots and children within each parent are sorted high first, then mid, then low. Equal priorities keep their saved sibling order, including insertion above or below. Changing a priority keeps the task selected, and children stay with their parent. Priorities and sibling order are saved in SQLite and preserved by deletion undo.
 
-The fullscreen interface uses your terminal's background and ANSI color palette. Tasks occupy one row each, with bold parents and indented connecting branches. A small cyan caret and an underlined title mark the selection; checkmarks and tree lines use normal text color and turn cyan when selected. Focus and completion preserve title and priority colors; a checkmark and a struck-through title identify completed tasks. A `done/total` count beside a parent shows its direct children. Long titles show an ellipsis so the count stays visible, without splitting Unicode graphemes. The header contains only the app name and completion count. Short key hints stay at the bottom and fit the available width; input and errors appear when needed. Help keeps its scroll and close instructions visible. Layout and key hints adapt to the terminal size.
+The fullscreen interface uses your terminal's background and ANSI color palette. Tasks occupy one row each, with bold parents and indented connecting branches. A small cyan caret and an underlined title mark the selection; checkmarks and tree lines use normal text color and turn cyan when selected. Focus and completion preserve title and priority colors; a checkmark and a struck-through title identify completed tasks. A `done/total` count beside a parent shows its direct children. Long titles show an ellipsis so the count stays visible, without splitting Unicode graphemes. The header shows the app name, version in red, and completion count. Short key hints stay at the bottom and fit the available width; input and errors appear when needed. Help keeps its scroll and close instructions visible. Layout and key hints adapt to the terminal size.
 
 Create and edit tasks directly in the tree. A new draft appears at its sorted position among siblings or directly beneath a parent when creating its first child. `Ctrl-p` changes the draft priority and its position before saving. Starting a new task clears search to show its context. `Enter` saves the inline row; `Esc` enters Normal and another `Esc` cancels it. Search stays at the bottom and remains live in every field mode.
 
@@ -143,7 +159,9 @@ cargo clippy --locked --all-targets -- -D warnings
 cargo build --locked
 ```
 
-CI runs these checks on Linux, macOS, and Windows. For a local test session, use `cargo run --locked -- --db ./target/dev/db.sql` to keep development tasks separate from your personal database.
+CI runs these checks on Linux, macOS, and Windows for pull requests targeting `main` or `dev`. Pushes to `main` build release binaries and upload platform archives named with their Cargo version, such as `argv-todo-0.1.0-linux.tar.gz`, as workflow artifacts. Pushing a `v*` tag runs the same checks and builds before publishing the archives to a GitHub release. The test and build workflows also support `workflow_call` for reuse and manual runs.
+
+For a local test session, use `cargo run --locked -- --db ./target/dev/db.sql` to keep development tasks separate from your personal database.
 
 Keyboard input and Unicode editing live in `src/vim_motion`, following the action-based structure of `argvcode`. See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) for development guidance, and the [maintainer guide](docs/maintaining.md) for repository setup and releases.
 

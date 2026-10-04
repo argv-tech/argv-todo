@@ -5,7 +5,7 @@ use ratatui::{
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
-use super::super::theme::{ACCENT, TEXT};
+use super::super::theme::ACCENT;
 
 struct Section {
     title: &'static str,
@@ -18,8 +18,13 @@ const SECTIONS: &[Section] = &[
         shortcuts: &[
             ("j / k", "Next / previous task (or Up / Down)"),
             ("l / h", "First child / parent; stay if there is no child"),
+            ("Enter", "Collapse / expand the selected task's children"),
             ("gg / G", "First / last task"),
             ("3j / 2k", "Repeat a movement"),
+            (
+                "Tab / Shift-Tab",
+                "Switch panes in Split; skip ghost parents",
+            ),
         ],
     },
     Section {
@@ -29,13 +34,18 @@ const SECTIONS: &[Section] = &[
             ("o / O", "Add a sibling below / above"),
             ("e / cc", "Edit the selected task"),
             (
-                "Space / x / Enter",
+                "Space / x",
                 "Complete or reopen the task and its descendants",
             ),
             ("dd / 3dd", "Delete one / three task trees from selection"),
             ("u", "Restore the last deletion in this session"),
             ("t / Ctrl-p", "Cycle priority: low > mid > high > low"),
             ("ph / pm / pl", "Set high / mid / low priority"),
+            ("Shift-J / K", "Move a task tree down / up in manual sort"),
+            (
+                "Shift-H / L",
+                "Outdent / indent under previous sibling in manual sort",
+            ),
         ],
     },
     Section {
@@ -47,113 +57,73 @@ const SECTIONS: &[Section] = &[
                 "Clear an applied search, otherwise open configuration",
             ),
             ("Ctrl-r", "Reload tasks from disk"),
+            (
+                "Settings j / k",
+                "Select a setting; Tab / Shift-Tab cycles settings",
+            ),
+            (
+                "Settings Enter",
+                "Edit path or change a setting; changes apply live",
+            ),
+            (
+                "Settings h / l",
+                "Cycle the selected setting backward / forward",
+            ),
             ("?", "Open help; press again to close"),
             ("q / Ctrl-c", "Quit from the tree / quit anywhere"),
         ],
     },
-    Section {
-        title: "FIELDS / Modes & saving",
-        shortcuts: &[
-            (
-                "Enter",
-                "Save the task or setting; apply search in any mode",
-            ),
-            ("Esc", "Return to Normal; press again to cancel the field"),
-            (
-                "i / a / I / A",
-                "Insert at cursor / after / first text / end",
-            ),
-            ("v / V", "Visual selection / select the whole field"),
-            ("R", "Replace mode"),
-            ("Ctrl-p", "Cycle priority in the task field"),
-            ("Paste", "Insert text or replace the Visual selection"),
-        ],
-    },
-    Section {
-        title: "FIELDS / Cursor movement",
-        shortcuts: &[
-            ("h / l / arrows", "Move left / right"),
-            (
-                "0 / ^ / $",
-                "Start / first nonblank / end (Home / End also work)",
-            ),
-            ("w / b / e", "Next word / previous word / word end"),
-            ("W / B / E", "Move by space-separated WORDs"),
-            ("ge / gE", "Previous word / WORD end"),
-            ("gg / G", "Field start / end"),
-            ("3| / %", "Display column / matching bracket"),
-            ("f / F + char", "Find a character forward / backward"),
-            ("t / T + char", "Stop before / after a character"),
-            ("; / ,", "Repeat / reverse the last find"),
-            ("Ctrl-Left/Right", "Move by word"),
-        ],
-    },
-    Section {
-        title: "FIELDS / Editing",
-        shortcuts: &[
-            (
-                "d / c / y",
-                "Delete / change / yank with a motion or object",
-            ),
-            ("dd / cc / yy", "Delete / change / yank the whole field"),
-            ("2d3w", "Multiply counts: delete six words"),
-            ("x / X", "Delete at / before the cursor"),
-            ("D / C", "Delete / change to the end"),
-            ("s / S", "Change characters / the whole field"),
-            ("r2 / 3r2", "Replace one / three graphemes with 2"),
-            ("p / P", "Put yanked text after / before the cursor"),
-            ("u / Ctrl-r / .", "Undo / redo / repeat a field change"),
-            (
-                "gu / gU / g~",
-                "Lowercase / uppercase / swap case with a motion",
-            ),
-            (
-                "Backspace / Delete",
-                "Delete before / at the cursor while typing",
-            ),
-            ("Ctrl-w / Ctrl-u", "Delete a word / clear while typing"),
-        ],
-    },
-    Section {
-        title: "FIELDS / Objects & selection",
-        shortcuts: &[
-            ("iw / aw", "Inner / around word; iW / aW for WORDs"),
-            ("i / a + delimiter", "Inside / around () [] {} <> or quotes"),
-            ("di{ / da}", "Delete inside / including braces"),
-            ("d2i{", "Delete inside an enclosing pair with a count"),
-            ("Quotes", "Single quote, double quote, or backtick"),
-            ("viw", "Select a word in Visual mode"),
-            ("o", "Swap the ends of the Visual selection"),
-            (
-                "d / c / y / r",
-                "Delete / change / yank / replace a selection",
-            ),
-            ("u / U / ~", "Lowercase / uppercase / swap case in Visual"),
-        ],
-    },
 ];
 
-pub(super) fn lines(width: u16) -> Vec<Line<'static>> {
+pub(super) struct SectionPosition {
+    pub(super) title: &'static str,
+    pub(super) row: usize,
+}
+
+#[derive(Default)]
+pub(super) struct Document {
+    pub(super) lines: Vec<Line<'static>>,
+    pub(super) sections: Vec<SectionPosition>,
+}
+
+impl Document {
+    pub(super) fn section_range(&self, index: usize) -> std::ops::Range<usize> {
+        let start = self.sections.get(index).map_or(0, |section| section.row);
+        let end = self
+            .sections
+            .get(index + 1)
+            .map_or(self.lines.len(), |section| section.row.saturating_sub(1));
+        start..end
+    }
+}
+
+pub(super) fn document(width: u16) -> Document {
     let width = usize::from(width);
     if width == 0 {
-        return Vec::new();
+        return Document::default();
     }
     let key_style = Style::default().fg(ACCENT).add_modifier(Modifier::BOLD);
     let heading_style = Style::default()
-        .fg(TEXT)
+        .fg(ACCENT)
         .add_modifier(Modifier::BOLD | Modifier::UNDERLINED);
     let key_column = 20;
     let aligned = width >= 52;
     let mut lines = Vec::new();
+    let mut sections = Vec::new();
     for section in SECTIONS {
         if !lines.is_empty() {
             lines.push(Line::default());
         }
+        sections.push(SectionPosition {
+            title: section.title,
+            row: lines.len(),
+        });
         lines.extend(
-            wrap(section.title, width)
+            wrap(&section.title.to_uppercase(), width)
                 .into_iter()
                 .map(|text| Line::styled(text, heading_style)),
         );
+        lines.push(Line::default());
         for &(keys, description) in section.shortcuts {
             if aligned {
                 for (index, text) in wrap(description, width - key_column)
@@ -182,7 +152,7 @@ pub(super) fn lines(width: u16) -> Vec<Line<'static>> {
             }
         }
     }
-    lines
+    Document { lines, sections }
 }
 
 // Wrap before rendering so scrolling and page limits count actual terminal rows.

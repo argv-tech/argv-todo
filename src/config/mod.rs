@@ -1,5 +1,10 @@
 mod parsing;
 mod saving;
+mod sort_order;
+mod task_view;
+
+pub(crate) use sort_order::SortOrder;
+pub(crate) use task_view::TaskView;
 
 #[cfg(test)]
 #[path = "../../tests/unit/config.rs"]
@@ -13,14 +18,20 @@ use std::{
 };
 
 use self::parsing::parse;
+use crate::db::Priority;
 
-const DEFAULT_CONFIG: &str = "# Paths are relative to this config file. --db overrides this setting.\ndatabase_path = \"db.sql\"\n";
+const DEFAULT_CONFIG: &str = "# Paths are relative to this config file. --db overrides this setting.\ndatabase_path = \"db.sql\"\n\n# Task layouts: normal, split. Changes apply immediately in Settings.\ntask_view = \"normal\"\n\n# New roots use this priority; children inherit their parent's priority.\ndefault_priority = \"mid\"\n\n# Normal view only. Split always separates completed tasks.\nshow_completed = true\n\n# Sibling ordering: priority or manual. Shift+H/J/K/L moves tasks in manual mode.\nsort_order = \"priority\"\n\n# Show task and configuration footer shortcuts.\nshow_hints = true\n";
 
 pub(crate) struct Config {
     pub(crate) path: PathBuf,
     pub(crate) database_path: String,
     pub(crate) active_database: PathBuf,
     pub(crate) database_override: bool,
+    pub(crate) task_view: TaskView,
+    pub(crate) default_priority: Priority,
+    pub(crate) show_completed: bool,
+    pub(crate) sort_order: SortOrder,
+    pub(crate) show_hints: bool,
 }
 
 impl Config {
@@ -64,7 +75,7 @@ impl Config {
         let database = if database_override {
             default_database.to_path_buf()
         } else {
-            folder.join(&configured)
+            folder.join(&configured.database_path)
         };
         ensure!(
             database != config_path,
@@ -72,19 +83,28 @@ impl Config {
         );
         Ok(Self {
             path: config_path,
-            database_path: configured.to_string_lossy().into_owned(),
+            database_path: configured.database_path.to_string_lossy().into_owned(),
             active_database: database,
             database_override,
+            task_view: configured.task_view,
+            default_priority: configured.default_priority,
+            show_completed: configured.show_completed,
+            sort_order: configured.sort_order,
+            show_hints: configured.show_hints,
         })
     }
 
     pub(crate) fn reload(&mut self) -> Result<()> {
         let content = fs::read_to_string(&self.path)
             .with_context(|| format!("Could not read config {}", self.path.display()))?;
-        self.database_path = parse(&content)
-            .with_context(|| format!("Invalid config {}", self.path.display()))?
-            .to_string_lossy()
-            .into_owned();
+        let configured =
+            parse(&content).with_context(|| format!("Invalid config {}", self.path.display()))?;
+        self.database_path = configured.database_path.to_string_lossy().into_owned();
+        self.task_view = configured.task_view;
+        self.default_priority = configured.default_priority;
+        self.show_completed = configured.show_completed;
+        self.sort_order = configured.sort_order;
+        self.show_hints = configured.show_hints;
         Ok(())
     }
 }

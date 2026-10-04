@@ -1,11 +1,12 @@
 use crate::{
     app::App,
+    config::TaskView,
     vim_motion::{InputTarget, VimMode},
 };
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Layout, Rect},
-    style::{Modifier, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::Paragraph,
 };
@@ -18,12 +19,20 @@ use super::{
 use unicode_width::UnicodeWidthStr;
 
 pub(super) fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
-    let [brand, summary] =
-        Layout::horizontal([Constraint::Length(11), Constraint::Min(0)]).areas(area);
-    frame.render_widget(
-        Paragraph::new("argv-todo").style(Style::default().fg(TEXT).add_modifier(Modifier::BOLD)),
-        brand,
-    );
+    let brand = Line::from(vec![
+        Span::styled(
+            "argv-todo",
+            Style::default().fg(TEXT).add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            concat!(" v", env!("CARGO_PKG_VERSION")),
+            Style::default().fg(Color::Red),
+        ),
+    ]);
+    let brand_width = (brand.width() + 2) as u16;
+    let [brand_area, summary] =
+        Layout::horizontal([Constraint::Length(brand_width), Constraint::Min(0)]).areas(area);
+    frame.render_widget(Paragraph::new(brand), brand_area);
     let done = app.todos.iter().filter(|todo| todo.done).count();
     let text = if app.todos.is_empty() {
         "0 tasks".into()
@@ -80,6 +89,9 @@ pub(super) fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
         })),
         mode,
     );
+    if !app.show_hints() {
+        return;
+    }
     let hint = footer_hint(app, usize::from(keys.width));
     frame.render_widget(
         Paragraph::new(hint)
@@ -144,9 +156,17 @@ fn footer_hint(app: &App, width: usize) -> &'static str {
             "Esc clear · ? help · q quit",
             "Esc clear · ? · q",
         ]
+    } else if app.task_view() != TaskView::Normal {
+        &[
+            "Tab pane · j/k move · h/l tree · Enter fold · i child · Esc config · ? help · q quit",
+            "Tab pane · i child · Esc config · ? help · q quit",
+            "Tab pane · Esc config · ? · q",
+            "Tab pane · ? · q",
+            "Tab · ? · q",
+        ]
     } else {
         &[
-            "j/k move · h/l tree · i/a child · o/O sibling · x done · t priority · Esc config · ? help · q quit",
+            "j/k move · h/l tree · i/a child · o/O sibling · Enter fold · x done · t priority · Esc config · ? help · q quit",
             "i child · o/O sibling · Esc config · ? help · q quit",
             "i child · Esc config · ? help · q quit",
             "i · Esc config · ? · q",

@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use super::{App, TreeRow};
-use crate::{db::Todo, vim_motion::InputTarget};
+use crate::{config::TaskView, db::Todo, vim_motion::InputTarget};
 
 impl App {
     /// All tasks in tree order. Searches retain the ancestors of matching tasks.
@@ -23,7 +23,11 @@ impl App {
         for (index, todo) in self.todos.iter().enumerate() {
             let parent = todo.parent_id.filter(|id| by_id.contains_key(id));
             children.entry(parent).or_default().push(index);
-            if query.is_empty() || todo.title.to_lowercase().contains(&query) {
+            let visible_completion =
+                self.task_view() == TaskView::Split || self.show_completed() || !todo.done;
+            if visible_completion
+                && (query.is_empty() || todo.title.to_lowercase().contains(&query))
+            {
                 let mut ancestor = Some(index);
                 while let Some(index) = ancestor {
                     if !included.insert(index) {
@@ -35,12 +39,19 @@ impl App {
                 }
             }
         }
+        for siblings in children.values_mut() {
+            siblings.sort_by_key(|&index| self.sibling_sort_key(&self.todos[index]));
+        }
         let mut stack: Vec<_> = children
             .get(&None)
             .into_iter()
             .flatten()
             .rev()
-            .map(|&index| TreeRow { index, depth: 0 })
+            .map(|&index| TreeRow {
+                index,
+                depth: 0,
+                ghost: false,
+            })
             .collect();
         let mut rows = Vec::new();
         while let Some(row) = stack.pop() {
@@ -51,6 +62,7 @@ impl App {
                 stack.extend(children.iter().rev().map(|&index| TreeRow {
                     index,
                     depth: row.depth + 1,
+                    ghost: false,
                 }));
             }
             rows.push(row);
@@ -59,8 +71,9 @@ impl App {
     }
 
     pub(super) fn visible_indices(&self) -> Vec<usize> {
-        self.visible_rows()
+        self.rows_for_pane(self.task_pane())
             .into_iter()
+            .filter(|row| !row.ghost)
             .map(|row| row.index)
             .collect()
     }
@@ -75,11 +88,16 @@ impl App {
     }
 
     pub(super) fn select_id(&mut self, id: i64) {
-        self.list.select(
-            self.visible_indices()
-                .iter()
-                .position(|&index| self.todos[index].id == id),
-        );
+        self.expand_ancestors(id);
+        let row = self
+            .visible_indices()
+            .iter()
+            .position(|&index| self.todos[index].id == id);
+        if row.is_some() {
+            self.active_list_mut().select(row);
+        } else {
+            self.select_in_task_view(id);
+        }
         self.normalize_selection();
     }
 
@@ -90,7 +108,11 @@ impl App {
         if let Some(child) = self
             .todos
             .iter()
-            .find(|todo| todo.parent_id == Some(id))
+            .filter(|todo| {
+                todo.parent_id == Some(id)
+                    && (self.task_view() == TaskView::Split || self.show_completed() || !todo.done)
+            })
+            .min_by_key(|todo| self.sibling_sort_key(todo))
             .map(|todo| todo.id)
         {
             self.query.clear();
@@ -110,18 +132,13 @@ impl App {
     }
 
     pub(super) fn selected_todo(&self) -> Option<&Todo> {
-        self.list
+        self.active_list()
             .selected()
             .and_then(|row| self.visible_indices().get(row).copied())
             .map(|index| &self.todos[index])
     }
 
     pub(super) fn normalize_selection(&mut self) {
-        let len = self.visible_indices().len();
-        self.list.select(if len == 0 {
-            None
-        } else {
-            Some(self.list.selected().unwrap_or(0).min(len - 1))
-        });
+        self.normalize_panes();
     }
 }

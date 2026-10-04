@@ -41,8 +41,59 @@ pub(super) fn terminal_row(terminal: &Terminal<TestBackend>, y: u16) -> String {
 }
 
 #[test]
+fn header_keeps_version_and_completion_count_visible_on_resize() {
+    let mut app = App::new(Database::memory()).unwrap();
+    let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
+    let version = concat!("v", env!("CARGO_PKG_VERSION"));
+    for (width, height) in [(80, 24), (35, 12), (1, 1), (0, 0), (120, 35)] {
+        terminal.backend_mut().resize(width, height);
+        terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+        if width < 35 {
+            continue;
+        }
+        let (brand_x, brand_y) = text_position(&terminal, "argv-todo");
+        let (version_x, version_y) = text_position(&terminal, version);
+        let (summary_x, summary_y) = text_position(&terminal, "0 tasks");
+        assert_eq!(version_x, brand_x + 10);
+        assert_eq!(version_y, brand_y);
+        assert_eq!(summary_y, brand_y);
+        assert!(summary_x > version_x + version.width() as u16);
+        let buffer = terminal.backend().buffer();
+        assert!(buffer[(brand_x, brand_y)].modifier.contains(Modifier::BOLD));
+        for x in version_x..version_x + version.width() as u16 {
+            assert_eq!(buffer[(x, version_y)].fg, Color::Red);
+            assert!(!buffer[(x, version_y)].modifier.contains(Modifier::BOLD));
+        }
+    }
+
+    let mut database = Database::memory();
+    let task = database.add("Task", None, Priority::Mid).unwrap();
+    database.toggle(task).unwrap();
+    let mut app = App::new(database).unwrap();
+    let area = Rect::new(7, 4, 35, 12);
+    let mut terminal = Terminal::with_options(
+        TestBackend::new(55, 25),
+        TerminalOptions {
+            viewport: Viewport::Fixed(area),
+        },
+    )
+    .unwrap();
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    assert_eq!(text_position(&terminal, version), (18, 5));
+    let (summary_x, summary_y) = text_position(&terminal, "1/1 done");
+    assert_eq!(summary_y, 5);
+    assert_eq!(summary_x + 8, area.right() - 1);
+}
+
+#[test]
 fn database_preview_tracks_drafts_and_saved_paths() {
-    let folder = std::env::temp_dir().join("argv-todo-preview");
+    // Rendering needs no filesystem access. Keep the path stable and long enough to wrap.
+    let folder = std::path::PathBuf::from(if cfg!(windows) {
+        r"C:\temporary"
+    } else {
+        "/temporary"
+    })
+    .join("long-directory-name-for-database-preview-wrapping");
     let active = folder.join("db.sql");
     let mut app = App::new(Database::memory()).unwrap();
     app.configuring = true;
@@ -51,6 +102,11 @@ fn database_preview_tracks_drafts_and_saved_paths() {
         database_path: "db.sql".into(),
         active_database: active.clone(),
         database_override: false,
+        task_view: crate::config::TaskView::Normal,
+        default_priority: crate::db::Priority::Mid,
+        show_completed: true,
+        sort_order: crate::config::SortOrder::Priority,
+        show_hints: true,
     });
     let mut terminal = Terminal::new(TestBackend::new(120, 35)).unwrap();
     let absolute = folder.join("absolute.sql").display().to_string();
@@ -86,7 +142,17 @@ fn database_preview_tracks_drafts_and_saved_paths() {
             let (_, active_y) = text_position(&terminal, "active database");
             let (_, config_y) = text_position(&terminal, "configuration file");
             assert!(active_y < y && y < config_y);
-            assert!(terminal_row(&terminal, y + 1).contains(&expected.display().to_string()));
+            let buffer = terminal.backend().buffer();
+            let rendered_path: String = (y + 1..config_y)
+                .map(|row| {
+                    (x..buffer.area.right())
+                        .map(|column| buffer[(column, row)].symbol())
+                        .collect::<String>()
+                        .trim_end()
+                        .to_string()
+                })
+                .collect();
+            assert_eq!(rendered_path, expected.display().to_string());
             assert!(
                 terminal.backend().buffer()[(x, y)]
                     .modifier
@@ -110,6 +176,11 @@ fn database_preview_remains_visible_on_resize() {
         database_path: "storage/界é👩‍💻tasks.sql".into(),
         active_database: "/temporary/db.sql".into(),
         database_override: true,
+        task_view: crate::config::TaskView::Normal,
+        default_priority: crate::db::Priority::Mid,
+        show_completed: true,
+        sort_order: crate::config::SortOrder::Priority,
+        show_hints: true,
     });
     let mut terminal = Terminal::new(TestBackend::new(120, 35)).unwrap();
     for (width, height) in [(120, 35), (100, 17), (74, 12), (73, 12), (35, 12)] {
@@ -150,6 +221,11 @@ fn config_view_shows_logo_when_it_fits_and_keeps_editor_visible() {
         database_path: "db.sql".into(),
         active_database: "/temporary/tasks.sql".into(),
         database_override: true,
+        task_view: crate::config::TaskView::Normal,
+        default_priority: crate::db::Priority::Mid,
+        show_completed: true,
+        sort_order: crate::config::SortOrder::Priority,
+        show_hints: true,
     });
     for (width, height) in [(20, 5), (35, 12), (60, 16), (80, 24), (120, 35)] {
         let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
@@ -159,6 +235,7 @@ fn config_view_shows_logo_when_it_fits_and_keeps_editor_visible() {
         }
         text_position(&terminal, "configuration");
         text_position(&terminal, "database_path");
+        text_position(&terminal, "task_view");
         text_position(&terminal, "db.sql");
         text_position(&terminal, "Esc");
         if width >= 80 {
@@ -498,7 +575,7 @@ fn help_keeps_close_hint_visible_and_clears_underlying_editor() {
         assert!(!terminal.backend().cursor_visible());
         assert!(!(0..12).any(|y| terminal_row(&terminal, y).contains("Draft underneath")));
     }
-    text_position(&terminal, "swap case in Visual");
+    text_position(&terminal, "anywhere");
     app.help = false;
     terminal.draw(|frame| draw(frame, &mut app)).unwrap();
     text_position(&terminal, "Draft underneath help");
@@ -578,6 +655,11 @@ fn configuration_splits_editor_and_paths_then_stacks_on_resize() {
         database_path: "db.sql".into(),
         active_database: "/temporary/tasks.sql".into(),
         database_override: true,
+        task_view: crate::config::TaskView::Normal,
+        default_priority: crate::db::Priority::Mid,
+        show_completed: true,
+        sort_order: crate::config::SortOrder::Priority,
+        show_hints: true,
     });
     let mut terminal = Terminal::new(TestBackend::new(100, 17)).unwrap();
     for (width, height) in [(100, 17), (74, 12), (73, 12), (35, 12), (120, 35)] {
