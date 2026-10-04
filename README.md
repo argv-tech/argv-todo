@@ -32,7 +32,7 @@ An interactive terminal is required. The app uses the full terminal and shows ta
 
 ## Storage
 
-Changes are saved immediately. The app creates its config directory and database on first launch:
+Changes are saved immediately. The app creates its config directory, `config.toml`, and database on first launch:
 
 | Platform | Default database |
 | --- | --- |
@@ -53,6 +53,20 @@ argv-todo --db /path/to/tasks.sql
 argv-todo --help
 argv-todo --version
 ```
+
+## Configuration
+
+`config.toml` lives beside the default `db.sql` in the platform config directory. With `--db`, the app reads or creates `config.toml` beside the specified database instead, keeping development settings separate.
+
+The generated config contains:
+
+```toml
+database_path = "db.sql"
+```
+
+Set `database_path` to an absolute path or a path relative to the config's directory. `--db` takes precedence over this setting. Changing the setting selects a database; it does not move existing tasks. The config stays in its original directory even when the database path points elsewhere.
+
+The app reads settings on startup and preserves existing config files, including comments. An empty config uses `db.sql`. Invalid TOML, unknown settings, and invalid database paths produce an error before the terminal interface opens. `--help` and `--version` do not create files.
 
 ## Keys
 

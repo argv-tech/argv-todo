@@ -6,6 +6,7 @@ User-visible changes are recorded here. Release entries will be added when a ver
 
 ### Added
 
+- A `config.toml` beside the default or overridden database, with a configurable `database_path` and `--db` precedence.
 - A fullscreen task tree with nested tasks, inline editing, and Vim-style navigation.
 - High, mid, and low priorities with persistent sibling order.
 - Search with ancestor context, subtree completion, and deletion undo.

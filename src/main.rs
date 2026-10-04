@@ -1,5 +1,6 @@
 mod app;
 mod cli;
+mod config;
 mod db;
 mod ui;
 mod vim_motion;
@@ -12,9 +13,10 @@ use crossterm::{
 };
 
 fn main() -> Result<()> {
-    let Some(path) = cli::database_path()? else {
+    let Some(options) = cli::options()? else {
         return Ok(());
     };
+    let path = config::database_path(&options.database_path, options.database_override)?;
     let database = db::Database::open(&path)
         .with_context(|| format!("Could not open database {}", path.display()))?;
     let mut app = app::App::new(database)?;
