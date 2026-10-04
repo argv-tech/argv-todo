@@ -1,6 +1,7 @@
 mod actions;
 mod editing;
 mod events;
+mod folding;
 mod help;
 mod navigation;
 mod ordering;
@@ -19,6 +20,7 @@ mod tests;
 use anyhow::Result;
 use help::HelpView;
 use ratatui::widgets::ListState;
+use std::collections::HashSet;
 use views::TaskPanes;
 
 use crate::{
@@ -41,6 +43,7 @@ pub(crate) struct App {
     pub(crate) adding_relative: Option<(i64, bool)>,
     pub(crate) list: ListState,
     panes: TaskPanes,
+    collapsed: HashSet<i64>,
     pub(crate) vim: VimManager,
     pub(crate) editor: Editor,
     pub(crate) editing_id: Option<i64>,
@@ -67,6 +70,7 @@ impl App {
             adding_relative: None,
             list: ListState::default(),
             panes: TaskPanes::default(),
+            collapsed: HashSet::new(),
             vim: VimManager::default(),
             editor: Editor::default(),
             editing_id: None,

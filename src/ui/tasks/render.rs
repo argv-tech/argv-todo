@@ -122,7 +122,12 @@ pub(super) fn draw_list(frame: &mut Frame, app: &mut App, area: Rect, pane: Task
             } else if total == 0 {
                 String::new()
             } else {
-                format!("  {done}/{total}")
+                let folded = todo.is_some_and(|todo| app.is_collapsed(todo.id));
+                if folded {
+                    format!("  + {done}/{total}")
+                } else {
+                    format!("  {done}/{total}")
+                }
             };
             ancestors.truncate(tree_row.depth);
             let hidden = tree_row.depth.saturating_sub(max_depth);

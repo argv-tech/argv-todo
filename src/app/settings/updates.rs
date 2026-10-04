@@ -117,7 +117,10 @@ impl App {
             {
                 self.change_setting(matches!(action, VimAction::Move(Motion::Right, _)), count)?;
             }
-            VimAction::Edit | VimAction::AddChild | VimAction::Toggle => {
+            VimAction::Edit
+            | VimAction::AddChild
+            | VimAction::Toggle
+            | VimAction::ToggleCollapse => {
                 if self.config_setting == ConfigSetting::DatabasePath {
                     let config = self
                         .config

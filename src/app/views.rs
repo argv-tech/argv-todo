@@ -59,11 +59,12 @@ impl App {
 
     pub(crate) fn rows_for_pane(&self, pane: TaskPane) -> Vec<TreeRow> {
         let rows = self.visible_rows();
-        if pane == TaskPane::Tree && self.show_completed() {
+        let rows = if pane == TaskPane::Tree && self.show_completed() {
             rows
         } else {
             self.rows_by_completion(rows, pane == TaskPane::Completed)
-        }
+        };
+        self.expanded_rows(rows)
     }
 
     pub(super) fn switch_task_pane(&mut self) {

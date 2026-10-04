@@ -100,6 +100,7 @@ pub(crate) enum VimAction {
     Priority(Priority),
     CyclePriority,
     Toggle,
+    ToggleCollapse,
     Delete(usize),
     Undo,
     Search,

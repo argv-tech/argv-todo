@@ -88,6 +88,7 @@ impl App {
     }
 
     pub(super) fn select_id(&mut self, id: i64) {
+        self.expand_ancestors(id);
         let row = self
             .visible_indices()
             .iter()

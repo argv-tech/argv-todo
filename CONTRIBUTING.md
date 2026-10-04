@@ -43,7 +43,7 @@ The source layout and project constraints are described in [AGENTS.md](AGENTS.md
 
 `src/main.rs` owns startup and terminal cleanup; `src/cli.rs` parses command-line options. Larger concerns use directory modules:
 
-- `src/app/`: state, action routing, editing, events, tree navigation, settings, and task operations. `views.rs` owns pane focus, selection, and task projections, including ghost ancestor rows.
+- `src/app/`: state, action routing, editing, events, tree navigation, folding, settings, and task operations. `folding.rs` owns session collapse state, branch visibility, and selection preservation when folding. `views.rs` owns pane focus, selection, and task projections, including ghost ancestor rows.
 - `src/ui/`: full-frame composition, shared geometry, Unicode labels and editor rendering, header and footer, help, and theme. `tasks/` separates pane composition, draft placement, and row rendering; `config/` composes setting controls and selected-setting details, including paths and layout previews, into responsive panes; `help/` separates shortcut content and wrapping from rendering.
 - `src/db/`: task types, queries, schema migrations, and atomic tree operations.
 - `src/config/`: configuration loading, validation, and atomic saving.

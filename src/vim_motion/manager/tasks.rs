@@ -79,7 +79,11 @@ impl VimManager {
             KeyCode::Char('i' | 'a') => VimAction::AddChild,
             KeyCode::Char('o') => VimAction::AddBelow,
             KeyCode::Char('O') => VimAction::AddAbove,
-            KeyCode::Char(' ' | 'x') | KeyCode::Enter => VimAction::Toggle,
+            KeyCode::Char(' ' | 'x') => VimAction::Toggle,
+            KeyCode::Enter => {
+                self.reset();
+                return (key.kind == KeyEventKind::Press).then_some(VimAction::ToggleCollapse);
+            }
             KeyCode::Char('u') => VimAction::Undo,
             KeyCode::Char('/') => VimAction::Search,
             KeyCode::Char('?') => VimAction::Help,

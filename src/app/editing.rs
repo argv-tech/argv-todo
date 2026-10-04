@@ -8,6 +8,9 @@ impl App {
         let selected_id = self.selected_todo().map(|todo| todo.id);
         // Show the full tree so the draft and saved task occupy the same place.
         self.query.clear();
+        if let Some(id) = parent_id {
+            self.expand_task(id);
+        }
         self.adding_parent = parent_id;
         self.adding_relative = None;
         self.editing_id = None;

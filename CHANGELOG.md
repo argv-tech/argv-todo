@@ -22,6 +22,7 @@ User-visible changes are recorded here. Release entries will be added when a ver
 
 ### Changed
 
+- Return collapses or expands task branches; Space and `x` toggle completion. Child navigation and creation reveal collapsed branches, and search expands the tree.
 - Configuration details follow the selected setting, showing database paths for `database_path` and live layout details and a preview for `task_view`.
 - Group help shortcuts with highlighted keys, responsive descriptions, page navigation, a scrollbar, and a position indicator. Keep scrolling within the last full page and isolate help input from task commands.
 - Split configuration into an editor pane and a paths pane, with stacked sections on narrow terminals and readable path values.

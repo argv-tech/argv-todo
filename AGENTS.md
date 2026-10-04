@@ -78,7 +78,7 @@ Current source layout:
 | Module            | Responsibility                                                  |
 | ----------------- | --------------------------------------------------------------- |
 | `src/main.rs`     | Startup, terminal setup and cleanup                             |
-| `src/app/`        | State, actions, editing, events, navigation, settings, tasks, pane focus and projections |
+| `src/app/`        | State, actions, editing, events, tree navigation, folding, settings, tasks, pane focus and projections |
 | `src/ui/`         | Frame composition, geometry, text, editors, chrome, help, theme |
 | `src/ui/tasks/`   | Pane composition, draft placement, and task-tree rendering       |
 | `src/ui/help/`    | Shortcut content, wrapping, and help rendering                  |
@@ -128,7 +128,8 @@ visibility rules above when adding or changing module boundaries.
   context for completed children. Tab switches pane focus; settings apply layout
   changes immediately.
   Avoid separate task pages, dashboards, and large panels.
-- `j/k` selects tasks. `h` selects the parent. `l` selects the first child and
+- `j/k` selects visible tasks at every level. Return collapses or expands
+  children. `h` selects the parent. `l` expands and selects the first child and
   stays selected if there are none. `i/a` creates a child, or a root when the
   list is empty.
 - Keep input hints short and adapt the layout to narrow terminals.

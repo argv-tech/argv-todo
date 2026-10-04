@@ -18,6 +18,7 @@ const SECTIONS: &[Section] = &[
         shortcuts: &[
             ("j / k", "Next / previous task (or Up / Down)"),
             ("l / h", "First child / parent; stay if there is no child"),
+            ("Enter", "Collapse / expand the selected task's children"),
             ("gg / G", "First / last task"),
             ("3j / 2k", "Repeat a movement"),
             (
@@ -33,7 +34,7 @@ const SECTIONS: &[Section] = &[
             ("o / O", "Add a sibling below / above"),
             ("e / cc", "Edit the selected task"),
             (
-                "Space / x / Enter",
+                "Space / x",
                 "Complete or reopen the task and its descendants",
             ),
             ("dd / 3dd", "Delete one / three task trees from selection"),

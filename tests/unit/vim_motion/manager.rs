@@ -4,6 +4,25 @@ fn key(c: char) -> KeyEvent {
 }
 
 #[test]
+fn return_folds_only_on_press_and_completion_keeps_its_own_keys() {
+    let mut vim = VimManager::default();
+    vim.handle(key('3'));
+    assert_eq!(
+        vim.handle(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+        Some(VimAction::ToggleCollapse)
+    );
+    assert!(vim.pending_label().is_empty());
+    for kind in [KeyEventKind::Repeat, KeyEventKind::Release] {
+        let mut key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
+        key.kind = kind;
+        assert_eq!(vim.handle(key), None);
+    }
+    for c in [' ', 'x'] {
+        assert_eq!(vim.handle(key(c)), Some(VimAction::Toggle));
+    }
+}
+
+#[test]
 fn tab_switches_panes_only_on_press_and_keeps_fields_isolated() {
     let mut vim = VimManager::default();
     for code in [KeyCode::Tab, KeyCode::BackTab] {

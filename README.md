@@ -84,9 +84,9 @@ While editing configuration, `Esc` discards the draft and returns to the configu
 
 | Key | Action |
 | --- | --- |
-| `j` / `k` | Next / previous row in the task tree |
+| `j` / `k` | Next / previous visible row in the task tree (also Up / Down) |
 | `Tab`, `Shift-Tab` | Switch panes in Split; select a setting in configuration |
-| `l` | Select the first child; stay selected if there are none |
+| `l` | Expand and select the first child; stay selected if there are none |
 | `h` | Select the parent task |
 | `gg` / `G` | First / last task |
 | `3j`, `2k` | Repeat a motion |
@@ -96,7 +96,8 @@ While editing configuration, `Esc` discards the draft and returns to the configu
 | `t` | Cycle priority: low → mid → high → low |
 | `ph`, `pm`, `pl` | Set priority to high, mid, or low |
 | `Ctrl-p` | Cycle priority, including while creating or editing inline |
-| `Space`, `x`, `Enter` | Toggle the selected task and all its descendants in normal mode |
+| `Enter` | Collapse or expand the selected task's children |
+| `Space`, `x` | Toggle the selected task and all its descendants in normal mode |
 | `dd`, `3dd` | Delete one / three tasks and all their children starting at selection |
 | `u` | Restore the last deleted task tree(s) in the current session |
 | `/` | Search all titles, ignoring case; keep ancestors visible for context |
@@ -133,7 +134,7 @@ Motions and operators accept counts: `3dw` deletes three words and `2d3w` delete
 
 While typing, arrow keys, `Home`, and `End` move the cursor; `Ctrl-Left` / `Ctrl-Right` move by word. `Backspace`, `Delete`, `Ctrl-w`, and `Ctrl-u` edit text. Replace-mode `Backspace` restores the overwritten grapheme. Insert/Replace sessions undo as one change. `Ctrl-p` cycles task priority in any task-field mode. Bracketed paste inserts text, puts it after the cursor in Normal, or replaces a Visual selection. Newlines and other control characters become spaces. Editing and selection respect Unicode grapheme boundaries and display widths.
 
-Tasks can contain nested child tasks. Existing databases are upgraded automatically, keeping existing tasks at the top level. Deleting a parent also deletes its descendants; `u` restores the entire tree. Completing or reopening a parent gives all its descendants the same state, including tasks hidden by search. Toggling a child affects its own subtree without changing its ancestors or siblings. Changes are saved atomically.
+Tasks can contain nested child tasks. `j` / `k` moves through visible rows at every level; use `h` / `l` to select the parent or first child. `Enter` hides or reveals descendants without changing task data; a `+` beside the child count marks a collapsed branch. Collapse state lasts for the current session and is shared across panes. Starting a search expands branches so hidden tasks can appear in the results. Existing databases are upgraded automatically, keeping existing tasks at the top level. Deleting a parent also deletes its descendants; `u` restores the entire tree. Completing or reopening a parent gives all its descendants the same state, including tasks hidden by search. Toggling a child affects its own subtree without changing its ancestors or siblings. Changes are saved atomically.
 
 Tasks have **high**, **mid**, or **low** priority; new roots and existing tasks default to **mid**. New children inherit their parent's priority. Siblings created with `o` or `O` start with the selected task's priority so they appear beside it. Roots and children within each parent are sorted high first, then mid, then low. Equal priorities keep their saved sibling order, including insertion above or below. Changing a priority keeps the task selected, and children stay with their parent. Priorities and sibling order are saved in SQLite and preserved by deletion undo.
 

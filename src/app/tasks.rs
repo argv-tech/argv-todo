@@ -18,16 +18,10 @@ impl App {
 
     pub(super) fn reload(&mut self, selected_id: Option<i64>) -> Result<()> {
         self.todos = self.database.list()?;
+        self.collapsed
+            .retain(|id| self.todos.iter().any(|todo| todo.id == *id));
         if let Some(id) = selected_id {
-            let row = self
-                .visible_indices()
-                .iter()
-                .position(|&index| self.todos[index].id == id);
-            if row.is_some() {
-                self.active_list_mut().select(row);
-            } else {
-                self.select_in_task_view(id);
-            }
+            self.select_id(id);
         }
         self.normalize_selection();
         Ok(())
@@ -35,6 +29,7 @@ impl App {
 
     pub(super) fn apply_tasks(&mut self, action: VimAction) -> Result<()> {
         match action {
+            VimAction::ToggleCollapse => self.toggle_collapse(),
             VimAction::MoveTask(movement, count) => self.move_task(movement, count)?,
             VimAction::Move(motion, count) => match motion {
                 Motion::Up | Motion::Down => {
@@ -151,6 +146,11 @@ impl App {
                 }
             }
             VimAction::Search => {
+                let selected_id = self.selected_todo().map(|todo| todo.id);
+                self.collapsed.clear();
+                if let Some(id) = selected_id {
+                    self.select_id(id);
+                }
                 self.editor.reset(self.query.clone());
                 self.vim.begin_input(InputTarget::Search);
                 self.message(

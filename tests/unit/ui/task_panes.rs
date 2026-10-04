@@ -48,6 +48,47 @@ fn press(app: &mut App, key: KeyCode) {
 }
 
 #[test]
+fn folded_rows_show_a_marker_and_expand_after_resize_without_losing_styles() {
+    let mut app = app(TaskView::Normal);
+    let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
+    press(&mut app, KeyCode::Enter);
+    for (width, height) in [(80, 24), (35, 12), (1, 1), (100, 24)] {
+        terminal.backend_mut().resize(width, height);
+        terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+        if width >= 35 {
+            let parent = text_position(&terminal, "Parent");
+            assert!(terminal_row(&terminal, parent.1).contains("+ 0/1"));
+            assert!(
+                terminal.backend().buffer()[parent]
+                    .modifier
+                    .contains(Modifier::BOLD | Modifier::UNDERLINED)
+            );
+            let screen = (0..height)
+                .map(|y| terminal_row(&terminal, y))
+                .collect::<String>();
+            assert!(!screen.contains("Child") && !screen.contains("Grandchild"));
+            text_position(&terminal, "Other root");
+        }
+    }
+    press(&mut app, KeyCode::Enter);
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    let child = text_position(&terminal, "Child");
+    assert!(terminal_row(&terminal, child.1).contains("界"));
+    assert!(terminal_row(&terminal, child.1).contains("é"));
+    assert!(terminal_row(&terminal, child.1).contains("👩‍💻"));
+    text_position(&terminal, "Grandchild");
+    press(&mut app, KeyCode::Enter);
+    press(&mut app, KeyCode::Char('i'));
+    app.editor.insert("Draft 界é👩‍💻");
+    terminal.backend_mut().resize(35, 12);
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    text_position(&terminal, "Draft");
+    assert!(terminal.backend().cursor_visible());
+    let cursor = terminal.backend().cursor_position();
+    assert!(cursor.x < 35 && cursor.y < 12);
+}
+
+#[test]
 fn completed_pane_dims_ghost_parents_and_edits_the_real_child() {
     let mut app = app(TaskView::Split);
     let mut terminal = Terminal::new(TestBackend::new(100, 24)).unwrap();
