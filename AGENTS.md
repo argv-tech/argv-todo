@@ -89,7 +89,7 @@ Current source layout:
 | `src/vim_motion/` | Keyboard mapping, modes, actions, and Unicode text editing      |
 | `src/vim_motion/manager/` | Task, field, and help key mapping, counts, pending command parsing |
 | `src/vim_motion/editor/` | Unicode cursor and selection, edits, motions, objects, history, viewport |
-| `tests/unit/`     | Unit suites and test helpers, grouped by owning module          |
+| `tests/unit/`     | Unit suites, test helpers, and the platform terminal smoke check |
 
 Directory modules keep their shared state and interface in `mod.rs`, with
 focused private implementation modules alongside it. All test suites and test

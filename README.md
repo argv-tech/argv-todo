@@ -14,6 +14,8 @@ A small terminal todo app with Vim-style keys, nested tasks, and local SQLite st
 
 A current stable Rust toolchain and a C compiler are required to build. SQLite is bundled; no SQLite server or system SQLite installation is required.
 
+On macOS, install the Xcode Command Line Tools with `xcode-select --install`. On Windows, use the Rust MSVC toolchain and Visual Studio Build Tools with the **Desktop development with C++** workload.
+
 ```sh
 git clone https://github.com/argv-tech/argv-todo.git
 cd argv-todo
@@ -30,6 +32,8 @@ cargo run --locked
 ```
 
 An interactive terminal is required. The app uses the full terminal and shows task rows at 35 columns × 12 rows or larger. Press `?` for help and `q` to quit.
+
+Run in Terminal or iTerm2 on macOS, or Windows Terminal with PowerShell or Command Prompt on Windows. Linux and macOS use bracketed paste; Windows uses native console text input because Crossterm 0.29 does not parse bracketed-paste events there. Paste a single line into Windows input fields; a pasted newline acts as Enter.
 
 ## Storage
 
@@ -67,6 +71,8 @@ task_view = "normal"
 ```
 
 Set `database_path` to an absolute path or a path relative to the config's directory. `--db` takes precedence over this setting. Changing the setting selects a database; it does not move existing tasks. The config stays in its original directory even when the database path points elsewhere.
+
+For Windows paths in TOML, use literal strings such as `database_path = 'C:\Users\example\task storage\db.sql'`, or forward slashes such as `database_path = "C:/Users/example/task storage/db.sql"`.
 
 The app reads settings on startup and when opening configuration, preserving existing config files and comments. An empty config uses `db.sql` and the normal task view. Invalid TOML, unknown settings, invalid layout names, and invalid database paths produce an error before the terminal interface opens. `--help` and `--version` do not create files.
 

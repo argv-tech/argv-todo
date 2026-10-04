@@ -4,8 +4,13 @@ User-visible changes are recorded here. Release entries will be added when a ver
 
 ## Unreleased
 
+### Fixed
+
+- Use native Windows console paste instead of enabling bracketed-paste sequences that the Windows input backend cannot parse. Linux and macOS retain bracketed paste.
+
 ### Added
 
+- Terminal smoke checks on Linux, macOS, and Windows exercise startup, task persistence, setting saves, and terminal cleanup with temporary storage.
 - Show the Cargo package version in red beside the app name in the task header.
 - Reusable Rust test and release-build workflows for Linux, macOS, and Windows, with checks on pull requests to `main` and `dev`, versioned build artifacts on `main` pushes, and GitHub releases on `v*` tags.
 - Live `task_view` settings for normal and split todo/completed layouts, with Tab pane focus and separate selection and scrolling. Completed children retain unfinished ancestors as dimmed, nonselectable ghost rows.

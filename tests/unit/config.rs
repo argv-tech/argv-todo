@@ -105,15 +105,16 @@ fn preferences_save_typed_values_preserve_comments_and_reload_atomically() {
 #[test]
 fn creates_config_preserves_edits_and_resolves_database_paths() {
     let folder = std::env::temp_dir().join(format!(
-        "argv-todo-config-test-{}-{}",
+        "argv-todo config test-{}-{}",
         std::process::id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos()
     ));
-    let default_database = folder.join("nested/db.sql");
-    let config = folder.join("nested/config.toml");
+    let nested = folder.join("nested");
+    let default_database = nested.join("db.sql");
+    let config = nested.join("config.toml");
     assert_eq!(
         database_path(&default_database, false).unwrap(),
         default_database
@@ -121,13 +122,13 @@ fn creates_config_preserves_edits_and_resolves_database_paths() {
     assert_eq!(fs::read_to_string(&config).unwrap(), DEFAULT_CONFIG);
     assert!(!default_database.exists());
 
-    let content = "# keep my comment\ndatabase_path = 'storage/tasks.sql'\n";
+    let content = "# keep my comment\r\ndatabase_path = 'task storage/tasks.sql'\r\n";
     fs::write(&config, content).unwrap();
     assert_eq!(
         database_path(&default_database, false).unwrap(),
-        folder.join("nested/storage/tasks.sql")
+        nested.join("task storage/tasks.sql")
     );
-    let override_database = folder.join("nested/custom.sql");
+    let override_database = nested.join("custom.sql");
     assert_eq!(
         database_path(&override_database, true).unwrap(),
         override_database

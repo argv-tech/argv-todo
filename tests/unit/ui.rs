@@ -87,7 +87,13 @@ fn header_keeps_version_and_completion_count_visible_on_resize() {
 
 #[test]
 fn database_preview_tracks_drafts_and_saved_paths() {
-    let folder = std::env::temp_dir().join("argv-todo-preview");
+    // Rendering needs no filesystem access. Keep the path stable and long enough to wrap.
+    let folder = std::path::PathBuf::from(if cfg!(windows) {
+        r"C:\temporary"
+    } else {
+        "/temporary"
+    })
+    .join("long-directory-name-for-database-preview-wrapping");
     let active = folder.join("db.sql");
     let mut app = App::new(Database::memory()).unwrap();
     app.configuring = true;
@@ -136,7 +142,17 @@ fn database_preview_tracks_drafts_and_saved_paths() {
             let (_, active_y) = text_position(&terminal, "active database");
             let (_, config_y) = text_position(&terminal, "configuration file");
             assert!(active_y < y && y < config_y);
-            assert!(terminal_row(&terminal, y + 1).contains(&expected.display().to_string()));
+            let buffer = terminal.backend().buffer();
+            let rendered_path: String = (y + 1..config_y)
+                .map(|row| {
+                    (x..buffer.area.right())
+                        .map(|column| buffer[(column, row)].symbol())
+                        .collect::<String>()
+                        .trim_end()
+                        .to_string()
+                })
+                .collect();
+            assert_eq!(rendered_path, expected.display().to_string());
             assert!(
                 terminal.backend().buffer()[(x, y)]
                     .modifier

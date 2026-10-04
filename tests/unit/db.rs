@@ -26,8 +26,9 @@ fn crud_and_undo_preserve_original_record() {
 
 #[test]
 fn disk_storage_creates_parent_and_survives_reopen() {
-    let folder = std::env::temp_dir().join(format!("argv-todo-test-{}", std::process::id()));
-    let path = folder.join("nested/db.sql");
+    let folder =
+        std::env::temp_dir().join(format!("argv-todo storage test-{}", std::process::id()));
+    let path = folder.join("nested storage").join("db.sql");
     {
         let mut db = Database::open(&path).unwrap();
         let root = db.add("Persist this", None, Priority::High).unwrap();

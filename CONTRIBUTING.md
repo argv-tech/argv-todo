@@ -48,7 +48,7 @@ The source layout and project constraints are described in [AGENTS.md](AGENTS.md
 - `src/db/`: task types, queries, schema migrations, and atomic tree operations.
 - `src/config/`: configuration loading, validation, and atomic saving.
 - `src/vim_motion/`: input targets, modes, and actions. `manager/` maps task keys, field commands, and help navigation, with a typed pending-command parser. `editor/` owns Unicode cursor and selection state, edits, motions, text objects, undo/repeat history, and the horizontal viewport.
-- `tests/unit/`: all unit suites and test helpers, grouped by owning module; keyboard and editor suites live in `tests/unit/vim_motion/`.
+- `tests/unit/`: all unit suites and test helpers, grouped by owning module; keyboard and editor suites live in `tests/unit/vim_motion/`. `terminal_smoke.py` checks the built app in a disposable platform terminal.
 
 Each directory's `mod.rs` defines its interface. Keep implementation modules private with `mod`; use `pub(super)` or `pub(crate)` for the access callers need and re-export shared types. Add focused files within the appropriate directory instead of expanding unrelated modules.
 
@@ -66,6 +66,8 @@ cargo build --locked
 ```
 
 Use `cargo fmt` to fix formatting. Commit `Cargo.lock` when a dependency change updates it. CI runs the same checks on Linux, macOS, and Windows for pull requests targeting `main` or `dev`.
+
+After building, run `python3 tests/unit/terminal_smoke.py target/debug/argv-todo` on Linux or macOS, or `python tests/unit/terminal_smoke.py target/debug/argv-todo` on Windows. This check requires Python 3.11 or newer and uses only the standard library. It creates disposable storage and a Unix PTY or Windows console to verify startup, input, persisted tasks and settings, and terminal cleanup. CI runs it on each platform after the build.
 
 The reusable workflows are `.github/workflows/ci.yml` for checks and `.github/workflows/build.yml` for release builds and archives. Other workflows call them with a job-level `uses: ./.github/workflows/ci.yml` or `uses: ./.github/workflows/build.yml`. Builds run on pushes to `main`; `.github/workflows/publish.yml` calls both workflows to test, build, and publish GitHub releases on `v*` tags.
 

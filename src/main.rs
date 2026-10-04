@@ -6,11 +6,9 @@ mod ui;
 mod vim_motion;
 
 use anyhow::{Context, Result};
-use crossterm::{
-    cursor::SetCursorStyle,
-    event::{DisableBracketedPaste, EnableBracketedPaste},
-    execute,
-};
+#[cfg(not(windows))]
+use crossterm::event::{DisableBracketedPaste, EnableBracketedPaste};
+use crossterm::{cursor::SetCursorStyle, execute};
 
 fn main() -> Result<()> {
     let Some(options) = cli::options()? else {
@@ -24,6 +22,8 @@ fn main() -> Result<()> {
     app.config = Some(config);
     ratatui::run(|terminal| -> Result<()> {
         let _guard = TerminalInputGuard;
+        // Crossterm 0.29 reads native Windows key events, not bracketed-paste sequences.
+        #[cfg(not(windows))]
         execute!(std::io::stdout(), EnableBracketedPaste)?;
         app.run(terminal)
     })
@@ -32,10 +32,8 @@ fn main() -> Result<()> {
 struct TerminalInputGuard;
 impl Drop for TerminalInputGuard {
     fn drop(&mut self) {
-        let _ = execute!(
-            std::io::stdout(),
-            DisableBracketedPaste,
-            SetCursorStyle::DefaultUserShape
-        );
+        #[cfg(not(windows))]
+        let _ = execute!(std::io::stdout(), DisableBracketedPaste);
+        let _ = execute!(std::io::stdout(), SetCursorStyle::DefaultUserShape);
     }
 }

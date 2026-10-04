@@ -42,3 +42,9 @@ jobs:
         run: cargo clippy --locked --all-targets -- -D warnings
       - name: Build
         run: cargo build --locked
+      - name: Smoke test terminal on Linux and macOS
+        if: runner.os != 'Windows'
+        run: python3 tests/unit/terminal_smoke.py target/debug/argv-todo
+      - name: Smoke test terminal on Windows
+        if: runner.os == 'Windows'
+        run: python tests/unit/terminal_smoke.py target/debug/argv-todo
