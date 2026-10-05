@@ -10,7 +10,18 @@ A small terminal todo app with Vim-style keys, nested tasks, and local SQLite st
 
 [Contributing](CONTRIBUTING.md) · [Support](SUPPORT.md) · [Changelog](CHANGELOG.md) · [MIT license](LICENSE)
 
-## Install from source
+## Install
+
+After the first crates.io release, install with:
+
+```sh
+cargo install argv-todo --locked
+argv-todo
+```
+
+To install before publication, or build a local checkout, use the source instructions below.
+
+### From source
 
 A current stable Rust toolchain and a C compiler are required to build. SQLite is bundled; no SQLite server or system SQLite installation is required.
 
@@ -23,7 +34,7 @@ cargo install --path . --locked
 argv-todo
 ```
 
-Ensure Cargo's binary directory is on your `PATH` (`~/.cargo/bin` on Linux and macOS, `%USERPROFILE%\\.cargo\\bin` on Windows). The clone command will work after the GitHub repository is created. No crates.io release is available from this setup yet.
+Ensure Cargo's binary directory is on your `PATH` (`~/.cargo/bin` on Linux and macOS, `%USERPROFILE%\\.cargo\\bin` on Windows).
 
 ## Run
 
@@ -159,7 +170,7 @@ cargo clippy --locked --all-targets -- -D warnings
 cargo build --locked
 ```
 
-CI runs these checks on Linux, macOS, and Windows for pull requests targeting `main` or `dev`. Pushing a `v*` tag runs the same checks and builds release binaries before publishing platform archives named with their Cargo version, such as `argv-todo-0.1.0-linux.tar.gz`, to a GitHub release. The test and build workflows also support `workflow_call` for reuse and manual runs.
+CI runs these checks on Linux, macOS, and Windows for pull requests targeting `main` or `dev`. Pushing a `v*` tag runs the same checks and builds release binaries before publishing platform archives named with their Cargo version, such as `argv-todo-0.1.0-linux.tar.gz`, to a GitHub release. The test and build workflows also support `workflow_call` for reuse and manual runs. The manual **Publish to crates.io** workflow validates the package by default and uploads it when dry-run is disabled; see the [maintainer guide](docs/maintaining.md#publishing-to-cratesio) for setup and local publishing commands.
 
 For a local test session, use `cargo run --locked -- --db ./target/dev/db.sql` to keep development tasks separate from your personal database.
 

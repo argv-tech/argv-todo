@@ -1,15 +1,48 @@
 [package]
 name = "argv-todo"
 version = "0.1.0"
+authors = ["argv-tech contributors"]
 edition = "2024"
-description = "A minimal Vim-style terminal todo app with nested tasks and SQLite storage"
+rust-version = "1.88"
+description = "A Vim-style terminal todo manager with nested tasks, priorities, search, and local SQLite storage"
 license = "MIT"
 repository = "https://github.com/argv-tech/argv-todo"
 homepage = "https://github.com/argv-tech/argv-todo"
+documentation = "https://github.com/argv-tech/argv-todo#readme"
 readme = "README.md"
-keywords = ["todo", "tui", "terminal", "sqlite", "vim"]
-categories = ["command-line-utilities"]
-include = ["src/**", "tests/**", "Cargo.toml", "Cargo.lock", "README.md", "LICENSE", "CHANGELOG.md"]
+keywords = ["todo", "task-management", "tui", "sqlite", "vim"]
+categories = ["command-line-utilities", "command-line-interface"]
+default-run = "argv-todo"
+publish = ["crates-io"]
+include = [
+    "src/**",
+    "tests/**",
+    "Cargo.toml",
+    "Cargo.lock",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "AGENTS.md",
+    "SUPPORT.md",
+    "SECURITY.md",
+    "CODE_OF_CONDUCT.md",
+    "docs/maintaining.md",
+    "cliff.toml",
+]
+
+# Custom project links are available through cargo metadata.
+[package.metadata.project]
+issues = "https://github.com/argv-tech/argv-todo/issues"
+changelog = "https://github.com/argv-tech/argv-todo/blob/main/CHANGELOG.md"
+contributing = "https://github.com/argv-tech/argv-todo/blob/main/CONTRIBUTING.md"
+support = "https://github.com/argv-tech/argv-todo/blob/main/SUPPORT.md"
+security = "https://github.com/argv-tech/argv-todo/blob/main/SECURITY.md"
+code-of-conduct = "https://github.com/argv-tech/argv-todo/blob/main/CODE_OF_CONDUCT.md"
+
+[[bin]]
+name = "argv-todo"
+path = "src/main.rs"
 
 [dependencies]
 anyhow = "1"

@@ -2,6 +2,16 @@
 
 Notable changes to argv-todo, grouped by release.
 
+## Unreleased
+
+### Build
+
+- **release:** Prepare crates.io publication
+
+### Continuous Integration
+
+- Stop release builds on pushes to main ([367fe87](https://github.com/argv-tech/argv-todo/commit/367fe8777226011476a9516b104e6253c3b02178))
+
 ## 0.1.0 - 2026-10-04
 
 ### Added
