@@ -53,6 +53,9 @@ impl App {
             }
             VimAction::Submit => {
                 self.editor.prepare_submit();
+                if self.vim.input() == Some(InputTarget::Note) {
+                    return self.save_note();
+                }
                 let text = self.editor.text().trim().to_owned();
                 if self.vim.input() == Some(InputTarget::Search) {
                     self.query = text;

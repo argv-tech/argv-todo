@@ -33,6 +33,7 @@ const SECTIONS: &[Section] = &[
             ("i / a", "Add a child; add a root when the list is empty"),
             ("o / O", "Add a sibling below / above"),
             ("e / cc", "Edit the selected task"),
+            ("n", "Edit the selected task's note in the bottom section"),
             (
                 "Space / x",
                 "Complete or reopen the task and its descendants",

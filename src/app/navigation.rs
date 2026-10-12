@@ -131,7 +131,7 @@ impl App {
         true
     }
 
-    pub(super) fn selected_todo(&self) -> Option<&Todo> {
+    pub(crate) fn selected_todo(&self) -> Option<&Todo> {
         self.active_list()
             .selected()
             .and_then(|row| self.visible_indices().get(row).copied())

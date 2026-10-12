@@ -18,7 +18,7 @@ impl Database {
         let transaction = self.connection.transaction()?;
         let tasks = {
             let mut statement = transaction.prepare(
-                "SELECT id, title, done, created_at, updated_at, parent_id, priority, position
+                "SELECT id, title, done, created_at, updated_at, parent_id, priority, position, note
                  FROM todos ORDER BY position, id",
             )?;
             statement

@@ -21,6 +21,14 @@ impl App {
         }
     }
 
+    pub(super) fn handle_paste(&mut self, text: &str) {
+        if self.vim.input().is_some() && !self.help {
+            self.editor.insert(text);
+            self.vim.set_mode(self.editor.mode());
+            self.normalize_selection();
+        }
+    }
+
     pub(crate) fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
         while self.running {
             let shape = match self.vim.mode() {
@@ -32,11 +40,7 @@ impl App {
             terminal.draw(|frame| crate::ui::draw(frame, self))?;
             match event::read()? {
                 Event::Key(key) => self.handle_key(key),
-                Event::Paste(text) if self.vim.input().is_some() && !self.help => {
-                    self.editor.insert(&text);
-                    self.vim.set_mode(self.editor.mode());
-                    self.normalize_selection();
-                }
+                Event::Paste(text) => self.handle_paste(&text),
                 _ => {}
             }
         }

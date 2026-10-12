@@ -414,8 +414,13 @@ fn renders_small_and_large_terminals_and_input_modes() {
             assert!(rows[positions[1].0].contains("├──"));
             assert!(rows[positions[2].0].contains("│    └──"));
             assert!(rows[positions[3].0].contains("└──"));
+            let note_row = rows
+                .iter()
+                .position(|line| line.contains("Note · n edit"))
+                .unwrap();
             assert!(
-                rows.iter()
+                rows[..note_row]
+                    .iter()
                     .all(|line| !line.contains("created") && !line.contains("───"))
             );
             assert!(
@@ -717,6 +722,7 @@ fn field_keys(app: &mut App, text: &str) {
 fn every_field_keeps_normal_cursor_and_renders_visual_selection_styles_on_resize() {
     for target in [
         InputTarget::Task,
+        InputTarget::Note,
         InputTarget::Search,
         InputTarget::DatabasePath,
     ] {

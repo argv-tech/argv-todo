@@ -13,6 +13,7 @@ import tomllib
 
 TIMEOUT = 15
 TITLE = "Cross-platform task"
+NOTE = "Task note: read 'chapter 2' first"
 
 
 def run_unix(command, settings):
@@ -57,7 +58,11 @@ def run_unix(command, settings):
             os.write(master, b"q")
         else:
             # Include Vim command letters in one paste transaction.
-            os.write(master, b"i\x1b[200~" + TITLE.encode() + b"\x1b[201~\rxq")
+            os.write(
+                master,
+                b"i\x1b[200~" + TITLE.encode() + b"\x1b[201~\rn\x1b[200~"
+                + NOTE.encode() + b"\x1b[201~\rxq",
+            )
 
         deadline = time.monotonic() + TIMEOUT
         while process.poll() is None:
@@ -136,7 +141,7 @@ def run_windows(command, settings):
                             raise AssertionError("App did not enter raw mode")
                         time.sleep(0.05)
 
-                    keys = "\x1bj\r\x1bq" if settings else f"i{TITLE}\rxq"
+                    keys = "\x1bj\r\x1bq" if settings else f"i{TITLE}\rn{NOTE}\rxq"
                     records = []
                     for character in keys:
                         for down in [True, False]:
@@ -180,8 +185,8 @@ def main():
         run_terminal = run_windows if os.name == "nt" else run_unix
         run_terminal(command, settings=False)
         with closing(sqlite3.connect(database)) as connection:
-            tasks = connection.execute("SELECT title, done FROM todos").fetchall()
-        assert tasks == [(TITLE, 1)], f"Task creation or completion failed: {tasks!r}"
+            tasks = connection.execute("SELECT title, done, note FROM todos").fetchall()
+        assert tasks == [(TITLE, 1, NOTE)], f"Task creation, note saving, or completion failed: {tasks!r}"
 
         run_terminal(command, settings=True)
         with (folder / "config.toml").open("rb") as config:

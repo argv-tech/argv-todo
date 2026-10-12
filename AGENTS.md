@@ -78,9 +78,9 @@ Current source layout:
 | Module            | Responsibility                                                  |
 | ----------------- | --------------------------------------------------------------- |
 | `src/main.rs`     | Startup, terminal setup and cleanup                             |
-| `src/app/`        | State, actions, editing, events, tree navigation, folding, settings, tasks, pane focus and projections |
+| `src/app/`        | State, actions, editing, task notes, events, tree navigation, folding, settings, tasks, pane focus and projections |
 | `src/ui/`         | Frame composition, shared branding, geometry, text, editors, chrome, help, theme |
-| `src/ui/tasks/`   | Pane composition, draft placement, and task-tree rendering       |
+| `src/ui/tasks/`   | Pane composition, draft placement, task-tree rendering, and bottom task-note section |
 | `src/ui/help/`    | Shortcut content, wrapping, section guide, footer, and help rendering                  |
 | `src/ui/config/`  | Configuration panes, setting editor, selected-setting details and layout previews |
 | `src/db/`         | Database entry point, task model, queries, migrations, trees    |

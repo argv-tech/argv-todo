@@ -11,7 +11,7 @@ use super::{
     config::draw_config,
     help::draw_help,
     layout::workspace,
-    tasks::draw_tasks,
+    tasks::{draw_note, draw_tasks},
     theme::{ACCENT, BG, ERROR, TEXT},
 };
 
@@ -40,17 +40,21 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
     }
     let show_input = app.vim.input() == Some(InputTarget::Search)
         || (app.vim.input().is_none() && !app.query.is_empty());
-    let [header, _, body, message, input, footer] = Layout::vertical([
+    let workspace = workspace(area);
+    let note_height = (workspace.height / 4).clamp(2, 5);
+    let [header, _, body, note, message, input, footer] = Layout::vertical([
         Constraint::Length(1),
         Constraint::Length(1),
         Constraint::Min(1),
+        Constraint::Length(note_height),
         Constraint::Length(u16::from(app.error)),
         Constraint::Length(u16::from(show_input)),
         Constraint::Length(1),
     ])
-    .areas(workspace(area));
+    .areas(workspace);
     draw_header(frame, app, header);
     draw_tasks(frame, app, body);
+    draw_note(frame, app, note);
     if app.error {
         frame.render_widget(
             Paragraph::new(app.status.as_str()).style(Style::default().fg(ERROR)),

@@ -30,6 +30,7 @@ pub(crate) enum Motion {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum InputTarget {
     Task,
+    Note,
     Search,
     DatabasePath,
 }
@@ -97,6 +98,7 @@ pub(crate) enum VimAction {
     AddBelow,
     AddAbove,
     Edit,
+    EditNote,
     Priority(Priority),
     CyclePriority,
     Toggle,

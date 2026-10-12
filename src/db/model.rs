@@ -52,6 +52,7 @@ pub(crate) const DEFAULT_PRIORITY: Priority = Priority::Mid;
 pub(crate) struct Todo {
     pub(crate) id: i64,
     pub(crate) title: String,
+    pub(crate) note: String,
     pub(crate) done: bool,
     pub(crate) parent_id: Option<i64>,
     pub(crate) priority: Priority,

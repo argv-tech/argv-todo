@@ -76,6 +76,7 @@ impl App {
             }
             VimAction::AddBelow => self.begin_sibling(false),
             VimAction::AddAbove => self.begin_sibling(true),
+            VimAction::EditNote => self.begin_note(),
             VimAction::Edit => {
                 if let Some(todo) = self.selected_todo() {
                     let id = todo.id;

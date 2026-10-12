@@ -6,7 +6,7 @@ use super::{Database, Priority, Todo};
 impl Database {
     pub(crate) fn list(&self) -> Result<Vec<Todo>> {
         let mut statement = self.connection.prepare(
-            "SELECT id, title, done, created_at, updated_at, parent_id, priority, position
+            "SELECT id, title, done, created_at, updated_at, parent_id, priority, position, note
              FROM todos ORDER BY priority ASC, position ASC, id ASC",
         )?;
         Ok(statement
@@ -24,6 +24,7 @@ impl Database {
             parent_id: row.get(5)?,
             priority: row.get(6)?,
             position: row.get(7)?,
+            note: row.get(8)?,
         })
     }
 
@@ -79,6 +80,22 @@ impl Database {
              updated_at = strftime('%Y-%m-%d %H:%M:%S', 'now') WHERE id = ?3",
             params![title, priority, id],
         )?;
+        anyhow::ensure!(
+            changed == 1,
+            "Task no longer exists; press Ctrl-r to refresh"
+        );
+        Ok(())
+    }
+
+    pub(crate) fn update_note(&self, id: i64, note: &str) -> Result<()> {
+        let changed = self
+            .connection
+            .execute(
+                "UPDATE todos SET note = ?1,
+             updated_at = strftime('%Y-%m-%d %H:%M:%S', 'now') WHERE id = ?2",
+                params![note, id],
+            )
+            .context("Could not save task note")?;
         anyhow::ensure!(
             changed == 1,
             "Task no longer exists; press Ctrl-r to refresh"

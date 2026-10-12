@@ -39,7 +39,7 @@ impl Database {
                      UNION
                      SELECT todos.id FROM todos JOIN subtree ON todos.parent_id = subtree.id
                  )
-                 SELECT id, title, done, created_at, updated_at, parent_id, priority, position
+                 SELECT id, title, done, created_at, updated_at, parent_id, priority, position, note
                  FROM todos WHERE id IN (SELECT id FROM subtree) ORDER BY id",
             )?;
             for todo in todos {
@@ -60,8 +60,8 @@ impl Database {
         let transaction = self.connection.transaction()?;
         for todo in todos {
             transaction.execute(
-                "INSERT INTO todos (id, title, done, created_at, updated_at, parent_id, priority, position) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-                params![todo.id, todo.title, todo.done, todo.created_at, todo.updated_at, todo.parent_id, todo.priority, todo.position]
+                "INSERT INTO todos (id, title, done, created_at, updated_at, parent_id, priority, position, note) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                params![todo.id, todo.title, todo.done, todo.created_at, todo.updated_at, todo.parent_id, todo.priority, todo.position, todo.note]
             )?;
         }
         transaction.commit()?;

@@ -4,9 +4,13 @@ Notable changes to argv-todo, grouped by release.
 
 ## Unreleased
 
+### Added
+
+- **tasks:** Add saved notes in the bottom section
+
 ### Build
 
-- **release:** Prepare crates.io publication
+- **release:** Prepare crates.io publication ([17a9ef3](https://github.com/argv-tech/argv-todo/commit/17a9ef3be87071f1d8e46ad7915c40cd0b61cf6f))
 
 ### Continuous Integration
 

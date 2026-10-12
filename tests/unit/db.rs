@@ -10,10 +10,12 @@ impl Database {
 fn crud_and_undo_preserve_original_record() {
     let mut db = Database::memory();
     let id = db.add("Read Rust's book 📚", None, Priority::Mid).unwrap();
+    db.update_note(id, "Read examples too 界é👩‍💻").unwrap();
     db.update(id, "Read chapter 2", Priority::High).unwrap();
     db.toggle(id).unwrap();
     let todos = db.list().unwrap();
     assert_eq!(todos[0].title, "Read chapter 2");
+    assert_eq!(todos[0].note, "Read examples too 界é👩‍💻");
     assert!(todos[0].done);
     assert_eq!(todos[0].priority, Priority::High);
     db.delete(&todos).unwrap();
@@ -32,6 +34,8 @@ fn disk_storage_creates_parent_and_survives_reopen() {
     {
         let mut db = Database::open(&path).unwrap();
         let root = db.add("Persist this", None, Priority::High).unwrap();
+        db.update_note(root, "Saved note with 'quotes' 界é👩‍💻")
+            .unwrap();
         db.add_relative("Above", root, true, Priority::High)
             .unwrap();
         db.add_relative("Below", root, false, Priority::High)
@@ -47,6 +51,8 @@ fn disk_storage_creates_parent_and_survives_reopen() {
         ["Above", "Persist this", "Below"]
     );
     assert!(todos.iter().all(|todo| todo.priority == Priority::High));
+    assert_eq!(todos[1].note, "Saved note with 'quotes' 界é👩‍💻");
+    assert!(todos[0].note.is_empty() && todos[2].note.is_empty());
     drop(db);
     std::fs::remove_dir_all(folder).unwrap();
 }
@@ -117,6 +123,7 @@ fn migrates_existing_database_without_changing_tasks() {
     let db = Database::initialize(connection).unwrap();
     let existing = db.list().unwrap()[0].clone();
     assert_eq!(existing.title, "Existing task");
+    assert!(existing.note.is_empty());
     assert!(existing.done);
     assert_eq!(existing.parent_id, None);
     assert_eq!(existing.priority, Priority::Mid);
@@ -129,6 +136,72 @@ fn migrates_existing_database_without_changing_tasks() {
     let db = Database::initialize(db.connection).unwrap();
     assert_eq!(db.list().unwrap()[0], existing);
     assert_eq!(db.list().unwrap().len(), 2);
+}
+
+#[test]
+fn note_migration_preserves_current_hierarchy_order_and_timestamps() {
+    let connection = Connection::open_in_memory().unwrap();
+    connection
+        .execute_batch(
+            "CREATE TABLE todos (
+             id INTEGER PRIMARY KEY AUTOINCREMENT,
+             title TEXT NOT NULL,
+             done INTEGER NOT NULL DEFAULT 0,
+             parent_id INTEGER REFERENCES todos(id),
+             priority INTEGER NOT NULL DEFAULT 3,
+             position INTEGER NOT NULL DEFAULT 0,
+             created_at TEXT NOT NULL DEFAULT '2026-01-01 00:00:00',
+             updated_at TEXT NOT NULL DEFAULT '2026-01-02 00:00:00'
+         );
+         INSERT INTO todos (id, title, done, parent_id, priority, position) VALUES
+             (1, 'Parent', 0, NULL, 1, 40),
+             (2, 'Child', 1, 1, 5, 17);",
+        )
+        .unwrap();
+    let db = Database::initialize(connection).unwrap();
+    let todos = db.list().unwrap();
+    assert!(todos.iter().all(|todo| todo.note.is_empty()
+        && todo.created_at == "2026-01-01 00:00:00"
+        && todo.updated_at == "2026-01-02 00:00:00"));
+    assert_eq!(
+        (todos[0].priority, todos[0].position, todos[0].done),
+        (Priority::High, 40, false)
+    );
+    assert_eq!(
+        (
+            todos[1].priority,
+            todos[1].position,
+            todos[1].parent_id,
+            todos[1].done
+        ),
+        (Priority::Low, 17, Some(1), true)
+    );
+    db.update_note(2, "Migrated note").unwrap();
+    let saved = db.list().unwrap();
+    let db = Database::initialize(db.connection).unwrap();
+    assert_eq!(db.list().unwrap(), saved);
+}
+
+#[test]
+fn note_updates_allow_empty_text_and_preserve_data_on_errors() {
+    let db = Database::memory();
+    let id = db.add("Task", None, Priority::Mid).unwrap();
+    db.update_note(id, "A note with 'quotes' 界é👩‍💻").unwrap();
+    let saved = db.list().unwrap();
+    assert!(db.update_note(id + 999, "Missing task").is_err());
+    assert_eq!(db.list().unwrap(), saved);
+    db.connection
+        .execute_batch(
+            "CREATE TRIGGER reject_note BEFORE UPDATE OF note ON todos
+         WHEN NEW.note = 'Rejected'
+         BEGIN SELECT RAISE(ABORT, 'test failure'); END;",
+        )
+        .unwrap();
+    assert!(db.update_note(id, "Rejected").is_err());
+    assert_eq!(db.list().unwrap(), saved);
+    db.update_note(id, "").unwrap();
+    assert!(db.list().unwrap()[0].note.is_empty());
+    assert_eq!(db.list().unwrap()[0].title, "Task");
 }
 
 #[test]
@@ -171,6 +244,9 @@ fn delete_snapshots_new_descendants_and_undo_restores_entire_tree() {
     let child = db.add("Child", Some(parent), Priority::Low).unwrap();
     let grandchild = db.add("Grandchild", Some(child), Priority::High).unwrap();
     db.add("Sibling", Some(parent), Priority::Low).unwrap();
+    db.update_note(parent, "New note after stale snapshot")
+        .unwrap();
+    db.update_note(grandchild, "Nested note 界é👩‍💻").unwrap();
     db.toggle(grandchild).unwrap();
     let expected = db.list().unwrap();
     let deleted = db.delete(&stale_roots[..1]).unwrap();

@@ -22,6 +22,8 @@ fn moves_whole_subtrees_without_changing_priority_or_completion() {
         .add("界 child", Some(second), Priority::High)
         .unwrap();
     database.toggle(child).unwrap();
+    database.update_note(second, "Moving parent note").unwrap();
+    database.update_note(child, "Moving child note").unwrap();
     assert!(database.move_task(second, TaskMove::Up, 1).unwrap());
     assert_eq!(siblings(&database, None), [second, first, third]);
     assert!(
@@ -40,6 +42,11 @@ fn moves_whole_subtrees_without_changing_priority_or_completion() {
     let second = tasks.iter().find(|task| task.id == second).unwrap();
     assert_eq!(second.priority, Priority::Low);
     assert!(!second.done);
+    assert_eq!(second.note, "Moving parent note");
+    assert_eq!(
+        tasks.iter().find(|task| task.id == child).unwrap().note,
+        "Moving child note"
+    );
     assert!(tasks.iter().find(|task| task.id == child).unwrap().done);
     assert!(!database.move_task(first, TaskMove::Indent, 1).unwrap());
     assert!(!database.move_task(first, TaskMove::Outdent, 1).unwrap());

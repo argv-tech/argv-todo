@@ -44,6 +44,7 @@ fn tab_switches_panes_only_on_press_and_keeps_fields_isolated() {
     }
     for target in [
         InputTarget::Task,
+        InputTarget::Note,
         InputTarget::Search,
         InputTarget::DatabasePath,
     ] {
@@ -174,6 +175,14 @@ fn priority_keys_preserve_vim_counts_and_title_input() {
         Some(VimAction::CyclePriority)
     );
     vim.begin_input(InputTarget::Search);
+    assert_eq!(
+        vim.handle(KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL)),
+        None
+    );
+    vim.end_input();
+    assert_eq!(vim.handle(key('n')), Some(VimAction::EditNote));
+    vim.begin_input(InputTarget::Note);
+    assert_eq!(vim.handle(key('n')), Some(VimAction::Insert('n')));
     assert_eq!(
         vim.handle(KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL)),
         None

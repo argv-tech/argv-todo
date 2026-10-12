@@ -4,6 +4,7 @@ mod events;
 mod folding;
 mod help;
 mod navigation;
+mod notes;
 mod ordering;
 mod preferences;
 mod settings;

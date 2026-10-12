@@ -73,6 +73,7 @@ impl VimManager {
             KeyCode::Char('k') | KeyCode::Up => VimAction::Move(Motion::Up, count),
             KeyCode::Char('l') | KeyCode::Right => VimAction::Move(Motion::Right, count),
             KeyCode::Char('e') => VimAction::Edit,
+            KeyCode::Char('n') => VimAction::EditNote,
             KeyCode::Char('t') => VimAction::CyclePriority,
             KeyCode::Char('0') | KeyCode::Home => VimAction::FileStart,
             KeyCode::Char('G') | KeyCode::End => VimAction::FileEnd,

@@ -13,6 +13,7 @@ impl Database {
              CREATE TABLE IF NOT EXISTS todos (
                  id INTEGER PRIMARY KEY AUTOINCREMENT,
                  title TEXT NOT NULL CHECK(length(trim(title)) > 0),
+                 note TEXT NOT NULL DEFAULT '',
                  done INTEGER NOT NULL DEFAULT 0 CHECK(done IN (0, 1)),
                  parent_id INTEGER REFERENCES todos(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
                  priority INTEGER NOT NULL DEFAULT 3 CHECK(priority IN (1, 3, 5)),
@@ -26,6 +27,10 @@ impl Database {
             .query_map([], |row| row.get::<_, String>(1))?
             .collect::<rusqlite::Result<Vec<_>>>()?;
         let transaction = connection.transaction()?;
+        if !columns.iter().any(|column| column == "note") {
+            transaction
+                .execute_batch("ALTER TABLE todos ADD COLUMN note TEXT NOT NULL DEFAULT '';")?;
+        }
         if !columns.iter().any(|column| column == "parent_id") {
             transaction.execute_batch(
                 "ALTER TABLE todos ADD COLUMN parent_id INTEGER

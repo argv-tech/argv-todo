@@ -5,6 +5,7 @@ A small terminal todo app with Vim-style keys, nested tasks, and local SQLite st
 - Keep parents and children together in one task tree.
 - Choose normal or split todo/completed layouts in Settings.
 - Create and edit tasks inline, with three priority levels and saved sibling order.
+- Keep a saved note for each task, shown in the bottom section when selected.
 - Search titles, complete subtrees, and undo deletions.
 - Use Unicode text, bracketed paste, and your terminal's color palette.
 
@@ -110,6 +111,7 @@ While editing configuration, `Esc` discards the draft and returns to the configu
 | `i`, `a` | Add a child of the selected task; add a root task when the list is empty |
 | `o`, `O` | Add a sibling below or above the selected task; add a root task when the list is empty |
 | `e`, `cc` | Edit selected task |
+| `n` | Add or edit the selected task's note in the bottom section |
 | `t` | Cycle priority: low → mid → high → low |
 | `ph`, `pm`, `pl` | Set priority to high, mid, or low |
 | `Ctrl-p` | Cycle priority, including while creating or editing inline |
@@ -127,7 +129,7 @@ Help covers task navigation, task changes, search, and settings. It uses the sam
 
 Section titles are bold, uppercase, and spaced apart. Narrow or short terminals show all shortcuts in one scrolling column: use `j` / `k` or arrows to scroll, `PgUp` / `PgDn` to move a page, and `gg` / `G` or `Home` / `End` to jump to the beginning or end. Keys and descriptions align in wider panes and stack in narrow ones. A scrollbar and row range show your position. `Esc` or `?` closes help; the close hint stays visible.
 
-Every input field—task titles, search, and the configuration database path—supports **Insert**, **Normal**, **Visual**, **Visual Line**, and **Replace** modes. Fields open in Insert, where letters are text. `Esc` returns to Normal without closing the field; another `Esc` cancels it. In Visual or Replace, `Esc` also returns to Normal. When a command is pending, `Esc` cancels the command first. `Enter` saves or applies search from any field mode. The footer shows the mode and pending command; Visual selections use reverse video.
+Every input field—task titles, notes, search, and the configuration database path—supports **Insert**, **Normal**, **Visual**, **Visual Line**, and **Replace** modes. Fields open in Insert, where letters are text. `Esc` returns to Normal without closing the field; another `Esc` cancels it. In Visual or Replace, `Esc` also returns to Normal. When a command is pending, `Esc` cancels the command first. `Enter` saves or applies search from any field mode. The footer shows the mode and pending command; Visual selections use reverse video.
 
 | Field keys | Action |
 | --- | --- |
@@ -160,6 +162,8 @@ Tasks have **high**, **mid**, or **low** priority; new roots and existing tasks 
 The fullscreen interface uses your terminal's background and ANSI color palette. Tasks occupy one row each, with bold parents and indented connecting branches. A small cyan caret and an underlined title mark the selection; checkmarks and tree lines use normal text color and turn cyan when selected. Focus and completion preserve title and priority colors; a checkmark and a struck-through title identify completed tasks. A `done/total` count beside a parent shows its direct children. Long titles show an ellipsis so the count stays visible, without splitting Unicode graphemes. The header shows the app name, version in red, and completion count. Short key hints stay at the bottom and fit the available width; input and errors appear when needed. Help keeps its scroll and close instructions visible. Layout and key hints adapt to the terminal size.
 
 Create and edit tasks directly in the tree. A new draft appears at its sorted position among siblings or directly beneath a parent when creating its first child. `Ctrl-p` changes the draft priority and its position before saving. Starting a new task clears search to show its context. `Enter` saves the inline row; `Esc` enters Normal and another `Esc` cancels it. Search stays at the bottom and remains live in every field mode.
+
+The bottom Note section shows a wrapped preview of the selected task's note, following the focused pane in Split. Press `n` to add or edit it, then `Enter` to save. Notes use the same horizontally scrolling single-line editor and Unicode paste support as titles. `Esc` enters Normal; another `Esc` discards the draft. Clear the field and save to remove a note. Notes are stored in SQLite and preserved when moving tasks or undoing deletion. Existing tasks start with empty notes.
 
 ## Check
 

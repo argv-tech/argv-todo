@@ -31,9 +31,9 @@ pub(in crate::ui) fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
         ])
     } else {
         Layout::vertical([
-            Constraint::Percentage(50),
+            Constraint::Fill(1),
             Constraint::Length(1),
-            Constraint::Min(0),
+            Constraint::Fill(1),
         ])
     };
     let [todo, divider, completed] = layout.areas(area);

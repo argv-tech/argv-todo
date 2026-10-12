@@ -158,17 +158,17 @@ fn footer_hint(app: &App, width: usize) -> &'static str {
         ]
     } else if app.task_view() != TaskView::Normal {
         &[
-            "Tab pane · j/k move · h/l tree · Enter fold · i child · Esc config · ? help · q quit",
-            "Tab pane · i child · Esc config · ? help · q quit",
+            "Tab pane · j/k move · h/l tree · Enter fold · i child · n note · Esc config · ? help · q quit",
+            "Tab pane · i child · n note · Esc config · ? help · q quit",
             "Tab pane · Esc config · ? · q",
             "Tab pane · ? · q",
             "Tab · ? · q",
         ]
     } else {
         &[
-            "j/k move · h/l tree · i/a child · o/O sibling · Enter fold · x done · t priority · Esc config · ? help · q quit",
-            "i child · o/O sibling · Esc config · ? help · q quit",
-            "i child · Esc config · ? help · q quit",
+            "j/k move · h/l tree · i/a child · o/O sibling · n note · Enter fold · x done · t priority · Esc config · ? help · q quit",
+            "i child · o/O sibling · n note · Esc config · ? help · q quit",
+            "i child · n note · Esc config · ? help · q quit",
             "i · Esc config · ? · q",
             "i · ? · q",
         ]

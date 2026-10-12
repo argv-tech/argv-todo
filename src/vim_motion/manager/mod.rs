@@ -115,8 +115,7 @@ impl VimManager {
                 }
                 KeyCode::Char('r') if self.input.is_none() => Some(VimAction::Refresh),
                 KeyCode::Char('p')
-                    if self.input != Some(InputTarget::Search)
-                        && self.input != Some(InputTarget::DatabasePath) =>
+                    if self.input.is_none() || self.input == Some(InputTarget::Task) =>
                 {
                     Some(VimAction::CyclePriority)
                 }
