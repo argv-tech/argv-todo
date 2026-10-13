@@ -40,7 +40,7 @@ pub(crate) struct TreeRow {
     pub(crate) ghost: bool,
 }
 
-pub(crate) struct App {
+pub struct App {
     database: Database,
     pub(crate) todos: Vec<Todo>,
     pub(crate) adding_parent: Option<i64>,
@@ -60,7 +60,7 @@ pub(crate) struct App {
     pub(crate) help_view: HelpView,
     pub(crate) status: String,
     pub(crate) error: bool,
-    pub(crate) config: Option<Config>,
+    pub config: Option<Config>,
     pub(crate) configuring: bool,
     pub(crate) config_setting: ConfigSetting,
     undo: Vec<deletion::DeletionUndo>,
@@ -69,7 +69,7 @@ pub(crate) struct App {
 }
 
 impl App {
-    pub(crate) fn new(database: Database) -> Result<Self> {
+    pub fn new(database: Database) -> Result<Self> {
         let todos = database.list()?;
         let projects = projects::ProjectState::new(database.projects()?);
         let mut app = Self {

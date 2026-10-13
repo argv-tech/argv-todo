@@ -42,7 +42,7 @@ code-of-conduct = "https://github.com/argv-tech/argv-todo/blob/main/CODE_OF_COND
 
 [[bin]]
 name = "argv-todo"
-path = "src/main.rs"
+path = "src/bin/argv-todo.rs"
 
 [dependencies]
 anyhow = "1"

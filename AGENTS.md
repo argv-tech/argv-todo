@@ -42,8 +42,9 @@ change them; avoid adding features beyond the request.
   current source layout is a starting point and should evolve with the app.
   Create new top-level modules when a concern does not fit an existing owner;
   otherwise add focused submodules under that owner.
-- Keep `src/main.rs` focused on startup and terminal cleanup. Application event
-  handling belongs in `src/app/events.rs`.
+- Keep `src/bin/argv-todo.rs` focused on startup and terminal cleanup. Application event
+  handling belongs in `src/app/events.rs`. `src/lib.rs` exposes the modules the
+  binary needs and keeps rendering and input mapping private to the crate.
 - Split substantial responsibilities into multiple files and subdirectories
   rather than growing one large file.
 - A small leaf module can remain `src/name.rs`. When it needs submodules, use
@@ -77,7 +78,8 @@ Current source layout:
 
 | Module            | Responsibility                                                  |
 | ----------------- | --------------------------------------------------------------- |
-| `src/main.rs`     | Startup, terminal setup and cleanup                             |
+| `src/lib.rs`      | Library root for the binary; exposes `app`, `cli`, `config`, `db` |
+| `src/bin/argv-todo.rs` | Startup, terminal setup and cleanup                      |
 | `src/app/`        | State, actions, editing, task notes, events, tree navigation, folding, settings, tasks, completed-task cleanup and deletion undo, pane focus and projections |
 | `src/app/archive/` | Archive browsing, tree restoration, and confirmed permanent cleanup while preserving live view state |
 | `src/app/projects/` | Project tabs, per-project selection and scrolling, project creation, task conversion and tree assignment |

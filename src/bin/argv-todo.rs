@@ -1,11 +1,5 @@
-mod app;
-mod cli;
-mod config;
-mod db;
-mod ui;
-mod vim_motion;
-
 use anyhow::{Context, Result};
+use argv_todo::{app::App, cli, config::Config, db::Database};
 #[cfg(not(windows))]
 use crossterm::event::{DisableBracketedPaste, EnableBracketedPaste};
 use crossterm::{cursor::SetCursorStyle, execute};
@@ -14,11 +8,11 @@ fn main() -> Result<()> {
     let Some(options) = cli::options()? else {
         return Ok(());
     };
-    let config = config::Config::load(&options.database_path, options.database_override)?;
+    let config = Config::load(&options.database_path, options.database_override)?;
     let path = &config.active_database;
-    let database = db::Database::open(path)
+    let database = Database::open(path)
         .with_context(|| format!("Could not open database {}", path.display()))?;
-    let mut app = app::App::new(database)?;
+    let mut app = App::new(database)?;
     app.config = Some(config);
     ratatui::run(|terminal| -> Result<()> {
         let _guard = TerminalInputGuard;

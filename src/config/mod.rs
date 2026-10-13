@@ -22,10 +22,10 @@ use crate::db::{DeleteMode, Priority};
 
 const DEFAULT_CONFIG: &str = "# Paths are relative to this config file. --db overrides this setting.\ndatabase_path = \"db.sql\"\n\n# Task layouts: normal, split, projects. Changes apply immediately in Settings.\ntask_view = \"normal\"\n\n# New roots use this priority; children inherit their parent's priority.\ndefault_priority = \"mid\"\n\n# Normal and Projects views. Split always separates completed tasks.\nshow_completed = true\n\n# Sibling ordering: priority or manual. Shift+H/J/K/L moves tasks in manual mode.\nsort_order = \"priority\"\n\n# Alt+Enter clears completed tasks: soft retains records; hard removes them.\ncompleted_delete = \"soft\"\n\n# Show task and configuration footer shortcuts.\nshow_hints = true\n";
 
-pub(crate) struct Config {
+pub struct Config {
     pub(crate) path: PathBuf,
     pub(crate) database_path: String,
-    pub(crate) active_database: PathBuf,
+    pub active_database: PathBuf,
     pub(crate) database_override: bool,
     pub(crate) task_view: TaskView,
     pub(crate) default_priority: Priority,
@@ -43,7 +43,7 @@ impl Config {
             .join(path)
     }
 
-    pub(crate) fn load(default_database: &Path, database_override: bool) -> Result<Self> {
+    pub fn load(default_database: &Path, database_override: bool) -> Result<Self> {
         let folder = default_database
             .parent()
             .filter(|path| !path.as_os_str().is_empty())

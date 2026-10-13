@@ -40,7 +40,7 @@ impl App {
         }
     }
 
-    pub(crate) fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
+    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
         while self.running {
             let shape = match self.vim.mode() {
                 VimMode::Insert => SetCursorStyle::SteadyBar,

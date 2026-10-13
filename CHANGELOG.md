@@ -13,12 +13,16 @@ Notable changes to argv-todo, grouped by release.
 - **archive:** Add separate restore and clear shortcuts ([546b16e](https://github.com/argv-tech/argv-todo/commit/546b16e46e6c961fc1fb034ea9208bbc31252d1d))
 - **notes:** Support multiline editing and preserved line breaks ([6e6d7cb](https://github.com/argv-tech/argv-todo/commit/6e6d7cb717cc16933f8172e53bcf133dab9a14bb))
 - **projects:** Add keybinds to rename and delete projects ([503fd84](https://github.com/argv-tech/argv-todo/commit/503fd84a7d9168383aa74561a76df8c0bfd02acb))
-- **deletion:** Require confirmation for destructive deletions ([027e4ee](https://github.com/argv-tech/argv-todo/commit/027e4ee0307805d25d765c9cf1a84967a5f24d3c))
+- **deletion:** Require confirmation for destructive deletions ([3f8e59b](https://github.com/argv-tech/argv-todo/commit/3f8e59beebc07dd3f828132076cca8952dd38c28))
 
 ### Fixed
 
 - **projects:** Keep subtask navigation before switching tabs with h and l ([f9df04f](https://github.com/argv-tech/argv-todo/commit/f9df04fcafe52c2fa746ff50cca10122c94886d7))
 - **projects:** Remove original task when converting it to a project ([4bf137a](https://github.com/argv-tech/argv-todo/commit/4bf137a2c0b50a9a9abd4de7f13077273674de87))
+
+### Changed
+
+- Split library root from thin binary wrapper ([5474738](https://github.com/argv-tech/argv-todo/commit/54747387a60931a8de9bdd46ebeba3c76fbb78b5))
 
 ### Documentation
 
