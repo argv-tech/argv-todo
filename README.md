@@ -1,33 +1,12 @@
 # argv-todo
 
-A small terminal todo app with Vim-style keys, nested tasks, and local SQLite storage. Built with Rust, Ratatui, and Crossterm.
+A terminal todo list with Vim-style keys. Tasks can have children, notes,
+priorities, and deadlines. Everything is saved locally in SQLite as you work.
 
-- Keep parents and children together in one task tree.
-- Choose normal, split todo/completed, or project tab layouts in Settings.
-- Give each project its own tab and move whole task trees between projects.
-- Create and edit tasks inline, with three priority levels, optional deadlines, and saved sibling order.
-- Keep a saved note for each task, shown in the bottom section when selected.
-- Search titles, complete subtrees, and undo deletions.
-- Use Unicode text, bracketed paste, and your terminal's color palette.
+## Install and run
 
-[Contributing](CONTRIBUTING.md) · [Support](SUPPORT.md) · [Changelog](CHANGELOG.md) · [MIT license](LICENSE)
-
-## Install
-
-After the first crates.io release, install with:
-
-```sh
-cargo install argv-todo --locked
-argv-todo
-```
-
-To install before publication, or build a local checkout, use the source instructions below.
-
-### From source
-
-A current stable Rust toolchain and a C compiler are required to build. SQLite is bundled; no SQLite server or system SQLite installation is required.
-
-On macOS, install the Xcode Command Line Tools with `xcode-select --install`. On Windows, use the Rust MSVC toolchain and Visual Studio Build Tools with the **Desktop development with C++** workload.
+Build from source with a current stable Rust toolchain and a C compiler.
+SQLite is bundled; you do not need to install it separately.
 
 ```sh
 git clone https://github.com/argv-tech/argv-todo.git
@@ -36,35 +15,233 @@ cargo install --path . --locked
 argv-todo
 ```
 
-Ensure Cargo's binary directory is on your `PATH` (`~/.cargo/bin` on Linux and macOS, `%USERPROFILE%\\.cargo\\bin` on Windows).
+This installs `argv-todo` and the optional `argv-todo-daemon` notification
+service. If the command is not found, add Cargo's binary directory to your
+`PATH`: `~/.cargo/bin` on Linux/macOS or `%USERPROFILE%\.cargo\bin` on Windows.
 
-## Run
+On macOS, get the compiler with `xcode-select --install`. On Windows, use
+Rust's MSVC toolchain and Visual Studio Build Tools with the **Desktop
+development with C++** workload.
+
+Run in an interactive terminal with at least 35 columns and 12 rows. Press
+`?` for shortcuts and `q` to quit. To try a checkout without installing:
 
 ```sh
-cargo run --locked
+cargo run --locked -- --db ./target/dev/db.sql
 ```
 
-An interactive terminal is required. The app uses the full terminal and shows task rows at 35 columns × 12 rows or larger. Press `?` for help and `q` to quit.
+That command keeps trial tasks and settings separate from your usual database.
 
-Run in Terminal or iTerm2 on macOS, or Windows Terminal with PowerShell or Command Prompt on Windows. Linux and macOS use bracketed paste; Windows uses native console text input because Crossterm 0.29 does not parse bracketed-paste events there. Paste a single line into Windows input fields; a pasted newline acts as Enter.
+## Your first task tree
 
-## Storage
+1. Press `i`, type `Release checklist`, and press `Enter` to save.
+2. With that task selected, press `i` again. Type `Run tests` and press
+   `Enter`. This creates a child.
+3. Press `o`, type `Update docs`, and press `Enter` to add another child
+   beside it.
+4. Press `Space` to complete `Update docs`. Press `h` to select the parent;
+   `Enter` folds or unfolds its children.
+5. With the parent selected, press `o` to add another top-level task.
 
-Changes are saved immediately. The app creates its config directory, `config.toml`, and database on first launch:
+**`i` adds a child; `o` adds a sibling.** In an empty list, either creates
+a top-level task. Completed tasks stay visible by default.
 
-| Platform | Default database |
+Edits open in Insert mode, so you can type normally. `Enter` saves a title.
+To discard an edit, press `Esc` to enter Normal mode, then `Esc` again to
+cancel. Notes use `Ctrl-s` to save because `Enter` adds a line while typing.
+
+## Everyday keys
+
+These keys apply while browsing tasks. Uppercase letters mean Shift plus
+the letter; `dd`, `cc`, and `gg` are two consecutive key presses.
+
+| Key | Action |
 | --- | --- |
-| Linux | `~/.config/argv-todo/db.sql` |
-| macOS | `~/Library/Application Support/argv-todo/db.sql` |
-| Windows | `%APPDATA%\argv-todo\db.sql` |
+| `j` / `k`, Up / Down | Select the next / previous visible task |
+| `h` / `l` | Select the parent / expand and select the first child |
+| Left / Right | Navigate parent / child without switching project tabs |
+| `Enter` | Fold or unfold the selected task's children |
+| `gg` / `G`, Home / End | Select the first / last task |
+| `i` / `a` | Add a child, or a root in an empty list |
+| `o` / `O` | Add a sibling below / above |
+| `e` / `cc` | Edit the title |
+| `n` | Edit the task's note |
+| `Space` / `x` | Complete or reopen the task **and all its descendants** |
+| `t` / `Ctrl-p` | Cycle priority: low → mid → high → low |
+| `ph` / `pm` / `pl` | Set high / mid / low priority |
+| `T` | Set or clear a deadline |
+| `/` | Search task titles, ignoring case |
+| `dd` | Delete the selected task and its descendants after confirmation |
+| `u` | Undo the last deletion in this session |
+| `Alt+Enter` | Clear completed tasks after confirmation |
+| `A` | Open the archive |
+| `Ctrl-r` | Reload tasks from disk |
+| `Esc` | Clear an applied search; otherwise open Settings |
+| `?` | Open or close help |
+| `q` / `Ctrl-c` | Quit from the task tree / quit from anywhere |
 
-Linux honors `XDG_CONFIG_HOME`. Despite its `.sql` extension, `db.sql` is a binary SQLite database. SQLite may create `db.sql-wal` and `db.sql-shm` beside it while running.
+Counts repeat commands: `3j` moves down three rows; `3dd` selects three
+visible tasks for deletion, including their descendants.
 
-For an existing database, pass its current path with `--db` or move it to the new default location before launching.
+Search keeps ancestors visible so matches have context. Completing or
+deleting a parent also affects descendants hidden by search or folding.
+Completing a child leaves its ancestors and siblings unchanged.
 
-Close the app before moving or backing up a database. Keep any remaining `db.sql-wal` and `db.sql-shm` files together with `db.sql`. Task data is stored without application-level encryption.
+### Priority and manual ordering
 
-Override the location when needed:
+By default, siblings are sorted high → mid → low. Tasks with equal priority
+keep their saved order. New roots use the `default_priority` setting;
+children inherit their parent's priority and new siblings inherit the
+selected task's priority. `Ctrl-p` also changes priority while editing a title.
+
+To arrange tasks yourself, set `sort_order` to `manual` in Settings:
+
+| Key | Action in manual order |
+| --- | --- |
+| `J` / `K` | Move the selected task tree down / up |
+| `L` | Indent under the previous sibling |
+| `H` | Outdent one level |
+
+### Notes and text editing
+
+Press `n` to edit the selected task's note in the bottom section. `Enter`
+adds a line; `Ctrl-s` saves from any mode. In Normal mode, `Enter` also saves.
+Clear the note and save to remove it.
+
+In Normal mode, press `i` to resume typing. Fields support Vim motions and
+editing commands: `w` / `b`, `0` / `$`,
+`dw`, `ciw`, `dd`, `v` / `V`, `y` / `p`, `r` / `R`, `u` / `Ctrl-r`, and `.`.
+In a title field, `dd` clears text. In a note, it deletes the current line.
+The footer shows the current mode.
+
+Arrow keys, Home, End, Backspace, and Delete work while typing. Unicode
+editing respects grapheme boundaries. On Linux/macOS, pasted line breaks
+are preserved in notes and become spaces in single-line fields. On Windows,
+paste one line at a time: a pasted newline acts as `Enter`.
+
+## Layouts and projects
+
+Press `Esc` from the task tree to open Settings, select `task_view`, and
+use `Enter` or `h` / `l` to change it. Press `Esc` to return. Layout changes
+apply immediately.
+
+| Layout | What you see | `Tab` / `Shift-Tab` |
+| --- | --- | --- |
+| `normal` | One task tree containing all projects | No pane switch |
+| `split` | Todo and Completed panes; stacked in narrow terminals | Switch panes |
+| `projects` | One task tree per project, plus Inbox for unassigned tasks | Next / previous project |
+
+In Split, dimmed `(parent)` rows give completed children context. Those rows
+cannot be selected. In Projects, `h` switches to the previous tab when there
+is no parent; `l` switches to the next tab when there is no child. Each pane
+or tab remembers its selection and scroll position.
+
+| Key | Project action |
+| --- | --- |
+| `P` | Create a project and switch to its tab |
+| `R` | Rename the active project in Projects |
+| `D` | Delete the active project and all its tasks in Projects; confirm with `Enter` |
+| `m` | Move the selected task tree to a project; choose with `j` / `k`, confirm with `Enter` |
+| `C` | Replace a top-level task with a project named after its title |
+
+Project names must be nonempty and unique ignoring ASCII case. Inbox is
+reserved and cannot be renamed or deleted. `Esc` cancels a project edit or
+destination picker; from Insert mode, press it twice to cancel an edit.
+
+Moving a child to another project makes it a root there and keeps its
+descendants. Conversion with `C` removes the original task **and its note**;
+its children become project roots with their descendants and task data intact.
+Without children, conversion creates an empty project.
+
+## Deadlines and reminders
+
+Press `T` on a task to open the deadline picker. **Deadline times use UTC.**
+
+| Picker key | Action |
+| --- | --- |
+| `h` / `l` | Previous / next day |
+| `j` / `k` | Next / previous week |
+| `H` / `L` | Previous / next month |
+| `t` | Jump to today |
+| `Tab` | Switch between date, hour, and minute |
+| `h` / `l` in a time field | Decrease / increase the hour or minute |
+| `Enter` / `x` / `Esc` | Save / clear the deadline / cancel |
+
+For desktop reminders, run the separately installed daemon in another terminal:
+
+```sh
+argv-todo-daemon
+```
+
+It stays running until stopped; the TUI does not start it. If you use `--db`,
+pass the same path to both binaries so they share the database and config.
+On Linux/macOS, use `argv-todo-daemon &` to run it in the background.
+
+The default reminders fire one day and one hour before a deadline, then at
+the deadline. Set `notifications = false` to disable them, or set an
+individual reminder's minutes to `0` to disable that reminder. Reminder
+offsets accept 0–10080 minutes. Each notification fires at most once per
+deadline per daemon run; restarting can repeat notifications already due.
+
+## Deletion, undo, and the archive
+
+Deletion prompts use `Enter` to confirm and `Esc` to cancel. Other task
+commands are ignored until you choose.
+
+| Operation | Can it be recovered? |
+| --- | --- |
+| `dd`: delete a task tree | `u` during the same session; it does **not** go to the archive |
+| `Alt+Enter` with `completed_delete = "soft"` (default) | `u` now, or restore from the archive after restart |
+| `Alt+Enter` with `completed_delete = "hard"` | `u` during the same session only |
+| `D` in Projects: delete the project, including archived tasks | Cannot be undone |
+| `D` in the archive: permanently clear all archived tasks | Cannot be undone |
+
+Completed cleanup includes tasks hidden by search or folding. It affects
+the active project in Projects, or all projects in Normal and Split.
+Unfinished descendants survive and move to the nearest surviving ancestor,
+or become roots.
+
+Press `A` to browse soft-deleted tasks from **all projects**. Select with
+`j` / `k`; press `r` to restore a task, its archived descendants, and any
+archived parents. Restored tasks keep notes, priorities, deadlines, project
+assignment, and completion state. Completed tasks may still be hidden by
+your visibility setting. Press `A` or `Esc` to return to your previous view.
+
+## Settings and data files
+
+The first launch creates `config.toml` and `db.sql` in the platform config
+directory:
+
+| Platform | Directory |
+| --- | --- |
+| Linux | `~/.config/argv-todo/` (honors `XDG_CONFIG_HOME`) |
+| macOS | `~/Library/Application Support/argv-todo/` |
+| Windows | `%APPDATA%\argv-todo\` |
+
+In Settings, select with `j` / `k` or `Tab` / `Shift-Tab`. Use `Enter` or
+`h` / `l` to change a preference. For `database_path`, press `Enter` to edit,
+then `Enter` to save. Database changes take effect on the next launch;
+other preferences apply immediately. Changes preserve config comments.
+
+You can also edit `config.toml` directly. These are the defaults:
+
+```toml
+database_path = "db.sql"
+task_view = "normal"              # normal, split, projects
+default_priority = "mid"          # low, mid, high
+show_completed = true            # Normal and Projects; Split has its own pane
+sort_order = "priority"           # priority, manual
+completed_delete = "soft"         # soft, hard
+show_hints = true
+notifications = true
+notify_reminder_1_minutes = 60
+notify_reminder_2_minutes = 1440
+```
+
+The app rereads settings on launch and when opening Settings. Invalid TOML,
+unknown keys, or invalid values produce an error.
+
+To use another database:
 
 ```sh
 argv-todo --db /path/to/tasks.sql
@@ -72,176 +249,26 @@ argv-todo --help
 argv-todo --version
 ```
 
-## Configuration
+`--db` takes precedence over `database_path` and uses `config.toml` beside
+the specified database. Otherwise, relative `database_path` values resolve
+against the config directory. Changing the path selects a database; it
+does not move tasks or the config file. On Windows, use TOML literal strings
+such as `database_path = 'C:\Users\example\tasks.sql'` or forward slashes.
 
-`config.toml` lives beside the default `db.sql` in the platform config directory. With `--db`, the app reads or creates `config.toml` beside the specified database instead, keeping development settings separate.
+Despite the extension, `db.sql` is a binary SQLite database. **Close the TUI
+and daemon before copying or moving it.** Keep any remaining `db.sql-wal`
+and `db.sql-shm` files with it. Back up `config.toml` too if you want to
+preserve settings. Task data is not encrypted by the app.
 
-The generated config contains:
+## Development and support
 
-```toml
-database_path = "db.sql"
-task_view = "normal"
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup and checks, and the
+[maintainer guide](docs/maintaining.md) for releases. This is a Rust app
+built with Ratatui and Crossterm; SQLite storage uses rusqlite.
 
-Set `database_path` to an absolute path or a path relative to the config's directory. `--db` takes precedence over this setting. Changing the setting selects a database; it does not move existing tasks. The config stays in its original directory even when the database path points elsewhere.
+Report bugs through [GitHub issues](https://github.com/argv-tech/argv-todo/issues).
+Include your OS, terminal, app version, and steps to reproduce. See
+[SUPPORT.md](SUPPORT.md) for support and [SECURITY.md](SECURITY.md) for
+vulnerability reports.
 
-For Windows paths in TOML, use literal strings such as `database_path = 'C:\Users\example\task storage\db.sql'`, or forward slashes such as `database_path = "C:/Users/example/task storage/db.sql"`.
-
-The app reads settings on startup and when opening configuration, preserving existing config files and comments. An empty config uses `db.sql` and the normal task view. Invalid TOML, unknown settings, invalid layout names, and invalid database paths produce an error before the terminal interface opens. `--help` and `--version` do not create files.
-
-Press `Esc` from the task view to open configuration. Settings are grouped under **Storage** (`database_path`), **Display** (`task_view`, `show_completed`, `show_hints`), **Task behavior** (`default_priority`, `sort_order`, `completed_delete`), and **Notifications** (`notifications`, `notify_reminder_1_minutes`, `notify_reminder_2_minutes`). Use `j` / `k`, arrows, or `Tab` / `Shift-Tab` to select settings across categories, skipping their headings. `gg` / `G` or `Home` / `End` selects the first / last setting. Short panes scroll to the selected setting and keep its category visible when space permits. At 74 columns or wider, the screen shows settings on the left and details for the selected setting on the right. Selecting `database_path` shows database and configuration-file paths; selecting `task_view` shows the active layout, its controls, and a small layout preview when space permits. Details update as you select or change a setting. Smaller terminals stack these sections and keep the details concise. Paths wrap in spacious panes and show an ellipsis when space is limited. The screen shows the ARGV-TODO ASCII logo when space permits. On `database_path`, press `Enter`, `e`, or `i` to edit, then `Enter` to save. Editing uses the same Unicode controls and paste support as task titles. Database-path changes apply on the next launch; the current database stays open, and `--db` retains precedence.
-
-On `task_view`, press `Enter`, `e`, `i`, `h` / `l`, or Left / Right to cycle through `normal`, `split`, and `projects`. The choice saves to TOML and applies immediately. Press `Esc` to return to tasks without restarting. Normal keeps the full task tree. Split shows unfinished todos on the left and completed tasks on the right, stacking them below 70 columns. Unfinished ancestors of completed children appear in the Completed pane as dimmed ghost rows labeled `(parent)`. These rows provide context and are skipped by selection and task commands. An obsolete `nested` setting falls back to Normal.
-
-In Split, `Tab` or `Shift-Tab` switches pane focus. Each pane keeps its own selection and scroll position; task commands operate on the focused pane. Completing or reopening a task moves it to the corresponding pane and keeps it selected. Search filters both panes. Tab leaves focus in an active editor while typing.
-
-In Projects, each project has its own tab and task tree. `l` expands and selects the first child when one exists; otherwise it selects the next project tab. `h` selects the parent when one exists; otherwise it selects the previous project tab. Counts such as `2l` repeat this navigation. `Tab` / `Shift-Tab` always selects the next / previous project, wrapping at either end. Left / Right arrows navigate the parent / first child within the active tree. Each tab keeps its selection and scroll position. The header count, search, and bottom Note section follow the active project. Existing unassigned tasks appear in **Inbox**. Normal and Split continue to show tasks from all projects.
-
-Press `P` from the task view to create a project; this opens Projects and saves the layout choice. Type its name and press `Enter` to create and select its empty tab, then `i` to add its first root task. Names must be nonempty and unique ignoring ASCII case; Inbox is reserved. Press `R` in Projects to rename the active project with the same naming rules; `Esc` cancels. Press `D` (Shift-d) in Projects to delete the active project together with all its tasks, including archived ones; press `Enter` to confirm or `Esc` to cancel. This cannot be undone. Inbox cannot be renamed or deleted. Children and new siblings inherit their project. Press `m` on a task to choose a destination with `j` / `k` or arrows, then `Enter` to move the task and all descendants; `Esc` cancels. A child moved to another project becomes a root there. Notes, completion, priorities, and descendant links are preserved. Projects and task assignments are saved immediately in SQLite.
-
-Press `C` on a top-level task to create a project named after its title and open that tab. The original task is removed, including its note. Its immediate children become project roots, preserving their descendants, notes, completion state, priorities, and sibling order. A task without children becomes an empty project. Conversion saves atomically; a duplicate or reserved project name leaves the task tree intact. Child tasks cannot be converted directly.
-
-`Alt+Enter` (also called `Alt+Return`) clears completed tasks, including those hidden by search or folding; press `Enter` to confirm or `Esc` to cancel. In Projects it affects the active project; in Normal and Split it affects all projects. Unfinished descendants are retained under their nearest surviving ancestor, or promoted to roots when necessary. In Settings, `completed_delete` selects **soft** (the default, hides tasks and retains their SQLite records) or **hard** (removes records). The choice saves and applies immediately. Add `completed_delete = "hard"` or `completed_delete = "soft"` to TOML to configure it directly. Press `u` to undo either mode during the same session; undo restores task data and original parent links. Soft-deleted records stay out of the active tree after restart and can be restored from the archive.
-
-Press `A` to browse all soft-deleted tasks, including tasks from other projects and tasks hidden by your current search. The archive labels each task's project and shows its saved note at the bottom. Use `j` / `k` or arrows to select a task, `gg` / `G` or `Home` / `End` for the first / last task, and `Ctrl-r` to reload. Press `r` to restore the selected task, its archived descendants, and any archived parents. Restoration works after restart and preserves notes, completion state, priorities, sibling order, and project assignment; completed tasks remain subject to the current visibility setting. Press `D` (Shift-d) to clear all soft-deleted tasks from all projects permanently, then `Enter` to confirm or `Esc` to cancel. Clearing preserves live descendants and cannot be undone. Other task editing and deletion shortcuts are ignored in the archive. Press `A` or `Esc` to return to your previous project, pane, search, and folds, keeping the selected live task when possible. Hard-deleted tasks do not appear here.
-
-A database preview labeled “after restart” appears below the active database when the draft or saved setting resolves to a different path. Relative paths resolve against the config directory. The preview updates while editing; `--db` still takes precedence on launch.
-
-While editing configuration, `Esc` discards the draft and returns to the configuration view. Press `Esc` again to return to tasks. In the task view, `Esc` first cancels active input, closes help, or clears an applied search; press it again to open configuration.
-
-## Deadline notifications
-
-`argv-todo-daemon` runs in the background and sends native desktop notifications for deadlines. Start it independently; the TUI never starts it:
-
-```sh
-argv-todo-daemon &
-```
-
-Both binaries must use the same database: pass the same `--db` path to each, or use the default location. The daemon reads the schedule from SQLite once at startup, then the TUI pushes updates whenever tasks change. A second daemon exits while one is already running. Each deadline notifies three times at most — two reminders plus the deadline itself — once per daemon run; editing the deadline re-arms all three.
-
-Three settings control notifications, editable on the settings page or directly in TOML:
-
-```toml
-notifications = true
-notify_reminder_1_minutes = 60
-notify_reminder_2_minutes = 1440
-```
-
-`notifications` is the master switch; when off, the TUI stops sending schedule updates. `notify_reminder_1_minutes` and `notify_reminder_2_minutes` (0–10080 each, 0 disables that reminder) set how many minutes before a deadline each reminder fires; the deadline itself always notifies at its time. On the settings page `Enter` / `h` / `l` steps five minutes and counts multiply the step. Notification urgency follows the time left — overdue or due now is critical, due within a day is normal, earlier is low — and high-priority tasks bump one level up. Setting changes apply without restarting the daemon.
-
-Autostart options per platform:
-
-```sh
-# systemd user unit (~/.config/systemd/user/argv-todo-daemon.service)
-systemctl --user enable --now argv-todo-daemon
-```
-
-```xml
-<!-- launchd (~/Library/LaunchAgents/tech.argv.argv-todo-daemon.plist) -->
-<!-- ProgramArguments: /path/to/argv-todo-daemon -->
-```
-
-On Windows, point Task Scheduler at `argv-todo-daemon.exe` with the "At log on" trigger.
-
-## Keys
-
-| Key | Action |
-| --- | --- |
-| `j` / `k` | Next / previous visible row in the task tree (also Up / Down) |
-| `Tab`, `Shift-Tab` | Switch project tabs or Split panes; select a setting in configuration |
-| `l` | Expand and select the first child; in Projects, next tab if there is no child |
-| `h` | Select the parent task; in Projects, previous tab if there is no parent |
-| Right / Left arrows | Expand and select the first child / select the parent; stay if there is no child |
-| `gg` / `G` | First / last task |
-| `3j`, `2k` | Repeat a motion |
-| `i`, `a` | Add a child of the selected task; add a root task when the list is empty |
-| `o`, `O` | Add a sibling below or above the selected task; add a root task when the list is empty |
-| `P` | Create a project and open its tab |
-| `R` in Projects | Rename the active project; Inbox cannot be renamed |
-| `D` in Projects | Delete the active project and all its tasks; `Enter` confirms, `Esc` cancels; cannot undo |
-| `C` | Convert a top-level task to a project, keeping its whole tree |
-| `m` | Move the selected task tree to a project |
-| `Alt+Enter` / `Alt+Return` | Clear completed tasks using the configured deletion mode |
-| `A` | Show all soft-deleted tasks; `A` or `Esc` returns |
-| `r` in archive | Restore the selected task tree and its archived parents |
-| `D` in archive | Permanently clear all soft-deleted tasks; `Enter` confirms, `Esc` cancels |
-| `e`, `cc` | Edit selected task |
-| `n` | Add or edit the selected task's note in the bottom section |
-| `T` | Open the deadline picker for the selected task; `Enter` saves, `x` clears, `Esc` cancels |
-| `t` | Cycle priority: low → mid → high → low |
-| `ph`, `pm`, `pl` | Set priority to high, mid, or low |
-| `Ctrl-p` | Cycle priority, including while creating or editing inline |
-| `Enter` | Collapse or expand the selected task's children |
-| `Space`, `x` | Toggle the selected task and all its descendants in normal mode |
-| `dd`, `3dd` | Delete one / three tasks and all their children starting at selection; `Enter` confirms, `Esc` cancels |
-| `u` | Restore the last deleted task tree(s) in the current session |
-| `/` | Search titles in the current view, ignoring case; keep ancestors visible |
-| `?` | Open help; press again to close |
-| `Esc` | Open configuration; close help or clear applied search first. In a field, return to Normal, then press again to cancel |
-| `Ctrl-r` | Reload tasks from disk |
-| `q`, `Ctrl-c` | Quit |
-
-Help has sections for task navigation, task changes and project pickers, archive restoration and permanent cleanup, settings, and search and help controls. Archive and Settings list their navigation, confirmation, and cancellation shortcuts separately. It uses the same full-screen branding and spacing as settings. On spacious terminals, choose a section in the guide with `j` / `k` or arrows; its shortcuts appear on the right. `Tab` / `Shift-Tab` cycles sections, and `gg` / `G` or `Home` / `End` selects the first / last section. Selection stays in the guide. Use `PgUp` / `PgDn` to scroll the selected section.
-
-Section titles are bold, uppercase, and spaced apart. Narrow or short terminals show all shortcuts in one scrolling column: use `j` / `k` or arrows to scroll, `PgUp` / `PgDn` to move a page, and `gg` / `G` or `Home` / `End` to jump to the beginning or end. Keys and descriptions align in wider panes and stack in narrow ones. A scrollbar and row range show your position. `Esc` or `?` closes help; the close hint stays visible.
-
-Every input field—task titles, notes, search, and the configuration database path—supports **Insert**, **Normal**, **Visual**, **Visual Line**, and **Replace** modes. Fields open in Insert, where letters are text. `Esc` returns to Normal without closing the field; another `Esc` cancels it. In Visual or Replace, `Esc` also returns to Normal. When a command is pending, `Esc` cancels the command first. `Enter` saves or applies search from any field mode, except notes: it adds a line in Insert or Replace and saves in Normal or selection modes. `Ctrl-s` saves notes from any mode. The footer shows the mode and pending command; Visual selections use reverse video.
-
-| Field keys | Action |
-| --- | --- |
-| `i`, `a`, `I`, `A` | Insert before the cursor, after it, before the first nonblank, or at the end |
-| `h`, `l`, arrows, `0`, `^`, `$`, `Home`, `End` | Move left/right or to the start, first nonblank, or end |
-| `w`, `b`, `e`; `W`, `B`, `E`; `ge`, `gE` | Move by word or space-separated WORD, including word ends |
-| `gg`, `G`, `3\|`, `%` | Field start/end, display column, or matching bracket |
-| `f`, `F`, `t`, `T` followed by a character | Find or stop just before/after a character, forward/backward |
-| `;`, `,` | Repeat the last find, or reverse it |
-| `d`, `c`, `y` followed by a motion or text object | Delete, change and enter Insert, or yank |
-| `dd`, `cc`, `yy` | Delete, change, or yank the whole field |
-| `iw`, `aw`, `iW`, `aW` after an operator or in Visual | Inner/around word or WORD; around includes adjacent whitespace |
-| `i`/`a` followed by `(`, `)`, `[`, `]`, `{`, `}`, `<`, `>`, quotes, or backtick | Inside/around matching delimiters; `b` aliases parentheses and `B` braces |
-| `v`, `V`, `o` | Character Visual, whole-field Visual, or swap selection ends |
-| Visual `d`, `c`, `y`, `r` + character | Delete, change, yank, or replace the selection |
-| `x`, `X`, `D`, `C`, `s`, `S` | Delete at/before the cursor, delete/change to the end, substitute characters, or change the whole field |
-| `r2`, `3r2`, `R` | Replace one/three graphemes with `2`, or enter Replace mode |
-| `p`, `P` | Put the session's yank buffer after/before the cursor, or replace a Visual selection |
-| `u`, `Ctrl-r`, `.` | Undo, redo, or repeat the last field change |
-| `gu`, `gU`, `g~` + motion/object; Visual `u`, `U`, `~` | Lowercase, uppercase, or swap case |
-
-Motions and operators accept counts: `3dw` deletes three words and `2d3w` deletes six. Counts are capped at 9999. Nested bracket objects accept a count to choose an enclosing pair, such as `d2i{`. These are single-line fields: `dd` clears the current field while task-list `dd` still deletes task trees. Vertical motions stay in the field. The supported commands above cover field editing; Vim's file, window, Ex-command, macro, and block-Visual features are outside this editor.
-
-While typing, arrow keys, `Home`, and `End` move the cursor; `Ctrl-Left` / `Ctrl-Right` move by word. `Backspace`, `Delete`, `Ctrl-w`, and `Ctrl-u` edit text. Replace-mode `Backspace` restores the overwritten grapheme. Insert/Replace sessions undo as one change. `Ctrl-p` cycles task priority in any task-field mode. Bracketed paste inserts text, puts it after the cursor in Normal, or replaces a Visual selection. Newlines and other control characters become spaces. Editing and selection respect Unicode grapheme boundaries and display widths.
-
-Tasks can contain nested child tasks. `j` / `k` moves through visible rows at every level; use `h` / `l` to select the parent or first child. `Enter` hides or reveals descendants without changing task data; a `+` beside the child count marks a collapsed branch. Collapse state lasts for the current session and is shared across panes. Starting a search expands branches so hidden tasks can appear in the results. Existing databases are upgraded automatically, preserving hierarchy and keeping unassigned tasks in Inbox. Deleting a parent also deletes its descendants; deletion asks for confirmation (`Enter` confirms, `Esc` cancels) and `u` restores the entire tree. Completing or reopening a parent gives all its descendants the same state, including tasks hidden by search. Toggling a child affects its own subtree without changing its ancestors or siblings. Changes are saved atomically.
-
-Tasks have **high**, **mid**, or **low** priority; new roots and existing tasks default to **mid**. New children inherit their parent's priority. Siblings created with `o` or `O` start with the selected task's priority so they appear beside it. Roots and children within each parent are sorted high first, then mid, then low. Equal priorities keep their saved sibling order, including insertion above or below. Changing a priority keeps the task selected, and children stay with their parent. Priorities and sibling order are saved in SQLite and preserved by deletion undo.
-
-Press `T` on a task to open a calendar picker for its optional deadline. Move with `h` / `l` by day, `j` / `k` by week, and `H` / `L` by month (counts work, so `3L` jumps three months); `t` jumps back to today. Press `Tab` to switch between the date, hour, and minute fields and adjust the time with `h` / `l` (`H` jumps to the start of the day, `L` to the end). Press `Enter` to save the picked date and time, `x` to clear the deadline, or `Esc` to close the picker without saving; `q` still quits. The deadline appears beside the task as `due YYYY-MM-DD HH:MM`, colored by urgency: red when overdue, yellow when due within a day, blue when due within a week, and dimmed beyond that. Deadlines are saved in SQLite and survive deletion undo, archive restore, and project moves.
-
-The fullscreen interface uses your terminal's background and ANSI color palette. Tasks occupy one row each, with bold parents and indented connecting branches. A small cyan caret and an underlined title mark the selection; checkmarks and tree lines use normal text color and turn cyan when selected. Focus and completion preserve title and priority colors; a checkmark and a struck-through title identify completed tasks. A `done/total` count beside a parent shows its direct children. Long titles show an ellipsis so the count stays visible, without splitting Unicode graphemes. The header shows the app name, version in red, and completion count. Split pane headings show the number of visible selectable tasks, excluding ghost parents. Short key hints stay at the bottom and fit the available width, with keys in cyan and descriptions dimmed; input and errors appear when needed. Help keeps its scroll and close instructions visible. Layout and key hints adapt to the terminal size.
-
-Create and edit tasks directly in the tree. A new draft appears at its sorted position among siblings or directly beneath a parent when creating its first child. `Ctrl-p` changes the draft priority and its position before saving. Starting a new task clears search to show its context. `Enter` saves the inline row; `Esc` enters Normal and another `Esc` cancels it. Search stays at the bottom and remains live in every field mode.
-
-The bottom Note section names the selected task and shows a wrapped preview of its note, following the focused pane in Split. Notes preserve line breaks and blank lines. Short notes leave more room for tasks; longer previews grow to four text rows and end with an ellipsis when clipped. On short stacked layouts, the preview yields space to task panes, search, and errors. Press `n` to add or edit a note. While typing, `Enter` adds a line and Up / Down moves between lines; `Ctrl-s` saves from any mode. The active note editor grows to six text rows when space permits, scrolls vertically to keep the cursor visible, and scrolls long lines horizontally. It has a cyan separator, a focus marker, and a placeholder when empty. Unicode paste preserves line breaks, normalizing CRLF and CR to LF. `Esc` enters Normal, where `j` / `k` moves between lines, `0` / `$` and Home / End select the current line's ends, `gg` / `G` selects the note's ends, and `Enter` saves. Line operations and line selections work on note lines. Another `Esc` discards the draft. Clear the field and save to remove a note. Turning off hints also hides the note heading's shortcuts. Notes are stored in SQLite and preserved when moving tasks, browsing archives, or undoing deletion. Existing tasks start with empty notes.
-
-## Check
-
-```sh
-cargo fmt --check
-cargo test --locked
-cargo clippy --locked --all-targets -- -D warnings
-cargo build --locked
-```
-
-CI runs these checks on Linux, macOS, and Windows for pull requests targeting `main` or `dev`. Pushing a `v*` tag runs the same checks and builds release binaries before publishing platform archives named with their Cargo version, such as `argv-todo-0.1.0-linux.tar.gz`, to a GitHub release. The test and build workflows also support `workflow_call` for reuse and manual runs. The manual **Publish to crates.io** workflow validates the package by default and uploads it when dry-run is disabled; see the [maintainer guide](docs/maintaining.md#publishing-to-cratesio) for setup and local publishing commands.
-
-For a local test session, use `cargo run --locked -- --db ./target/dev/db.sql` to keep development tasks separate from your personal database.
-
-Keyboard input and Unicode editing live in `src/vim_motion`, following the action-based structure of `argvcode`. See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) for development guidance, and the [maintainer guide](docs/maintaining.md) for repository setup and releases.
-
-## Community
-
-Use [GitHub issues](https://github.com/argv-tech/argv-todo/issues) for reproducible bugs, focused feature proposals, and questions. Follow the [Code of Conduct](CODE_OF_CONDUCT.md), and report vulnerabilities through the process in [SECURITY.md](SECURITY.md).
-
-## License
-
-argv-todo is licensed under the [MIT license](LICENSE).
+[Changelog](CHANGELOG.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [MIT license](LICENSE)
