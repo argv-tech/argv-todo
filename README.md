@@ -19,7 +19,7 @@ priorities, and deadlines. Everything is saved locally in SQLite as you work.
 [![Open issues](https://img.shields.io/github/issues/argv-tech/argv-todo)](https://github.com/argv-tech/argv-todo/issues)
 [![Last commit](https://img.shields.io/github/last-commit/argv-tech/argv-todo)](https://github.com/argv-tech/argv-todo/commits)
 
-**[Install](#install-and-run) · [App guide](GUIDE.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md)**
+**[Install](#install-and-run) · [App guide](GUIDE.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [Activity](#project-activity)**
 
 Runs on Linux, macOS, and Windows.
 
@@ -71,5 +71,24 @@ Report bugs through [GitHub issues](https://github.com/argv-tech/argv-todo/issue
 Include your OS, terminal, app version, and steps to reproduce. See
 [SUPPORT.md](SUPPORT.md) for support and [SECURITY.md](SECURITY.md) for
 vulnerability reports.
+
+## Project activity
+
+[Commit activity](https://github.com/argv-tech/argv-todo/graphs/commit-activity) ·
+[Contributors](https://github.com/argv-tech/argv-todo/graphs/contributors) ·
+[Issue tracker](https://github.com/argv-tech/argv-todo/issues)
+
+### Star history
+
+<a href="https://www.star-history.com/?repos=argv-tech%2Fargv-todo&amp;type=date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=argv-tech/argv-todo&amp;type=date&amp;theme=dark" />
+    <img alt="argv-todo GitHub stars over time" src="https://api.star-history.com/chart?repos=argv-tech/argv-todo&amp;type=date" width="800" />
+  </picture>
+</a>
+
+### Contributors
+
+[![argv-todo contributors](https://contrib.rocks/image?repo=argv-tech/argv-todo)](https://github.com/argv-tech/argv-todo/graphs/contributors)
 
 [Changelog](CHANGELOG.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [MIT license](LICENSE)
