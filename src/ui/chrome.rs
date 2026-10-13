@@ -160,6 +160,14 @@ fn footer_hint(app: &App, width: usize) -> &'static str {
             "Enter save · Esc",
             "Enter · Esc",
         ]
+    } else if app.vim.input() == Some(InputTarget::Note) {
+        &[
+            "Enter newline · Ctrl-s save · Esc normal · ↑/↓ move",
+            "Enter newline · Ctrl-s save · Esc normal",
+            "Enter line · Ctrl-s save · Esc",
+            "Ctrl-s save · Esc",
+            "Ctrl-s · Esc",
+        ]
     } else if app.vim.input().is_some() {
         &[
             "Enter save · Esc normal · ←/→ move",

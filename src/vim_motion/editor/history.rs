@@ -1,4 +1,4 @@
-use super::{EditAction, EditTarget, Editor, Motion, VimAction, VimMode};
+use super::{EditAction, EditTarget, Editor, Motion, TextMode, VimAction, VimMode};
 use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Clone)]
@@ -34,9 +34,7 @@ impl Editor {
         match action {
             VimAction::Input(EditAction::Normal) => {
                 self.finish_change();
-                if self.mode.typing() {
-                    self.cursor = self.previous_at(self.cursor);
-                }
+                self.leave_typing();
                 self.mode = VimMode::Normal;
                 self.anchor = None;
                 self.replace_history.clear();
@@ -80,7 +78,11 @@ impl Editor {
         let Some(range) = self.selection() else {
             return action.clone();
         };
-        let count = self.text[range].graphemes(true).count();
+        let count = if self.mode == VimMode::VisualLine && self.text_mode == TextMode::Multiline {
+            self.text[range].split_inclusive('\n').count().max(1)
+        } else {
+            self.text[range].graphemes(true).count()
+        };
         match action {
             RecordedAction::Key(VimAction::Input(EditAction::Operate(
                 operator,
@@ -148,6 +150,7 @@ impl Editor {
         self.finish_change();
         self.mode = VimMode::Normal;
         self.anchor = None;
+        self.preferred_column = None;
         for _ in 0..count {
             let snapshot = if redo {
                 self.redo.pop()

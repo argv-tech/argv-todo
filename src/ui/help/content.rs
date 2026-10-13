@@ -49,7 +49,23 @@ const SECTIONS: &[Section] = &[
             ("Picker Tab/S-Tab", "Next / previous destination"),
             ("Picker Home/End", "First / last destination"),
             ("e / cc", "Edit the selected task"),
-            ("n", "Edit the selected task's note in the bottom section"),
+            (
+                "n",
+                "Edit the selected task's multi-line note in the bottom section",
+            ),
+            ("Note Enter", "Add a line while typing; save in Normal mode"),
+            ("Note Ctrl-s", "Save the note from any mode"),
+            ("Note Up / Down", "Move between note lines while typing"),
+            ("Note j / k", "Move between note lines in Normal mode"),
+            (
+                "Note 0 / $",
+                "Start / end of the current line in Normal mode",
+            ),
+            ("Note gg / G", "Start / end of the note in Normal mode"),
+            (
+                "Note Esc",
+                "Return to Normal; press again to discard the draft",
+            ),
             (
                 "Space / x",
                 "Complete or reopen the task and its descendants",

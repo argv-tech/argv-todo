@@ -85,6 +85,15 @@ impl VimManager {
                         key,
                     ),
                     code => {
+                        if code == KeyCode::Char('G')
+                            && self.input == Some(super::InputTarget::Note)
+                        {
+                            return Some(command_motion(
+                                Some(operator),
+                                Motion::DocumentEnd,
+                                count,
+                            ));
+                        }
                         return motion(code)
                             .map(|motion| command_motion(Some(operator), motion, count));
                     }
@@ -95,7 +104,14 @@ impl VimManager {
                 let count = prefix_count.saturating_mul(count).min(9999);
                 match key {
                     KeyCode::Char('g' | '0') => {
-                        Some(command_motion(operator, Motion::LineStart, count))
+                        let motion = if key == KeyCode::Char('g')
+                            && self.input == Some(super::InputTarget::Note)
+                        {
+                            Motion::DocumentStart
+                        } else {
+                            Motion::LineStart
+                        };
+                        Some(command_motion(operator, motion, count))
                     }
                     KeyCode::Char('e') => {
                         Some(command_motion(operator, Motion::WordEndBackward, count))

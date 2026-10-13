@@ -8,6 +8,12 @@ impl VimManager {
     pub(super) fn handle_input(&mut self, key: KeyEvent) -> Option<VimAction> {
         if key.code == KeyCode::Enter {
             self.reset();
+            if self.input == Some(super::InputTarget::Note) && self.mode.typing() {
+                return Some(VimAction::Insert('\n'));
+            }
+            if self.input == Some(super::InputTarget::Note) {
+                return (key.kind == super::KeyEventKind::Press).then_some(VimAction::Submit);
+            }
             return Some(VimAction::Submit);
         }
         if self.mode.typing() {
@@ -17,6 +23,12 @@ impl VimManager {
                 KeyCode::Delete => Some(VimAction::DeleteChar),
                 KeyCode::Left => Some(VimAction::Move(Motion::Left, 1)),
                 KeyCode::Right => Some(VimAction::Move(Motion::Right, 1)),
+                KeyCode::Up if self.input == Some(super::InputTarget::Note) => {
+                    Some(VimAction::Move(Motion::Up, 1))
+                }
+                KeyCode::Down if self.input == Some(super::InputTarget::Note) => {
+                    Some(VimAction::Move(Motion::Down, 1))
+                }
                 KeyCode::Home => Some(VimAction::Move(Motion::LineStart, 1)),
                 KeyCode::End => Some(VimAction::Move(Motion::LineEnd, 1)),
                 _ => None,
@@ -128,7 +140,12 @@ impl VimManager {
             KeyCode::Char('u') => EditAction::Undo(count),
             KeyCode::Char('.') => EditAction::Repeat(count),
             code => {
-                let motion = motion(code);
+                let motion =
+                    if self.input == Some(super::InputTarget::Note) && code == KeyCode::Char('G') {
+                        Some(Motion::DocumentEnd)
+                    } else {
+                        motion(code)
+                    };
                 self.reset();
                 return motion.map(|motion| VimAction::Move(motion, count));
             }

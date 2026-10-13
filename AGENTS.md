@@ -81,7 +81,7 @@ Current source layout:
 | `src/app/`        | State, actions, editing, task notes, events, tree navigation, folding, settings, tasks, completed-task cleanup and deletion undo, pane focus and projections |
 | `src/app/archive/` | Archive browsing, tree restoration, and confirmed permanent cleanup while preserving live view state |
 | `src/app/projects/` | Project tabs, per-project selection and scrolling, project creation, task conversion and tree assignment |
-| `src/ui/`         | Frame composition, shared branding, geometry, text and wrapping, editors, chrome, help, archive rendering, theme |
+| `src/ui/`         | Frame composition, shared branding, geometry, text and wrapping, single-line and multi-line editor rendering, chrome, help, archive rendering, theme |
 | `src/ui/projects/` | Project tab strip and destination picker |
 | `src/ui/tasks/`   | Pane composition, draft placement, task-tree rendering, and bottom task-note section |
 | `src/ui/help/`    | Shortcut content, wrapping, section guide, footer, and help rendering                  |
@@ -91,7 +91,7 @@ Current source layout:
 | `src/config/`     | Configuration paths, loading, validation, and atomic saving     |
 | `src/vim_motion/` | Keyboard mapping, modes, actions, and Unicode text editing      |
 | `src/vim_motion/manager/` | Task, field, help, and project picker key mapping, counts, pending command parsing |
-| `src/vim_motion/editor/` | Unicode cursor and selection, edits, motions, objects, history, viewport |
+| `src/vim_motion/editor/` | Unicode cursor and selection, single-line and multi-line edits, line navigation, motions, objects, history, viewports |
 | `tests/unit/`     | Unit suites, test helpers, and the platform terminal smoke check |
 
 Directory modules keep their shared state and interface in `mod.rs`, with

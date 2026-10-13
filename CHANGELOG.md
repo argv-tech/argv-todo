@@ -11,6 +11,7 @@ Notable changes to argv-todo, grouped by release.
 - Add archived task browsing and keep Dependabot alerts without PRs ([a68435a](https://github.com/argv-tech/argv-todo/commit/a68435a3d8ba9eb477ddc9bc5d95419c76a2078c))
 - **ui:** Group settings into Storage, Display, and Task behavior categories ([78c2c38](https://github.com/argv-tech/argv-todo/commit/78c2c380486099de1e42d67464b292cec3e6c7d7))
 - **archive:** Add separate restore and clear shortcuts ([546b16e](https://github.com/argv-tech/argv-todo/commit/546b16e46e6c961fc1fb034ea9208bbc31252d1d))
+- **notes:** Support multiline editing and preserved line breaks
 
 ### Fixed
 
@@ -18,7 +19,7 @@ Notable changes to argv-todo, grouped by release.
 
 ### Documentation
 
-- **help:** Cover archive, settings, and project picker shortcuts
+- **help:** Cover archive, settings, and project picker shortcuts ([472a408](https://github.com/argv-tech/argv-todo/commit/472a4086db8939e059576de62b4df6778e1c942a))
 
 ### Build
 

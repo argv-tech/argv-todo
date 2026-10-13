@@ -7,7 +7,7 @@ use ratatui::{
 };
 
 use super::super::{
-    input::draw_editor,
+    input::draw_multiline_editor,
     text::{truncate, wrap},
     theme::{ACCENT, MUTED, TEXT},
 };
@@ -25,7 +25,14 @@ pub(in crate::ui) fn note_height(app: &App, area: Rect) -> u16 {
             3
         };
     if app.vim.input() == Some(InputTarget::Note) {
-        return area.height.min(2);
+        let maximum = area
+            .height
+            .saturating_sub(tree_rows)
+            .clamp(2, 7)
+            .min(area.height);
+        return (app.editor.text().split('\n').count() + 1)
+            .max(2)
+            .min(usize::from(maximum)) as u16;
     }
     let maximum = area.height.saturating_sub(tree_rows).min(5);
     // Keep both stacked task lists and the active search visible on short terminals.
@@ -33,7 +40,7 @@ pub(in crate::ui) fn note_height(app: &App, area: Rect) -> u16 {
         return 0;
     }
     let (text, _) = note_text(app);
-    let lines = wrap(text, usize::from(area.width.saturating_sub(2))).len();
+    let lines = note_lines(text, usize::from(area.width.saturating_sub(2))).len();
     lines.saturating_add(1).clamp(2, usize::from(maximum)) as u16
 }
 
@@ -46,7 +53,7 @@ pub(in crate::ui) fn draw_note(frame: &mut Frame, app: &App, area: Rect) {
     let hint = if !app.show_hints() {
         ""
     } else if editing {
-        " Enter save "
+        " Ctrl-s save "
     } else if app.archive.is_none() && app.selected_todo().is_some() && !adding_task(app) {
         " n edit "
     } else {
@@ -77,14 +84,7 @@ pub(in crate::ui) fn draw_note(frame: &mut Frame, app: &App, area: Rect) {
     let content = block.inner(area);
     frame.render_widget(block, area);
     if editing {
-        draw_editor(
-            frame,
-            &app.editor,
-            "",
-            Style::default().fg(TEXT),
-            content,
-            true,
-        );
+        draw_multiline_editor(frame, &app.editor, Style::default().fg(TEXT), content);
         if app.editor.text().is_empty() {
             frame.render_widget(
                 Paragraph::new("Write a note…").style(Style::default().fg(MUTED)),
@@ -95,7 +95,7 @@ pub(in crate::ui) fn draw_note(frame: &mut Frame, app: &App, area: Rect) {
     }
     let (text, color) = note_text(app);
     let width = usize::from(content.width);
-    let mut lines = wrap(text, width);
+    let mut lines = note_lines(text, width);
     if lines.len() > usize::from(content.height) {
         lines.truncate(usize::from(content.height));
         if let Some(last) = lines.last_mut() {
@@ -107,6 +107,22 @@ pub(in crate::ui) fn draw_note(frame: &mut Frame, app: &App, area: Rect) {
             .style(Style::default().fg(color)),
         content,
     );
+}
+
+fn note_lines(text: &str, width: usize) -> Vec<String> {
+    if width == 0 {
+        return Vec::new();
+    }
+    text.split('\n')
+        .flat_map(|line| {
+            let wrapped = wrap(line, width);
+            if wrapped.is_empty() {
+                vec![String::new()]
+            } else {
+                wrapped
+            }
+        })
+        .collect()
 }
 
 fn adding_task(app: &App) -> bool {

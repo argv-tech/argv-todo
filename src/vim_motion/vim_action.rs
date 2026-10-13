@@ -17,6 +17,8 @@ pub(crate) enum Motion {
     LineStart,
     FirstNonBlank,
     LineEnd,
+    DocumentStart,
+    DocumentEnd,
     Column,
     MatchingBracket,
     Find {

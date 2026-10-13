@@ -13,7 +13,7 @@ import tomllib
 
 TIMEOUT = 15
 TITLE = "Cross-platform task"
-NOTE = "Task note: read 'chapter 2' first"
+NOTE = "Task note: read 'chapter 2' first\n\nKeep this second line"
 PROJECT = "Smoke project"
 
 
@@ -89,7 +89,7 @@ def run_unix(command, settings, projects=False, cleanup=False, archive=None):
             os.write(
                 master,
                 b"i\x1b[200~" + TITLE.encode() + b"\x1b[201~\rn\x1b[200~"
-                + NOTE.encode() + b"\x1b[201~\rxq",
+                + NOTE.encode() + b"\x1b[201~\x13xq",
             )
 
         deadline = time.monotonic() + TIMEOUT
@@ -173,15 +173,15 @@ def run_windows(command, settings, projects=False, cleanup=False, archive=None):
                             "AD\x1bD\r\x1bq" if archive == "clear" else
                             "\t\t\rA\x1bq" if cleanup else
                             f"P{PROJECT}\r\tmj\rCq" if projects else
-                            "\x1bj\r\x1bq" if settings else f"i{TITLE}\rn{NOTE}\rxq")
+                            "\x1bj\r\x1bq" if settings else f"i{TITLE}\rn{NOTE}\x1b\rxq")
                     records = []
                     for character in keys:
                         for down in [True, False]:
                             record = InputRecord()
                             record.event_type = 1  # KEY_EVENT
-                            virtual_key = {"\r": 0x0D, "\x1b": 0x1B, "\t": 0x09}.get(character, 0)
+                            virtual_key = {"\r": 0x0D, "\n": 0x0D, "\x1b": 0x1B, "\t": 0x09}.get(character, 0)
                             record.event.key = KeyEvent(
-                                down, 1, virtual_key, 0, character,
+                                down, 1, virtual_key, 0, "\r" if character == "\n" else character,
                                 0x2 if cleanup and character == "\r" else
                                 0x10 if character.isupper() else 0,  # ALT / SHIFT_PRESSED
                             )

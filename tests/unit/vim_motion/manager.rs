@@ -1,6 +1,84 @@
 use super::*;
 
 #[test]
+fn multiline_note_keys_insert_lines_navigate_and_save_without_affecting_other_fields() {
+    let mut vim = VimManager::default();
+    vim.begin_input(InputTarget::Note);
+    for mode in [VimMode::Insert, VimMode::Replace] {
+        vim.set_mode(mode);
+        assert_eq!(
+            vim.handle(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+            Some(VimAction::Insert('\n'))
+        );
+        assert_eq!(
+            vim.handle(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE)),
+            Some(VimAction::Move(Motion::Up, 1))
+        );
+        assert_eq!(
+            vim.handle(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)),
+            Some(VimAction::Move(Motion::Down, 1))
+        );
+    }
+    for mode in [
+        VimMode::Insert,
+        VimMode::Normal,
+        VimMode::Visual,
+        VimMode::VisualLine,
+        VimMode::Replace,
+    ] {
+        vim.set_mode(mode);
+        assert_eq!(
+            vim.handle(KeyEvent::new(KeyCode::Char('s'), KeyModifiers::CONTROL)),
+            Some(VimAction::Submit)
+        );
+        for kind in [KeyEventKind::Repeat, KeyEventKind::Release] {
+            assert_eq!(
+                vim.handle(KeyEvent::new_with_kind(
+                    KeyCode::Char('s'),
+                    KeyModifiers::CONTROL,
+                    kind
+                )),
+                None
+            );
+        }
+    }
+    vim.set_mode(VimMode::Normal);
+    assert_eq!(
+        vim.handle(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+        Some(VimAction::Submit)
+    );
+    assert_eq!(
+        vim.handle(key('G')),
+        Some(VimAction::Move(Motion::DocumentEnd, 1))
+    );
+    assert_eq!(vim.handle(key('g')), None);
+    assert_eq!(
+        vim.handle(key('g')),
+        Some(VimAction::Input(EditAction::Move(Motion::DocumentStart, 1)))
+    );
+    for target in [
+        InputTarget::Task,
+        InputTarget::Search,
+        InputTarget::DatabasePath,
+        InputTarget::ProjectName,
+    ] {
+        vim.begin_input(target);
+        assert_eq!(
+            vim.handle(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+            Some(VimAction::Submit)
+        );
+        assert_eq!(
+            vim.handle(KeyEvent::new(KeyCode::Char('s'), KeyModifiers::CONTROL)),
+            None
+        );
+        assert_eq!(
+            vim.handle(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)),
+            None
+        );
+    }
+}
+
+#[test]
 fn archive_restore_and_clear_use_separate_press_only_keys() {
     let mut vim = VimManager::default();
     for (code, modifiers, action) in [

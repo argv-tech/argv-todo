@@ -93,7 +93,7 @@ fn bottom_note_follows_selection_and_focused_pane_after_resize() {
         press(&mut app, KeyCode::Char('n'));
         assert_eq!(app.editor.text(), "Child note");
         app.editor.insert(" saved");
-        press(&mut app, KeyCode::Enter);
+        app.handle_key(KeyEvent::new(KeyCode::Char('s'), KeyModifiers::CONTROL));
         terminal.draw(|frame| draw(frame, &mut app)).unwrap();
         text_position(&terminal, "Child note saved");
         text_position(&terminal, "Note · Child");
@@ -239,5 +239,75 @@ fn note_rendering_clips_to_small_nonzero_areas_and_keeps_the_editor_cursor_insid
         }
         assert_eq!(terminal.backend().cursor_visible(), width > 2 && height > 1);
         assert_eq!(app.todos, saved);
+    }
+}
+
+#[test]
+fn multiline_note_editor_keeps_rows_cursor_and_selection_visible_on_resize() {
+    let mut app = app(TaskView::Normal);
+    app.todos[0].note = "first\n\n界é👩‍💻 last\nend\n".into();
+    press(&mut app, KeyCode::Char('n'));
+    let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    let heading = text_position(&terminal, "› Note");
+    assert_eq!(terminal.backend().cursor_position().y, heading.1 + 5);
+    text_position(&terminal, "Ctrl-s save");
+    app.handle_key(KeyEvent::new(KeyCode::Home, KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    let end = text_position(&terminal, "end");
+    assert_eq!(terminal.backend().cursor_position(), end.into());
+    app.handle_key(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
+    press(&mut app, KeyCode::Esc);
+    press(&mut app, KeyCode::Char('V'));
+    press(&mut app, KeyCode::Char('k'));
+    for (width, height) in [(80, 24), (35, 12), (120, 35), (1, 1), (0, 0)] {
+        terminal.backend_mut().resize(width, height);
+        terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+        if width < 35 {
+            assert!(!terminal.backend().cursor_visible());
+            continue;
+        }
+        let blank_cursor = terminal.backend().cursor_position();
+        assert!(terminal.backend().buffer().area.contains(blank_cursor));
+        assert!(
+            terminal.backend().buffer()[blank_cursor]
+                .modifier
+                .contains(Modifier::REVERSED)
+        );
+        text_position(&terminal, "v-line");
+    }
+    let area = Rect::new(7, 4, 35, 12);
+    let mut terminal = Terminal::with_options(
+        TestBackend::new(55, 25),
+        TerminalOptions {
+            viewport: Viewport::Fixed(area),
+        },
+    )
+    .unwrap();
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    assert!(area.contains(terminal.backend().cursor_position()));
+    for y in 0..25 {
+        for x in 0..55 {
+            if !area.contains((x, y).into()) {
+                assert_eq!(terminal.backend().buffer()[(x, y)].symbol(), " ");
+            }
+        }
+    }
+}
+
+#[test]
+fn multiline_previews_preserve_blank_rows_and_note_height_handles_tiny_areas() {
+    let mut app = app(TaskView::Normal);
+    app.todos[0].note = "first\n\nthird\n".into();
+    let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    let first = text_position(&terminal, "first");
+    let third = text_position(&terminal, "third");
+    assert_eq!(third.1, first.1 + 2);
+    assert!(terminal_row(&terminal, first.1 + 1).trim().is_empty());
+    press(&mut app, KeyCode::Char('n'));
+    for (width, height) in [(1, 1), (2, 2), (0, 0)] {
+        assert!(super::note_height(&app, Rect::new(7, 4, width, height)) <= height);
     }
 }

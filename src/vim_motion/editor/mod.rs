@@ -1,5 +1,6 @@
 mod editing;
 mod history;
+mod lines;
 mod motions;
 mod objects;
 mod viewport;
@@ -13,13 +14,29 @@ use super::{
 };
 use history::{Change, RecordedAction, Snapshot};
 
-/// Byte positions always lie on grapheme boundaries; fields contain one line.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TextMode {
+    SingleLine,
+    Multiline,
+}
+
+#[derive(Default, Clone, Copy, PartialEq, Eq)]
+enum RegisterKind {
+    #[default]
+    Characters,
+    Lines,
+}
+
+/// Byte positions always lie on grapheme boundaries.
 pub(crate) struct Editor {
     text: String,
+    text_mode: TextMode,
     cursor: usize,
+    preferred_column: Option<usize>,
     mode: VimMode,
     anchor: Option<usize>,
     register: String,
+    register_kind: RegisterKind,
     undo: Vec<Snapshot>,
     redo: Vec<Snapshot>,
     change: Option<Change>,
@@ -40,10 +57,13 @@ impl Editor {
         let cursor = text.len();
         Self {
             text,
+            text_mode: TextMode::SingleLine,
             cursor,
+            preferred_column: None,
             mode: VimMode::Insert,
             anchor: None,
             register: String::new(),
+            register_kind: RegisterKind::Characters,
             undo: Vec::new(),
             redo: Vec::new(),
             change: None,
@@ -64,14 +84,24 @@ impl Editor {
 
     pub(crate) fn reset(&mut self, text: String) {
         let register = std::mem::take(&mut self.register);
+        let register_kind = self.register_kind;
         *self = Self::new(text);
         self.register = register;
+        self.register_kind = register_kind;
+    }
+
+    pub(crate) fn reset_multiline(&mut self, text: String) {
+        self.reset(String::new());
+        self.text_mode = TextMode::Multiline;
+        self.text = self.clean_text(&text);
+        self.cursor = self.text.len();
     }
 
     pub(crate) fn selection(&self) -> Option<Range<usize>> {
         let anchor = self.anchor?;
         if self.mode == VimMode::VisualLine {
-            return Some(0..self.text.len());
+            let start = self.line_start(anchor.min(self.cursor));
+            return Some(start..self.line_range(anchor.max(self.cursor), 1).end);
         }
         Some(anchor.min(self.cursor)..self.next_at(anchor.max(self.cursor)))
     }
@@ -98,7 +128,10 @@ impl Editor {
             .map(|(i, _)| i)
             .find(|&i| i >= self.cursor)
             .unwrap_or(self.text.len());
-        if !self.mode.typing() && self.cursor == self.text.len() {
+        if !self.mode.typing()
+            && self.cursor == self.line_end(self.cursor)
+            && self.cursor > self.line_start(self.cursor)
+        {
             self.cursor = self.previous_at(self.cursor);
         }
         if let Some(anchor) = self.anchor {
@@ -116,3 +149,7 @@ impl Editor {
 #[cfg(test)]
 #[path = "../../../tests/unit/vim_motion/editor.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "../../../tests/unit/vim_motion/multiline.rs"]
+mod multiline_tests;

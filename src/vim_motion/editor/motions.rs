@@ -1,7 +1,6 @@
-use super::{Editor, Motion, Operator};
+use super::{Editor, Motion, Operator, TextMode};
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
-use unicode_width::UnicodeWidthStr;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum WordClass {
@@ -29,16 +28,14 @@ impl Editor {
 
     pub(super) fn motion_position(&mut self, motion: Motion, count: usize) -> Option<usize> {
         let mut position = self.cursor;
+        if self.text_mode == TextMode::Multiline && matches!(motion, Motion::Up | Motion::Down) {
+            return Some(self.vertical_position(motion == Motion::Down, count));
+        }
+        self.preferred_column = None;
         if motion == Motion::Column {
-            let requested = count.saturating_sub(1);
-            let mut column = 0;
-            for (position, grapheme) in self.text.grapheme_indices(true) {
-                column += grapheme.width();
-                if column > requested {
-                    return Some(position);
-                }
-            }
-            return Some(self.text.len());
+            return Some(
+                self.position_at_column(self.line_start(position), count.saturating_sub(1)),
+            );
         }
         if motion == Motion::MatchingBracket {
             return self.matching_bracket();
@@ -65,15 +62,25 @@ impl Editor {
         }
         for _ in 0..count.min(self.text.graphemes(true).count().saturating_add(1)) {
             position = match motion {
+                Motion::Left if !self.mode.typing() => {
+                    self.previous_at(position).max(self.line_start(position))
+                }
+                Motion::Right if !self.mode.typing() => {
+                    self.next_at(position).min(self.line_end(position))
+                }
                 Motion::Left => self.previous_at(position),
                 Motion::Right => self.next_at(position),
-                Motion::LineStart => 0,
-                Motion::LineEnd => self.text.len(),
-                Motion::FirstNonBlank => self
-                    .text
+                Motion::LineStart => self.line_start(position),
+                Motion::LineEnd => self.line_end(position),
+                Motion::DocumentStart => 0,
+                Motion::DocumentEnd => self.text.len(),
+                Motion::FirstNonBlank => self.text
+                    [self.line_start(position)..self.line_end(position)]
                     .grapheme_indices(true)
                     .find(|(_, g)| !g.trim().is_empty())
-                    .map_or(0, |(i, _)| i),
+                    .map_or(self.line_start(position), |(i, _)| {
+                        self.line_start(position) + i
+                    }),
                 Motion::WordForward | Motion::BigWordForward => {
                     self.word_forward(position, motion == Motion::BigWordForward)
                 }
@@ -166,16 +173,22 @@ impl Editor {
                 self.next_at(position)
             };
         }
+        if position < self.line_start(self.cursor) || position > self.line_end(self.cursor) {
+            return None;
+        }
         for _ in 0..count {
             position = if backward {
-                self.text[..position]
+                self.text[self.line_start(self.cursor)..position]
                     .grapheme_indices(true)
                     .rev()
                     .find(|(_, g)| matches(g))
-                    .map(|(i, _)| i)?
+                    .map(|(i, _)| self.line_start(self.cursor) + i)?
             } else {
                 let start = self.next_at(position);
-                self.text[start..]
+                if start > self.line_end(self.cursor) {
+                    return None;
+                }
+                self.text[start..self.line_end(self.cursor)]
                     .grapheme_indices(true)
                     .find(|(_, g)| matches(g))
                     .map(|(i, _)| start + i)?
@@ -218,6 +231,11 @@ impl Editor {
             return Some(self.cursor..self.next_at(end));
         }
         let end = self.motion_position(motion, count)?;
+        if self.text_mode == TextMode::Multiline && matches!(motion, Motion::Up | Motion::Down) {
+            return Some(
+                self.line_start(self.cursor.min(end))..self.line_range(self.cursor.max(end), 1).end,
+            );
+        }
         let inclusive = match motion {
             Motion::WordEnd
             | Motion::BigWordEnd

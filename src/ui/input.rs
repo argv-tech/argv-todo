@@ -6,6 +6,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::Paragraph,
 };
+use std::ops::Range;
 use unicode_width::UnicodeWidthStr;
 
 use super::theme::ACCENT;
@@ -34,18 +35,46 @@ pub(super) fn draw_editor(
 /// Shared selection styling for inline titles, search, and configuration.
 pub(super) fn editor_spans(editor: &Editor, width: u16, style: Style) -> (Vec<Span<'_>>, u16) {
     let (text, column) = editor.viewport(width);
-    let Some(selection) = editor.selection() else {
-        return (vec![Span::styled(text, style)], column);
-    };
     let offset = editor.text().len() - text.len();
-    let start = selection.start.saturating_sub(offset).min(text.len());
-    let end = selection.end.saturating_sub(offset).min(text.len());
     (
-        vec![
-            Span::styled(&text[..start], style),
-            Span::styled(&text[start..end], style.add_modifier(Modifier::REVERSED)),
-            Span::styled(&text[end..], style),
-        ],
+        range_spans(editor, offset..editor.text().len(), style),
         column,
     )
+}
+
+pub(super) fn draw_multiline_editor(frame: &mut Frame, editor: &Editor, style: Style, area: Rect) {
+    if area.is_empty() {
+        return;
+    }
+    let (rows, column, cursor_row) = editor.multiline_viewport(area.width, area.height);
+    for (row, range) in rows.into_iter().enumerate() {
+        let mut spans = range_spans(editor, range.clone(), style);
+        if editor
+            .selection()
+            .is_some_and(|selection| selection.contains(&range.end))
+        {
+            // A selected line break needs a visible cell on otherwise empty lines.
+            spans.push(Span::styled(" ", style.add_modifier(Modifier::REVERSED)));
+        }
+        frame.render_widget(
+            Paragraph::new(Line::from(spans)),
+            Rect::new(area.x, area.y + row as u16, area.width, 1),
+        );
+    }
+    frame.set_cursor_position((area.x + column, area.y + cursor_row));
+}
+
+fn range_spans(editor: &Editor, range: Range<usize>, style: Style) -> Vec<Span<'_>> {
+    let text = &editor.text()[range.clone()];
+    let Some(selection) = editor.selection() else {
+        return vec![Span::styled(text, style)];
+    };
+    let offset = range.start;
+    let start = selection.start.saturating_sub(offset).min(text.len());
+    let end = selection.end.saturating_sub(offset).min(text.len());
+    vec![
+        Span::styled(&text[..start], style),
+        Span::styled(&text[start..end], style.add_modifier(Modifier::REVERSED)),
+        Span::styled(&text[end..], style),
+    ]
 }

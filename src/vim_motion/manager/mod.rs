@@ -96,6 +96,9 @@ impl VimManager {
         }
         if key.modifiers.contains(KeyModifiers::CONTROL) {
             let action = match key.code {
+                KeyCode::Char('s') if self.input == Some(InputTarget::Note) => {
+                    (key.kind == KeyEventKind::Press).then_some(VimAction::Submit)
+                }
                 KeyCode::Char('c') => Some(VimAction::Quit),
                 KeyCode::Char('w') if self.input.is_some() && self.mode.typing() => {
                     Some(VimAction::DeleteWord)

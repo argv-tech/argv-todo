@@ -1,11 +1,19 @@
 use super::{
-    EditAction, EditTarget, Editor, InsertPosition, Motion, Operator, Snapshot, VimAction, VimMode,
+    EditAction, EditTarget, Editor, InsertPosition, Motion, Operator, RegisterKind, Snapshot,
+    TextMode, VimAction, VimMode,
 };
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 
 impl Editor {
     pub(super) fn apply_inner(&mut self, action: VimAction) {
+        if !matches!(
+            action,
+            VimAction::Move(Motion::Up | Motion::Down, _)
+                | VimAction::Input(EditAction::Move(Motion::Up | Motion::Down, _))
+        ) {
+            self.preferred_column = None;
+        }
         match action {
             VimAction::Insert(c) => {
                 if self.mode == VimMode::Replace {
@@ -13,10 +21,14 @@ impl Editor {
                         text: self.text.clone(),
                         cursor: self.cursor,
                     });
-                    let end = self.next_at(self.cursor);
-                    self.text
-                        .replace_range(self.cursor..end, &clean_text(&c.to_string()));
-                    self.cursor += clean_text(&c.to_string()).len();
+                    let end = if c == '\n' || self.cursor == self.line_end(self.cursor) {
+                        self.cursor
+                    } else {
+                        self.next_at(self.cursor)
+                    };
+                    let clean = self.clean_text(&c.to_string());
+                    self.text.replace_range(self.cursor..end, &clean);
+                    self.cursor += clean.len();
                 } else {
                     self.insert_raw(&c.to_string());
                 }
@@ -60,20 +72,20 @@ impl Editor {
     fn edit(&mut self, action: EditAction) {
         match action {
             EditAction::Normal => {
-                if self.mode.typing() {
-                    self.cursor = self.previous_at(self.cursor);
-                }
+                self.leave_typing();
                 self.mode = VimMode::Normal;
                 self.anchor = None;
             }
             EditAction::Insert(position, count) => {
                 self.cursor = match position {
                     InsertPosition::Cursor => self.cursor,
-                    InsertPosition::After => self.next_at(self.cursor),
+                    InsertPosition::After => {
+                        self.next_at(self.cursor).min(self.line_end(self.cursor))
+                    }
                     InsertPosition::FirstNonBlank => self
                         .motion_position(Motion::FirstNonBlank, 1)
                         .unwrap_or(self.cursor),
-                    InsertPosition::End => self.text.len(),
+                    InsertPosition::End => self.line_end(self.cursor),
                 };
                 self.mode = VimMode::Insert;
                 self.anchor = None;
@@ -112,24 +124,34 @@ impl Editor {
             }
             EditAction::Operate(operator, target, count) => {
                 let range = match target {
-                    EditTarget::Line => Some(0..self.text.len()),
+                    EditTarget::Line => {
+                        let mut range = self.line_range(self.cursor, count);
+                        if operator == Operator::Change && self.text[range.clone()].ends_with('\n')
+                        {
+                            range.end -= 1;
+                        }
+                        Some(range)
+                    }
                     EditTarget::Selection => self.selection(),
                     EditTarget::Object(object, around) => self.object_range(object, around, count),
                     EditTarget::Motion(motion) => self.motion_range(motion, operator, count),
                 };
                 if let Some(range) = range {
-                    self.operate(operator, range);
+                    let linewise = target == EditTarget::Line
+                        || (target == EditTarget::Selection && self.mode == VimMode::VisualLine)
+                        || matches!(target, EditTarget::Motion(Motion::Up | Motion::Down));
+                    self.operate(operator, range, linewise);
                 }
             }
             EditAction::Replace(character, count) => {
                 let range = if self.mode.visual() {
                     self.selection()
                 } else {
-                    self.text[self.cursor..]
+                    self.text[self.cursor..self.line_end(self.cursor)]
                         .graphemes(true)
                         .nth(count.saturating_sub(1))
                         .map(|g| {
-                            let length: usize = self.text[self.cursor..]
+                            let length: usize = self.text[self.cursor..self.line_end(self.cursor)]
                                 .graphemes(true)
                                 .take(count.saturating_sub(1))
                                 .map(str::len)
@@ -138,7 +160,8 @@ impl Editor {
                         })
                 };
                 if let Some(range) = range {
-                    let replacement = clean_text(&character.to_string())
+                    let replacement = self
+                        .clean_text(&character.to_string())
                         .repeat(self.text[range.clone()].graphemes(true).count());
                     let start = range.start;
                     self.text.replace_range(range, &replacement);
@@ -161,12 +184,17 @@ impl Editor {
         }
     }
 
-    fn operate(&mut self, operator: Operator, range: Range<usize>) {
+    fn operate(&mut self, operator: Operator, range: Range<usize>, linewise: bool) {
         let start = range.start;
         match operator {
             Operator::Delete | Operator::Change | Operator::Yank => {
                 if !range.is_empty() {
                     self.register = self.text[range.clone()].to_owned();
+                    self.register_kind = if linewise {
+                        RegisterKind::Lines
+                    } else {
+                        RegisterKind::Characters
+                    };
                 }
                 if operator != Operator::Yank {
                     self.text.replace_range(range, "");
@@ -202,6 +230,13 @@ impl Editor {
         if self.register.is_empty() {
             return;
         }
+        if self.text_mode == TextMode::Multiline
+            && self.register_kind == RegisterKind::Lines
+            && self.selection().is_none()
+        {
+            self.put_lines(before, count);
+            return;
+        }
         let text = self.register.repeat(count);
         if let Some(range) = self.selection() {
             self.cursor = range.start;
@@ -216,9 +251,35 @@ impl Editor {
         self.mode = VimMode::Normal;
     }
 
+    fn put_lines(&mut self, before: bool, count: usize) {
+        let unit = if self.register.ends_with('\n') {
+            self.register.clone()
+        } else {
+            format!("{}\n", self.register)
+        };
+        let mut text = unit.repeat(count);
+        let (position, cursor) = if before {
+            let start = self.line_start(self.cursor);
+            (start, start)
+        } else {
+            let end = self.line_end(self.cursor);
+            if end < self.text.len() {
+                (end + 1, end + 1)
+            } else {
+                text.pop();
+                text.insert(0, '\n');
+                (end, end + 1)
+            }
+        };
+        self.text.insert_str(position, &text);
+        self.cursor = cursor;
+        self.mode = VimMode::Normal;
+        self.anchor = None;
+    }
+
     pub(super) fn paste_inner(&mut self, text: &str) {
         if self.mode == VimMode::Replace {
-            for character in clean_text(text).chars() {
+            for character in self.clean_text(text).chars() {
                 self.apply_inner(VimAction::Insert(character));
                 self.normalize_cursor();
             }
@@ -241,14 +302,8 @@ impl Editor {
     }
 
     fn insert_raw(&mut self, text: &str) {
-        let clean = clean_text(text);
+        let clean = self.clean_text(text);
         self.text.insert_str(self.cursor, &clean);
         self.cursor += clean.len();
     }
-}
-
-fn clean_text(text: &str) -> String {
-    text.chars()
-        .map(|c| if c.is_control() { ' ' } else { c })
-        .collect()
 }
