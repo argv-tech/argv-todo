@@ -1,16 +1,26 @@
-use super::ConfigSetting;
+use super::{ConfigCategory, ConfigSetting};
 use crate::app::App;
 
 impl ConfigSetting {
     pub(crate) const ALL: [Self; 7] = [
         Self::DatabasePath,
         Self::TaskView,
-        Self::DefaultPriority,
         Self::ShowCompleted,
+        Self::ShowHints,
+        Self::DefaultPriority,
         Self::SortOrder,
         Self::CompletedDelete,
-        Self::ShowHints,
     ];
+
+    pub(crate) fn category(self) -> ConfigCategory {
+        match self {
+            Self::DatabasePath => ConfigCategory::Storage,
+            Self::TaskView | Self::ShowCompleted | Self::ShowHints => ConfigCategory::Display,
+            Self::DefaultPriority | Self::SortOrder | Self::CompletedDelete => {
+                ConfigCategory::TaskBehavior
+            }
+        }
+    }
 
     pub(crate) fn name(self) -> &'static str {
         match self {

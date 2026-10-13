@@ -1,5 +1,8 @@
 use super::super::theme::{ACCENT, ERROR, MUTED};
-use super::{details::draw_details, form::draw_form};
+use super::{
+    details::draw_details,
+    form::{draw_form, form_height},
+};
 use crate::app::App;
 use ratatui::{
     Frame,
@@ -45,7 +48,7 @@ pub(in crate::ui) fn draw_config(frame: &mut Frame, app: &App, area: Rect) {
         draw_details(frame, app, content, false);
     } else {
         let [form, details] = Layout::vertical([
-            Constraint::Length(body.height.saturating_sub(3).clamp(3, 10)),
+            Constraint::Length(body.height.saturating_sub(3).clamp(3, form_height())),
             Constraint::Min(0),
         ])
         .areas(body);

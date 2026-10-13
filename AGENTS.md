@@ -84,7 +84,7 @@ Current source layout:
 | `src/ui/projects/` | Project tab strip and destination picker |
 | `src/ui/tasks/`   | Pane composition, draft placement, task-tree rendering, and bottom task-note section |
 | `src/ui/help/`    | Shortcut content, wrapping, section guide, footer, and help rendering                  |
-| `src/ui/config/`  | Configuration panes, setting editor, selected-setting details and layout previews |
+| `src/ui/config/`  | Configuration panes, category headings, setting editor, selected-setting details and layout previews |
 | `src/db/`         | Database entry point, task and project models, queries, migrations, trees, project assignment, conversion and completed-task cleanup    |
 | `src/cli.rs`      | Command-line options and path overrides                         |
 | `src/config/`     | Configuration paths, loading, validation, and atomic saving     |

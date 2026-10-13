@@ -121,8 +121,13 @@ fn task_view_details_survive_resize_and_nonzero_origins() {
                 continue;
             }
             let (x, y) = text_position(&terminal, "task view · ");
-            let (_, label_y) = text_position(&terminal, "database_path");
-            assert_eq!(y == label_y, width >= 74);
+            let (label_x, label_y) = text_position(&terminal, "task_view  ");
+            if width >= 74 {
+                assert!(x > label_x);
+                assert!(y <= label_y);
+            } else {
+                assert!(y > label_y);
+            }
             assert!(x < width);
             text_position(&terminal, view.label());
             text_position(&terminal, "(live)");
@@ -208,6 +213,98 @@ fn new_settings_scroll_into_view_and_details_follow_selection_on_resize() {
     .unwrap();
     terminal.draw(|frame| draw(frame, &mut app)).unwrap();
     assert!(area.contains(text_position(&terminal, "show_hints · true").into()));
+}
+
+#[test]
+fn settings_are_grouped_and_keyboard_navigation_skips_headings() {
+    let mut app = app();
+    let mut terminal = Terminal::new(TestBackend::new(120, 35)).unwrap();
+    let groups: &[(&str, &[ConfigSetting])] = &[
+        ("STORAGE", &[ConfigSetting::DatabasePath]),
+        (
+            "DISPLAY",
+            &[
+                ConfigSetting::TaskView,
+                ConfigSetting::ShowCompleted,
+                ConfigSetting::ShowHints,
+            ],
+        ),
+        (
+            "TASK BEHAVIOR",
+            &[
+                ConfigSetting::DefaultPriority,
+                ConfigSetting::SortOrder,
+                ConfigSetting::CompletedDelete,
+            ],
+        ),
+    ];
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    let mut previous_y = 0;
+    for &(heading, settings) in groups {
+        let (x, heading_y) = text_position(&terminal, heading);
+        assert!(heading_y > previous_y);
+        let cell = &terminal.backend().buffer()[(x, heading_y)];
+        assert_eq!(cell.fg, Color::Cyan);
+        assert!(cell.modifier.contains(Modifier::BOLD));
+        previous_y = heading_y;
+        for &setting in settings {
+            assert_eq!(app.config_setting, setting);
+            let (_, setting_y) = text_position(&terminal, setting.name());
+            assert!(setting_y > previous_y);
+            previous_y = setting_y;
+            press(&mut app, KeyCode::Char('j'));
+        }
+    }
+    assert_eq!(app.config_setting, ConfigSetting::CompletedDelete);
+    for &(_, settings) in groups.iter().rev() {
+        for &setting in settings.iter().rev() {
+            assert_eq!(app.config_setting, setting);
+            press(&mut app, KeyCode::Char('k'));
+        }
+    }
+    assert_eq!(app.config_setting, ConfigSetting::DatabasePath);
+}
+
+#[test]
+fn short_forms_keep_the_selected_category_and_setting_visible() {
+    let mut app = app();
+    let mut terminal = Terminal::new(TestBackend::new(45, 12)).unwrap();
+    for setting in ConfigSetting::ALL {
+        app.config_setting = setting;
+        let heading = match setting.category() {
+            crate::app::ConfigCategory::Storage => "STORAGE",
+            crate::app::ConfigCategory::Display => "DISPLAY",
+            crate::app::ConfigCategory::TaskBehavior => "TASK BEHAVIOR",
+        };
+        for height in [3, 2, 1, 0] {
+            let area = Rect::new(4, 3, 35, height);
+            terminal
+                .draw(|frame| super::form::draw_form(frame, &app, area))
+                .unwrap();
+            if height == 0 {
+                continue;
+            }
+            let (x, y) = text_position(&terminal, "› ");
+            assert!(area.contains((x, y).into()));
+            if height > 1 {
+                let (heading_x, heading_y) = text_position(&terminal, heading);
+                assert!(area.contains((heading_x, heading_y).into()));
+                assert!(heading_y < y);
+            }
+            let value_x = x
+                + 2
+                + if setting == ConfigSetting::DatabasePath {
+                    0
+                } else {
+                    setting.name().len() as u16 + 2
+                };
+            assert!(
+                terminal.backend().buffer()[(value_x, y)]
+                    .modifier
+                    .contains(Modifier::UNDERLINED)
+            );
+        }
+    }
 }
 
 #[test]

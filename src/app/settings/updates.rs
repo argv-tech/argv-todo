@@ -123,7 +123,9 @@ impl App {
                 );
             }
             VimAction::FileStart => self.config_setting = ConfigSetting::DatabasePath,
-            VimAction::FileEnd => self.config_setting = ConfigSetting::ShowHints,
+            VimAction::FileEnd => {
+                self.config_setting = ConfigSetting::ALL[ConfigSetting::ALL.len() - 1];
+            }
             VimAction::Move(Motion::Left | Motion::Right, count)
                 if self.config_setting != ConfigSetting::DatabasePath =>
             {

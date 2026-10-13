@@ -87,7 +87,7 @@ const SECTIONS: &[Section] = &[
             ),
             (
                 "Settings j / k",
-                "Select a setting; Tab / Shift-Tab cycles settings",
+                "Select across categories; Tab / Shift-Tab cycles settings",
             ),
             (
                 "Settings Enter",

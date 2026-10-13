@@ -14,7 +14,7 @@ mod settings;
 mod tasks;
 mod views;
 
-pub(crate) use settings::ConfigSetting;
+pub(crate) use settings::{ConfigCategory, ConfigSetting};
 pub(crate) use views::TaskPane;
 
 #[cfg(test)]

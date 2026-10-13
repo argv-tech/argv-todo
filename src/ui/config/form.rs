@@ -3,7 +3,7 @@ use super::super::{
     text::truncate,
     theme::{ACCENT, MUTED},
 };
-use crate::app::{App, ConfigSetting};
+use crate::app::{App, ConfigCategory, ConfigSetting};
 use ratatui::{
     Frame,
     layout::Rect,
@@ -12,34 +12,101 @@ use ratatui::{
     widgets::Paragraph,
 };
 
+enum FormRow {
+    Category(ConfigCategory),
+    DatabaseLabel,
+    Setting(ConfigSetting),
+    Gap,
+}
+
+fn rows() -> Vec<FormRow> {
+    let mut rows = Vec::new();
+    let mut category = None;
+    for setting in ConfigSetting::ALL {
+        if category != Some(setting.category()) {
+            if category.is_some() {
+                rows.push(FormRow::Gap);
+            }
+            category = Some(setting.category());
+            rows.push(FormRow::Category(setting.category()));
+        }
+        if setting == ConfigSetting::DatabasePath {
+            rows.push(FormRow::DatabaseLabel);
+        }
+        rows.push(FormRow::Setting(setting));
+    }
+    rows
+}
+
+pub(super) fn form_height() -> u16 {
+    rows().len() as u16
+}
+
+fn draw_category(frame: &mut Frame, category: ConfigCategory, area: Rect) {
+    let title = match category {
+        ConfigCategory::Storage => "STORAGE",
+        ConfigCategory::Display => "DISPLAY",
+        ConfigCategory::TaskBehavior => "TASK BEHAVIOR",
+    };
+    frame.render_widget(
+        Paragraph::new(title).style(Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
+        area,
+    );
+}
+
 pub(super) fn draw_form(frame: &mut Frame, app: &App, area: Rect) {
     if area.is_empty() {
         return;
     }
-    let total = ConfigSetting::ALL.len() + 1;
+    let rows = rows();
+    let total = rows.len();
     let height = usize::from(area.height).min(total);
-    let selected = if app.config_setting == ConfigSetting::DatabasePath {
-        1
-    } else {
-        app.config_setting.index() + 1
-    };
-    let offset = (selected + 1)
+    let selected = rows
+        .iter()
+        .position(|row| matches!(row, FormRow::Setting(setting) if *setting == app.config_setting))
+        .unwrap_or(0);
+    let category_row = rows[..selected]
+        .iter()
+        .rposition(|row| matches!(row, FormRow::Category(_)))
+        .unwrap_or(0);
+    let mut offset = (selected + 1)
         .saturating_sub(height)
         .min(total.saturating_sub(height));
+    // Keep the selected setting's category visible when its heading scrolls away.
+    let pinned_category = offset > category_row && height > 1;
+    let content_height = height - usize::from(pinned_category);
+    if pinned_category {
+        draw_category(
+            frame,
+            app.config_setting.category(),
+            Rect::new(area.x, area.y, area.width, 1),
+        );
+        offset = (selected + 1)
+            .saturating_sub(content_height)
+            .max(category_row + 1);
+    }
     let style = Style::default().add_modifier(Modifier::BOLD);
-    for (visible_row, row) in (offset..total).take(height).enumerate() {
-        let line_area = Rect::new(area.x, area.y + visible_row as u16, area.width, 1);
-        if row == 0 {
-            frame.render_widget(
-                Paragraph::new("database_path").style(Style::default().fg(MUTED)),
-                line_area,
-            );
-            continue;
-        }
-        let setting = if row == 1 {
-            ConfigSetting::DatabasePath
-        } else {
-            ConfigSetting::ALL[row - 1]
+    for (visible_row, row) in rows.iter().skip(offset).take(content_height).enumerate() {
+        let line_area = Rect::new(
+            area.x,
+            area.y + visible_row as u16 + u16::from(pinned_category),
+            area.width,
+            1,
+        );
+        let setting = match row {
+            FormRow::Category(category) => {
+                draw_category(frame, *category, line_area);
+                continue;
+            }
+            FormRow::DatabaseLabel => {
+                frame.render_widget(
+                    Paragraph::new("database_path").style(Style::default().fg(MUTED)),
+                    line_area,
+                );
+                continue;
+            }
+            FormRow::Gap => continue,
+            FormRow::Setting(setting) => *setting,
         };
         if setting == ConfigSetting::DatabasePath && app.vim.input().is_some() {
             draw_editor(frame, &app.editor, "› ", style, line_area, true);

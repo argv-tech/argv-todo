@@ -237,8 +237,11 @@ fn config_view_shows_logo_when_it_fits_and_keeps_editor_visible() {
             continue;
         }
         text_position(&terminal, "configuration");
+        text_position(&terminal, "STORAGE");
         text_position(&terminal, "database_path");
-        text_position(&terminal, "task_view");
+        if height >= 16 {
+            text_position(&terminal, "task_view");
+        }
         text_position(&terminal, "db.sql");
         text_position(&terminal, "Esc");
         if width >= 80 {
@@ -709,7 +712,7 @@ fn configuration_splits_editor_and_paths_then_stacks_on_resize() {
         if width >= 74 {
             let (paths_x, paths_y) = text_position(&terminal, "active database");
             assert!(paths_x > label_x + 25);
-            assert_eq!(paths_y, label_y);
+            assert_eq!(paths_y + 1, label_y);
             text_position(&terminal, "configuration file");
             let (database_x, database_y) = text_position(&terminal, "/temporary/tasks.sql");
             assert_eq!(database_x, paths_x);

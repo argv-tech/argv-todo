@@ -189,12 +189,18 @@ fn setting_navigation_cycles_all_values_and_failed_saves_leave_behavior_intact()
     }
     assert_eq!(app.config_setting, ConfigSetting::DatabasePath);
     press(&mut app, KeyCode::BackTab);
+    assert_eq!(app.config_setting, ConfigSetting::CompletedDelete);
+    press(&mut app, KeyCode::End);
+    assert_eq!(app.config_setting, ConfigSetting::CompletedDelete);
+    press(&mut app, KeyCode::Home);
+    press(&mut app, KeyCode::Char('3'));
+    press(&mut app, KeyCode::Char('j'));
     assert_eq!(app.config_setting, ConfigSetting::ShowHints);
     press(&mut app, KeyCode::Enter);
     assert!(!app.show_hints());
     press(&mut app, KeyCode::Home);
     assert_eq!(app.config_setting, ConfigSetting::DatabasePath);
-    press(&mut app, KeyCode::Char('2'));
+    press(&mut app, KeyCode::Char('4'));
     press(&mut app, KeyCode::Char('j'));
     assert_eq!(app.config_setting, ConfigSetting::DefaultPriority);
     press(&mut app, KeyCode::Char('h'));
