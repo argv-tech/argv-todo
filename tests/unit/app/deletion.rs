@@ -32,10 +32,19 @@ fn completed_cleanup_ignores_search_and_folds_and_supports_both_undo_modes() {
         app.toggle_collapse();
         app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::ALT));
         assert!(!app.error);
+        assert!(app.confirming_delete());
+        assert_eq!(app.todos.len(), 2);
+        assert!(app.status.contains("Clear 1 completed task(s)?"));
+        app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+        assert!(!app.confirming_delete());
         assert_eq!(app.todos.len(), 1);
         assert_eq!(app.selected_todo().unwrap().id, root);
         assert_eq!(app.undo.len(), 1);
         app.apply(VimAction::Delete(1)).unwrap();
+        assert!(app.confirming_delete());
+        assert_eq!(app.todos.len(), 1);
+        assert!(app.status.contains("Delete 1 task(s)?"));
+        app.apply(VimAction::Submit).unwrap();
         assert!(app.todos.is_empty());
         app.apply(VimAction::Undo).unwrap();
         assert_eq!(app.todos.len(), 1);
@@ -44,8 +53,13 @@ fn completed_cleanup_ignores_search_and_folds_and_supports_both_undo_modes() {
         assert_eq!(app.todos, before);
         assert_eq!(app.selected_todo().unwrap().id, completed);
         app.apply(VimAction::ClearCompleted).unwrap();
+        assert!(app.confirming_delete());
+        assert_eq!(app.todos, before);
+        app.apply(VimAction::Submit).unwrap();
         let undo_count = app.undo.len();
         app.apply(VimAction::ClearCompleted).unwrap();
+        assert!(!app.confirming_delete());
+        assert!(app.status.contains("No completed tasks to delete."));
         assert_eq!(app.undo.len(), undo_count);
         std::fs::remove_dir_all(folder).unwrap();
     }
@@ -74,6 +88,37 @@ fn completed_deletion_setting_changes_live_and_persists() {
 }
 
 #[test]
+fn task_delete_arms_confirmation_and_esc_cancels() {
+    let db = Database::memory();
+    let root = db.add("Root", None, Priority::Mid).unwrap();
+    db.add("Child", Some(root), Priority::Mid).unwrap();
+    let mut app = App::new(db).unwrap();
+    let before = app.todos.clone();
+    app.handle_key(KeyEvent::new(KeyCode::Char('d'), KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Char('d'), KeyModifiers::NONE));
+    assert!(app.confirming_delete());
+    assert_eq!(app.todos, before);
+    assert!(app.status.contains("Delete 1 task(s)?"));
+    // Other keys are swallowed while confirming.
+    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+    assert_eq!(app.selected_todo().unwrap().id, root);
+    assert_eq!(app.todos, before);
+    app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+    assert!(!app.confirming_delete());
+    assert_eq!(app.todos, before);
+    assert!(app.status.contains("Deletion cancelled."));
+    // Re-arm and confirm with Enter.
+    app.handle_key(KeyEvent::new(KeyCode::Char('d'), KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Char('d'), KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert!(!app.confirming_delete());
+    assert!(app.todos.is_empty());
+    assert_eq!(app.undo.len(), 1);
+    app.apply(VimAction::Undo).unwrap();
+    assert_eq!(app.todos, before);
+}
+
+#[test]
 fn completed_cleanup_is_scoped_to_project_and_fields_and_picker_block_shortcut() {
     let mut db = Database::memory();
     let inbox = db.add("Inbox", None, Priority::Mid).unwrap();
@@ -90,6 +135,10 @@ fn completed_cleanup_is_scoped_to_project_and_fields_and_picker_block_shortcut()
     app.config = Some(config);
     app.normalize_selection();
     app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::ALT));
+    assert!(app.confirming_delete());
+    assert_eq!(app.todos.len(), 2);
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert!(!app.confirming_delete());
     assert_eq!(app.todos.len(), 1);
     assert_eq!(app.todos[0].id, work);
     assert!(app.selected_todo().is_none());

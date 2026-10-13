@@ -20,6 +20,10 @@ impl App {
             self.running = false;
             return Ok(());
         }
+        if self.pending_delete.is_some() {
+            // A delete confirmation swallows every action except Submit/Cancel.
+            return self.apply_pending_delete(action);
+        }
         if self.archive.is_some() {
             return self.apply_archive(action);
         }

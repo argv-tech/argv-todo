@@ -12,7 +12,8 @@ Notable changes to argv-todo, grouped by release.
 - **ui:** Group settings into Storage, Display, and Task behavior categories ([78c2c38](https://github.com/argv-tech/argv-todo/commit/78c2c380486099de1e42d67464b292cec3e6c7d7))
 - **archive:** Add separate restore and clear shortcuts ([546b16e](https://github.com/argv-tech/argv-todo/commit/546b16e46e6c961fc1fb034ea9208bbc31252d1d))
 - **notes:** Support multiline editing and preserved line breaks ([6e6d7cb](https://github.com/argv-tech/argv-todo/commit/6e6d7cb717cc16933f8172e53bcf133dab9a14bb))
-- **projects:** Add keybinds to rename and delete projects ([5654be9](https://github.com/argv-tech/argv-todo/commit/5654be9779986b8e77175c778a13c1b493cb758c))
+- **projects:** Add keybinds to rename and delete projects ([503fd84](https://github.com/argv-tech/argv-todo/commit/503fd84a7d9168383aa74561a76df8c0bfd02acb))
+- **deletion:** Require confirmation for destructive deletions ([027e4ee](https://github.com/argv-tech/argv-todo/commit/027e4ee0307805d25d765c9cf1a84967a5f24d3c))
 
 ### Fixed
 

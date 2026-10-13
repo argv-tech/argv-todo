@@ -92,11 +92,11 @@ impl App {
                 }
             }
             VimAction::ConvertProject => self.convert_selected_project()?,
-            VimAction::ClearCompleted => self.clear_completed()?,
+            VimAction::ClearCompleted => self.begin_completed_clear()?,
             VimAction::ShowDeleted => self.open_archive()?,
             VimAction::AddProject => self.begin_project()?,
             VimAction::RenameProject => self.begin_rename_project()?,
-            VimAction::DeleteProject => self.delete_active_project()?,
+            VimAction::DeleteProject => self.begin_delete_project()?,
             VimAction::AssignProject => self.begin_project_move(),
             VimAction::AddChild => {
                 let parent = self.selected_todo().map(|todo| todo.id);
@@ -140,29 +140,7 @@ impl App {
                     self.set_priority(priority.next())?;
                 }
             }
-            VimAction::Delete(count) => {
-                let visible = self.visible_indices();
-                let start = self.active_list().selected().unwrap_or(0);
-                let deleted: Vec<_> = visible
-                    .into_iter()
-                    .skip(start)
-                    .take(count)
-                    .map(|i| self.todos[i].clone())
-                    .collect();
-                if !deleted.is_empty() {
-                    let deleted = self.database.delete(&deleted)?;
-                    if deleted.is_empty() {
-                        self.reload(None)?;
-                        self.message("Task no longer exists.");
-                        return Ok(());
-                    }
-                    let len = deleted.len();
-                    self.undo
-                        .push(super::deletion::DeletionUndo::Trees(deleted));
-                    self.reload(None)?;
-                    self.message(format!("Deleted {len} task(s). Press u to undo."));
-                }
-            }
+            VimAction::Delete(count) => self.begin_task_delete(count)?,
             VimAction::Undo => self.undo_deletion()?,
             VimAction::Search => {
                 let selected_id = self.selected_todo().map(|todo| todo.id);

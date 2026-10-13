@@ -64,6 +64,7 @@ pub(crate) struct App {
     pub(crate) configuring: bool,
     pub(crate) config_setting: ConfigSetting,
     undo: Vec<deletion::DeletionUndo>,
+    pending_delete: Option<deletion::PendingDelete>,
     running: bool,
 }
 
@@ -95,6 +96,7 @@ impl App {
             configuring: false,
             config_setting: ConfigSetting::default(),
             undo: Vec::new(),
+            pending_delete: None,
             running: true,
         };
         app.normalize_selection();

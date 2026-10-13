@@ -40,7 +40,7 @@ const SECTIONS: &[Section] = &[
             ("R", "Rename the active project; Inbox cannot be renamed"),
             (
                 "D (Shift-d)",
-                "Delete the active project and all its tasks; cannot undo",
+                "Delete the active project and all its tasks; Enter confirms, Esc cancels; cannot undo",
             ),
             (
                 "C",
@@ -77,9 +77,12 @@ const SECTIONS: &[Section] = &[
             ),
             (
                 "Alt-Enter",
-                "Clear completed tasks; current project in Projects; Settings chooses soft or hard deletion",
+                "Clear completed tasks; Enter confirms, Esc cancels; current project in Projects; Settings chooses soft or hard deletion",
             ),
-            ("dd / 3dd", "Delete one / three task trees from selection"),
+            (
+                "dd / 3dd",
+                "Delete one / three task trees from selection; Enter confirms, Esc cancels",
+            ),
             ("u", "Restore the last deletion in this session"),
             ("t / Ctrl-p", "Cycle priority: low > mid > high > low"),
             ("ph / pm / pl", "Set high / mid / low priority"),

@@ -138,6 +138,8 @@ visibility rules above when adding or changing module boundaries.
   to roots while preserving descendants; `m`
   moves a whole task tree using a destination picker. Alt+Return clears completed
   tasks using the configured soft/hard mode, preserving unfinished descendants.
+  Task delete (`dd`), completed cleanup, project delete, and archive clear ask
+  for confirmation: Enter confirms, Esc cancels, other keys are ignored.
   `A` browses soft-deleted tasks from all projects with saved notes; `A` or Esc
   returns to the active tree. In the archive, `r` restores the selected tree and
   archived parents; `D` permanently clears archived tasks from all projects after

@@ -130,6 +130,7 @@ fn folded_tree_operations_include_hidden_descendants_and_search_reveals_matches(
     press(&mut app, KeyCode::Char(' '));
     assert_eq!(app.todos, saved);
     app.apply(VimAction::Delete(1)).unwrap();
+    app.apply(VimAction::Submit).unwrap();
     assert_eq!(app.todos.len(), 2);
     app.apply(VimAction::Undo).unwrap();
     assert_eq!(app.todos, saved);

@@ -143,6 +143,7 @@ fn split_filters_completion_and_tab_targets_each_list() {
         1
     );
     app.apply(VimAction::Delete(1)).unwrap();
+    app.apply(VimAction::Submit).unwrap();
     app.apply(VimAction::Undo).unwrap();
     assert_eq!(app.selected_todo().unwrap().title, "Grandchild");
     press(&mut app, KeyCode::Char('h'));
@@ -171,6 +172,7 @@ fn split_search_and_tree_operations_include_descendants_in_both_panes() {
     assert_eq!(app.rows_for_pane(TaskPane::Todo).len(), 1);
     assert_eq!(app.rows_for_pane(TaskPane::Completed).len(), 3);
     app.apply(VimAction::Delete(1)).unwrap();
+    app.apply(VimAction::Submit).unwrap();
     assert_eq!(app.todos.len(), 1);
     assert_eq!(app.todos[0].title, "Other root");
     app.apply(VimAction::Undo).unwrap();
@@ -219,6 +221,7 @@ fn completed_grandchildren_keep_ghost_ancestors_and_navigation_skips_them() {
     assert_eq!(app.selected_todo().unwrap().title, "Sibling");
     app.apply(VimAction::FileStart).unwrap();
     app.apply(VimAction::Delete(2)).unwrap();
+    app.apply(VimAction::Submit).unwrap();
     assert_eq!(
         app.todos
             .iter()

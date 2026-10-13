@@ -85,6 +85,30 @@ impl VimManager {
         }
     }
 
+    pub(crate) fn handle_confirm(&mut self, key: KeyEvent) -> Option<VimAction> {
+        if key.kind == KeyEventKind::Release {
+            return None;
+        }
+        self.reset();
+        if key.code == KeyCode::Esc {
+            return Some(VimAction::Cancel);
+        }
+        if key.modifiers.contains(KeyModifiers::CONTROL) {
+            return match key.code {
+                KeyCode::Char('c') => Some(VimAction::Quit),
+                _ => None,
+            };
+        }
+        match key.code {
+            KeyCode::Enter if key.modifiers.is_empty() && key.kind == KeyEventKind::Press => {
+                Some(VimAction::Submit)
+            }
+            // Like the archive cleanup, quitting still works mid-confirm.
+            KeyCode::Char('q') if key.modifiers.is_empty() => Some(VimAction::Quit),
+            _ => None,
+        }
+    }
+
     pub(crate) fn handle(&mut self, key: KeyEvent) -> Option<VimAction> {
         if key.kind == KeyEventKind::Release {
             return None;

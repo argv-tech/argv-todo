@@ -219,6 +219,7 @@ fn move_picker_isolates_input_moves_whole_tree_and_undo_preserves_project() {
     assert_eq!(app.selected_todo().unwrap().id, id);
     assert_eq!(app.selected_todo().unwrap().parent_id, None);
     app.apply(VimAction::Delete(1)).unwrap();
+    app.apply(VimAction::Submit).unwrap();
     app.apply(VimAction::Undo).unwrap();
     assert_eq!(app.selected_todo().unwrap().id, id);
     assert_eq!(app.selected_todo().unwrap().project_id, None);
@@ -460,6 +461,12 @@ fn delete_project_removes_tab_and_tasks_then_blocks_inbox() {
     assert_eq!(removed.len(), 2);
     press(&mut app, KeyCode::Char('D'));
     assert!(!app.error);
+    assert!(app.confirming_delete());
+    assert!(app.status.contains("Delete project 'Work' and 2 task(s)?"));
+    assert_eq!(app.project_tabs().len(), 3);
+    press(&mut app, KeyCode::Enter);
+    assert!(!app.error);
+    assert!(!app.confirming_delete());
     assert!(app.status.contains("Deleted project 'Work' and 2 task(s)."));
     assert_eq!(
         app.project_tabs().map(|(_, name)| name).collect::<Vec<_>>(),
@@ -489,6 +496,38 @@ fn delete_project_removes_tab_and_tasks_then_blocks_inbox() {
     assert!(!app.error);
     assert!(app.status.contains("Inbox cannot be deleted"));
     assert_eq!(app.project_tabs().len(), 2);
+    std::fs::remove_dir_all(folder).unwrap();
+}
+
+#[test]
+fn delete_confirmation_cancels_and_swallows_other_keys() {
+    let (folder, mut app) = app();
+    press(&mut app, KeyCode::Tab);
+    let tabs: Vec<String> = app
+        .project_tabs()
+        .map(|(_, name)| name.to_string())
+        .collect();
+    let todos = app.todos.clone();
+    press(&mut app, KeyCode::Char('D'));
+    assert!(app.confirming_delete());
+    // Navigation and editing keys are swallowed while confirming.
+    let selected = app.selected_todo().map(|todo| todo.id);
+    press(&mut app, KeyCode::Char('j'));
+    press(&mut app, KeyCode::Char('u'));
+    assert_eq!(app.selected_todo().map(|todo| todo.id), selected);
+    assert_eq!(app.todos, todos);
+    assert!(app.running);
+    press(&mut app, KeyCode::Esc);
+    assert!(!app.confirming_delete());
+    assert!(app.status.contains("Deletion cancelled."));
+    assert_eq!(
+        app.project_tabs()
+            .map(|(_, name)| name.to_string())
+            .collect::<Vec<_>>(),
+        tabs
+    );
+    assert_eq!(app.todos, todos);
+    assert_eq!(app.database.projects().unwrap().len(), 2);
     std::fs::remove_dir_all(folder).unwrap();
 }
 

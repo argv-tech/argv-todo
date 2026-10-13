@@ -226,7 +226,9 @@ fn archive_mutations_retire_only_overlapping_undo_and_stale_clear_is_safe() {
         let mut app = App::new(db).unwrap();
         app.apply(VimAction::Toggle).unwrap();
         app.apply(VimAction::ClearCompleted).unwrap();
+        app.apply(VimAction::Submit).unwrap();
         app.apply(VimAction::Delete(1)).unwrap();
+        app.apply(VimAction::Submit).unwrap();
         assert_eq!(app.undo.len(), 2);
         press(&mut app, KeyCode::Char('A'));
         if restore {

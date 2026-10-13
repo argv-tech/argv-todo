@@ -3,7 +3,7 @@ use ratatui::widgets::ListState;
 
 use super::ProjectPicker;
 use crate::{
-    app::App,
+    app::{App, deletion::PendingDelete},
     vim_motion::{InputTarget, Motion, VimAction},
 };
 
@@ -27,6 +27,39 @@ impl App {
         self.editor.reset(project.name);
         self.vim.begin_input(InputTarget::ProjectName);
         self.message("Rename project. Enter saves. Esc enters Normal; Esc again cancels.");
+        Ok(())
+    }
+
+    pub(in crate::app) fn begin_delete_project(&mut self) -> Result<()> {
+        self.open_project_view()?;
+        let Some(project) = self.projects.tabs[self.projects.active].project.clone() else {
+            self.message("Inbox cannot be deleted.");
+            return Ok(());
+        };
+        let count = self
+            .todos
+            .iter()
+            .filter(|todo| todo.project_id == Some(project.id))
+            .count()
+            + self
+                .database
+                .list_deleted()
+                .unwrap_or_default()
+                .iter()
+                .filter(|todo| todo.project_id == Some(project.id))
+                .count();
+        self.pending_delete = Some(PendingDelete::Project(project.id));
+        if count == 0 {
+            self.message(format!(
+                "Delete empty project '{}'? Enter confirms · Esc cancels.",
+                project.name
+            ));
+        } else {
+            self.message(format!(
+                "Delete project '{}' and {count} task(s)? Enter confirms · Esc cancels.",
+                project.name
+            ));
+        }
         Ok(())
     }
 

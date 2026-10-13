@@ -735,3 +735,34 @@ fn project_rename_and_delete_keys_map_only_in_projects_view() {
     vim.handle(key('d'));
     assert_eq!(vim.handle_projects(key('d')), Some(VimAction::Delete(1)));
 }
+
+#[test]
+fn confirm_keys_submit_cancel_or_quit_and_swallow_the_rest() {
+    let mut vim = VimManager::default();
+    assert_eq!(
+        vim.handle_confirm(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+        Some(VimAction::Submit)
+    );
+    assert_eq!(
+        vim.handle_confirm(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE)),
+        Some(VimAction::Cancel)
+    );
+    assert_eq!(
+        vim.handle_confirm(KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE)),
+        Some(VimAction::Quit)
+    );
+    assert_eq!(
+        vim.handle_confirm(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL)),
+        Some(VimAction::Quit)
+    );
+    for key in [
+        key('j'),
+        key('d'),
+        KeyEvent::new(KeyCode::Enter, KeyModifiers::ALT),
+        KeyEvent::new_with_kind(KeyCode::Enter, KeyModifiers::NONE, KeyEventKind::Repeat),
+        KeyEvent::new_with_kind(KeyCode::Enter, KeyModifiers::NONE, KeyEventKind::Release),
+        KeyEvent::new(KeyCode::Char('c'), KeyModifiers::ALT),
+    ] {
+        assert_eq!(vim.handle_confirm(key), None);
+    }
+}

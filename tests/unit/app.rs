@@ -79,11 +79,7 @@ fn help_preserves_underlying_field_and_handles_key_kinds() {
     assert!(!app.running);
 }
 fn enter(app: &mut App) {
-    let action = app
-        .vim
-        .handle(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE))
-        .unwrap();
-    app.dispatch(action);
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
 }
 
 fn cycle_input_priority(app: &mut App) {
@@ -259,7 +255,9 @@ fn creation_keys_place_children_and_siblings_and_undo_keeps_order() {
     app.dispatch(VimAction::Cancel);
     assert_eq!(app.selected_todo().unwrap().id, root);
     assert_eq!(app.todos, expected);
-    keys(&mut app, "ddu");
+    keys(&mut app, "dd");
+    enter(&mut app);
+    keys(&mut app, "u");
     assert_eq!(app.todos, expected);
     keys(&mut app, "pho");
     assert_eq!(app.input_priority, Priority::High);
@@ -334,6 +332,7 @@ fn priorities_sort_siblings_keep_selection_and_survive_edit_and_undo() {
     app.dispatch(VimAction::Cancel);
     assert_eq!(app.todos, expected, "Cancel must not save priority changes");
     keys(&mut app, "ggdd");
+    enter(&mut app);
     assert_eq!(app.todos.len(), 1);
     keys(&mut app, "u");
     assert_eq!(app.todos, expected);
@@ -358,6 +357,7 @@ fn keyboard_workflow_keeps_completed_tasks_in_one_list() {
     keys(&mut app, "j");
     assert_eq!(app.selected_todo().unwrap().title, "Ship the app");
     keys(&mut app, "kdd");
+    enter(&mut app);
     assert_eq!(app.visible_indices().len(), 1);
     assert_eq!(app.selected_todo().unwrap().title, "Ship the app");
     keys(&mut app, "u");
@@ -393,6 +393,7 @@ fn search_cancel_blank_title_and_empty_navigation() {
     assert_eq!(app.selected_todo().unwrap().title, "Read Rust");
     app.dispatch(VimAction::Cancel);
     keys(&mut app, "gg2dd");
+    enter(&mut app);
     assert_eq!(app.todos.len(), 0);
     keys(&mut app, "u");
     assert_eq!(app.todos.len(), 2);
@@ -450,6 +451,7 @@ fn nested_tasks_stay_in_one_view_and_undo_restores_tree() {
     );
     app.dispatch(VimAction::Cancel);
     keys(&mut app, "gghdd");
+    enter(&mut app);
     assert!(app.todos.is_empty());
     keys(&mut app, "u");
     assert_eq!(app.todos, expected);

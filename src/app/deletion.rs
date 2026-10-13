@@ -5,11 +5,18 @@ use super::App;
 use crate::{
     config::TaskView,
     db::{CompletedDeletion, DeleteMode, TaskScope, Todo},
+    vim_motion::VimAction,
 };
 
 pub(super) enum DeletionUndo {
     Trees(Vec<Todo>),
     Completed(CompletedDeletion),
+}
+
+pub(super) enum PendingDelete {
+    Tasks(Vec<Todo>),
+    Completed,
+    Project(i64),
 }
 
 impl App {
@@ -26,6 +33,94 @@ impl App {
         self.config
             .as_ref()
             .map_or(DeleteMode::Soft, |config| config.completed_delete)
+    }
+
+    pub(crate) fn confirming_delete(&self) -> bool {
+        self.pending_delete.is_some()
+    }
+
+    pub(super) fn begin_task_delete(&mut self, count: usize) -> Result<()> {
+        let visible = self.visible_indices();
+        let start = self.active_list().selected().unwrap_or(0);
+        let targets: Vec<_> = visible
+            .into_iter()
+            .skip(start)
+            .take(count)
+            .map(|i| self.todos[i].clone())
+            .collect();
+        if targets.is_empty() {
+            return Ok(());
+        }
+        let len = targets.len();
+        self.pending_delete = Some(PendingDelete::Tasks(targets));
+        self.message(format!(
+            "Delete {len} task(s)? Enter confirms · Esc cancels."
+        ));
+        Ok(())
+    }
+
+    pub(super) fn begin_completed_clear(&mut self) -> Result<()> {
+        // Live tasks are exactly what the cleanup would remove, so the
+        // count here matches the confirmed run below.
+        let scoped = self.task_view() == TaskView::Projects;
+        let active = self.active_project_id();
+        let count = self
+            .todos
+            .iter()
+            .filter(|task| task.done && (!scoped || task.project_id == active))
+            .count();
+        if count == 0 {
+            self.message("No completed tasks to delete.");
+            return Ok(());
+        }
+        self.pending_delete = Some(PendingDelete::Completed);
+        self.message(format!(
+            "Clear {count} completed task(s)? Enter confirms · Esc cancels."
+        ));
+        Ok(())
+    }
+
+    pub(super) fn apply_pending_delete(&mut self, action: VimAction) -> Result<()> {
+        match action {
+            VimAction::Submit => self.confirm_pending_delete()?,
+            VimAction::Cancel => {
+                self.pending_delete = None;
+                self.message("Deletion cancelled.");
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn confirm_pending_delete(&mut self) -> Result<()> {
+        let Some(pending) = self.pending_delete.take() else {
+            return Ok(());
+        };
+        match pending {
+            PendingDelete::Tasks(targets) => {
+                let deleted = self.database.delete(&targets)?;
+                if deleted.is_empty() {
+                    self.reload(None)?;
+                    self.message("Task no longer exists.");
+                    return Ok(());
+                }
+                let len = deleted.len();
+                self.undo.push(DeletionUndo::Trees(deleted));
+                self.reload(None)?;
+                self.message(format!("Deleted {len} task(s). Press u to undo."));
+            }
+            PendingDelete::Completed => self.clear_completed()?,
+            PendingDelete::Project(id) => {
+                // Selection is frozen while confirming, but refuse to delete
+                // a different project if state ever drifts.
+                if self.active_project_id() != Some(id) {
+                    self.message("Deletion cancelled: active project changed.");
+                    return Ok(());
+                }
+                self.delete_active_project()?;
+            }
+        }
+        Ok(())
     }
 
     pub(super) fn clear_completed(&mut self) -> Result<()> {

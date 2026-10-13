@@ -119,7 +119,13 @@ pub(super) fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
 }
 
 fn footer_hint(app: &App, width: usize) -> &'static str {
-    let candidates: &[&str] = if app.vim.input().is_some() && app.vim.mode().visual() {
+    let candidates: &[&str] = if app.confirming_delete() {
+        &[
+            "Enter confirm · Esc cancel",
+            "Enter confirm · Esc",
+            "Enter · Esc",
+        ]
+    } else if app.vim.input().is_some() && app.vim.mode().visual() {
         &[
             "d delete · c change · y yank · Esc normal",
             "d/c/y · Esc normal",
