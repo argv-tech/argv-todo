@@ -10,11 +10,15 @@ Notable changes to argv-todo, grouped by release.
 - Add project tabs, conversion, completed cleanup, and UI polish ([a403f82](https://github.com/argv-tech/argv-todo/commit/a403f8291cae0b567c50aa0c28feeba4a14f6733))
 - Add archived task browsing and keep Dependabot alerts without PRs ([a68435a](https://github.com/argv-tech/argv-todo/commit/a68435a3d8ba9eb477ddc9bc5d95419c76a2078c))
 - **ui:** Group settings into Storage, Display, and Task behavior categories ([78c2c38](https://github.com/argv-tech/argv-todo/commit/78c2c380486099de1e42d67464b292cec3e6c7d7))
-- **archive:** Add separate restore and clear shortcuts
+- **archive:** Add separate restore and clear shortcuts ([546b16e](https://github.com/argv-tech/argv-todo/commit/546b16e46e6c961fc1fb034ea9208bbc31252d1d))
 
 ### Fixed
 
 - **projects:** Keep subtask navigation before switching tabs with h and l ([f9df04f](https://github.com/argv-tech/argv-todo/commit/f9df04fcafe52c2fa746ff50cca10122c94886d7))
+
+### Documentation
+
+- **help:** Cover archive, settings, and project picker shortcuts
 
 ### Build
 

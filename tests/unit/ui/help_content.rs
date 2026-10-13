@@ -15,7 +15,9 @@ fn help_guide_and_content_omit_field_editing_sections() {
             [
                 "TASKS / Navigation",
                 "TASKS / Create & change",
-                "APP / Search & settings",
+                "ARCHIVE / Restore & clear",
+                "SETTINGS / Preferences",
+                "APP / Search & help",
             ]
         );
         let content = document

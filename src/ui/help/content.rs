@@ -26,6 +26,7 @@ const SECTIONS: &[Section] = &[
             ),
             ("Enter", "Collapse / expand the selected task's children"),
             ("gg / G", "First / last task"),
+            ("Home / End", "First / last task"),
             ("3j / 2k", "Repeat a movement"),
             ("Tab / Shift-Tab", "Switch project tabs or Split panes"),
         ],
@@ -44,6 +45,9 @@ const SECTIONS: &[Section] = &[
                 "m",
                 "Move a task tree to a project; Enter confirms, Esc cancels",
             ),
+            ("Picker j / k", "Select a destination (or Up / Down)"),
+            ("Picker Tab/S-Tab", "Next / previous destination"),
+            ("Picker Home/End", "First / last destination"),
             ("e / cc", "Edit the selected task"),
             ("n", "Edit the selected task's note in the bottom section"),
             (
@@ -52,7 +56,7 @@ const SECTIONS: &[Section] = &[
             ),
             (
                 "Alt-Enter",
-                "Clear completed tasks; Settings chooses soft or hard deletion",
+                "Clear completed tasks; current project in Projects; Settings chooses soft or hard deletion",
             ),
             ("dd / 3dd", "Delete one / three task trees from selection"),
             ("u", "Restore the last deletion in this session"),
@@ -66,7 +70,64 @@ const SECTIONS: &[Section] = &[
         ],
     },
     Section {
-        title: "APP / Search & settings",
+        title: "ARCHIVE / Restore & clear",
+        shortcuts: &[
+            (
+                "A",
+                "Open soft-deleted tasks from all projects, with saved notes",
+            ),
+            ("j / k", "Select an archived task (or Up / Down)"),
+            ("gg / G", "First / last archived task (or Home / End)"),
+            ("Ctrl-r", "Reload archived tasks"),
+            (
+                "r",
+                "Restore selected task, archived descendants and archived parents; keep completion and notes",
+            ),
+            (
+                "D (Shift-d)",
+                "Permanently clear all archived tasks from all projects; cannot undo",
+            ),
+            ("Enter", "Confirm permanent archive cleanup"),
+            ("Esc", "Cancel cleanup; otherwise return to active tasks"),
+            (
+                "A",
+                "Return to active tasks; cancel a pending cleanup first",
+            ),
+        ],
+    },
+    Section {
+        title: "SETTINGS / Preferences",
+        shortcuts: &[
+            (
+                "j / k",
+                "Select across Storage, Display and Task behavior (or Up / Down)",
+            ),
+            (
+                "Tab / Shift-Tab",
+                "Next / previous setting; skip category headings",
+            ),
+            ("gg / G", "First / last setting (or Home / End)"),
+            (
+                "Enter / e / i / a",
+                "Edit database path or cycle the selected preference",
+            ),
+            (
+                "h / l",
+                "Cycle preference backward / forward (or Left / Right)",
+            ),
+            (
+                "Enter (path)",
+                "Save database path for next launch; other preferences apply immediately",
+            ),
+            (
+                "Esc (path)",
+                "Return to Normal; press again to discard the draft",
+            ),
+            ("Esc", "Return to tasks"),
+        ],
+    },
+    Section {
+        title: "APP / Search & help",
         shortcuts: &[
             (
                 "/",
@@ -77,35 +138,21 @@ const SECTIONS: &[Section] = &[
                 "Clear an applied search, otherwise open configuration",
             ),
             ("Ctrl-r", "Reload tasks from disk"),
-            (
-                "A",
-                "Show soft-deleted tasks from all projects; A or Esc returns",
-            ),
-            (
-                "Archive j / k",
-                "Browse archived tasks and notes; Ctrl-r reloads",
-            ),
-            (
-                "Archive r",
-                "Restore the selected tree and its archived parents",
-            ),
-            (
-                "Archive D",
-                "Clear all archived tasks permanently; Enter confirms, Esc cancels",
-            ),
-            (
-                "Settings j / k",
-                "Select across categories; Tab / Shift-Tab cycles settings",
-            ),
-            (
-                "Settings Enter",
-                "Edit path or change a setting; changes apply live",
-            ),
-            (
-                "Settings h / l",
-                "Cycle the selected setting backward / forward",
-            ),
             ("?", "Open help; press again to close"),
+            (
+                "Help j / k",
+                "Select a section; scroll on narrow screens (or arrows)",
+            ),
+            (
+                "Help Tab/S-Tab",
+                "Next / previous section when the guide is shown",
+            ),
+            (
+                "Help gg / G",
+                "First / last section or scroll end (or Home / End)",
+            ),
+            ("PgUp / PgDn", "Scroll help by a page"),
+            ("Help Esc / ?", "Close help"),
             ("q / Ctrl-c", "Quit from the tree / quit anywhere"),
         ],
     },

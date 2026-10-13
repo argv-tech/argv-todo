@@ -168,13 +168,13 @@ fn guide_selection_opens_one_section_and_keeps_its_title_visible() {
     let right_title = (36..76)
         .map(|x| terminal.backend().buffer()[(x, body_y)].symbol())
         .collect::<String>();
-    assert!(right_title.starts_with("APP / SEARCH & SETTINGS"));
+    assert!(right_title.starts_with("ARCHIVE / RESTORE & CLEAR"));
     assert_eq!(terminal.backend().buffer()[(36, body_y)].fg, Color::Cyan);
     app.handle_key(KeyEvent::new(KeyCode::End, KeyModifiers::NONE));
     terminal.draw(|frame| draw(frame, &mut app)).unwrap();
-    let title = text_position(&terminal, "› APP / SEARCH & SETTINGS");
+    let title = text_position(&terminal, "› APP / SEARCH & HELP");
     assert!(title.1 < text_position(&terminal, "Esc / ? close").1);
-    assert_eq!(app.help_view.selected_section(), 2);
+    assert_eq!(app.help_view.selected_section(), 4);
     app.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
     terminal.draw(|frame| draw(frame, &mut app)).unwrap();
     assert_eq!(app.help_view.selected_section(), 0);
@@ -216,4 +216,41 @@ fn help_tolerates_tiny_screens_and_nonzero_origins() {
             }
         }
     }
+}
+
+#[test]
+fn archive_and_settings_help_show_new_controls_with_key_styles() {
+    let mut app = App::new(Database::memory()).unwrap();
+    app.help = true;
+    let mut terminal = Terminal::new(TestBackend::new(120, 40)).unwrap();
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    for _ in 0..2 {
+        app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+    }
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    text_position(&terminal, "› ARCHIVE / RESTORE & CLEAR");
+    text_position(&terminal, "Restore selected task");
+    text_position(&terminal, "Confirm permanent archive cleanup");
+    text_position(&terminal, "Cancel cleanup; otherwise return");
+    for key in ["D (Shift-d)", "Enter", "Ctrl-r", "gg / G"] {
+        let position = text_position(&terminal, key);
+        let cell = &terminal.backend().buffer()[position];
+        assert_eq!(cell.fg, Color::Cyan);
+        assert!(cell.modifier.contains(Modifier::BOLD));
+    }
+    app.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    text_position(&terminal, "› SETTINGS / PREFERENCES");
+    text_position(&terminal, "Storage, Display and Task behavior");
+    for key in [
+        "Tab / Shift-Tab",
+        "gg / G",
+        "Enter / e / i / a",
+        "h / l",
+        "Enter (path)",
+        "Esc (path)",
+    ] {
+        text_position(&terminal, key);
+    }
+    assert!(app.archive.is_none() && !app.configuring && app.vim.input().is_none());
 }
