@@ -95,6 +95,8 @@ impl App {
             VimAction::ClearCompleted => self.clear_completed()?,
             VimAction::ShowDeleted => self.open_archive()?,
             VimAction::AddProject => self.begin_project()?,
+            VimAction::RenameProject => self.begin_rename_project()?,
+            VimAction::DeleteProject => self.delete_active_project()?,
             VimAction::AssignProject => self.begin_project_move(),
             VimAction::AddChild => {
                 let parent = self.selected_todo().map(|todo| todo.id);

@@ -12,11 +12,12 @@ Notable changes to argv-todo, grouped by release.
 - **ui:** Group settings into Storage, Display, and Task behavior categories ([78c2c38](https://github.com/argv-tech/argv-todo/commit/78c2c380486099de1e42d67464b292cec3e6c7d7))
 - **archive:** Add separate restore and clear shortcuts ([546b16e](https://github.com/argv-tech/argv-todo/commit/546b16e46e6c961fc1fb034ea9208bbc31252d1d))
 - **notes:** Support multiline editing and preserved line breaks ([6e6d7cb](https://github.com/argv-tech/argv-todo/commit/6e6d7cb717cc16933f8172e53bcf133dab9a14bb))
+- **projects:** Add keybinds to rename and delete projects ([5654be9](https://github.com/argv-tech/argv-todo/commit/5654be9779986b8e77175c778a13c1b493cb758c))
 
 ### Fixed
 
 - **projects:** Keep subtask navigation before switching tabs with h and l ([f9df04f](https://github.com/argv-tech/argv-todo/commit/f9df04fcafe52c2fa746ff50cca10122c94886d7))
-- **projects:** Remove original task when converting it to a project ([6472bfb](https://github.com/argv-tech/argv-todo/commit/6472bfb3d4dee76d35b7b2ddc7297ab72c3f0138))
+- **projects:** Remove original task when converting it to a project ([4bf137a](https://github.com/argv-tech/argv-todo/commit/4bf137a2c0b50a9a9abd4de7f13077273674de87))
 
 ### Documentation
 

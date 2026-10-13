@@ -183,8 +183,8 @@ fn footer_hint(app: &App, width: usize) -> &'static str {
         ]
     } else if app.task_view() == TaskView::Projects {
         &[
-            "h/l tree/tabs · P new · C convert · m move · A archive · Alt-Enter clear done · n note · Esc config · ? help · q quit",
-            "h/l tree/tabs · P new · A archive · n note · Esc config · ? · q",
+            "h/l tree/tabs · P new · R rename · D delete · C convert · m move · A archive · Alt-Enter clear done · n note · Esc config · ? help · q quit",
+            "h/l tree/tabs · P new · R rename · D delete · A archive · n note · Esc config · ? · q",
             "h/l tree/tabs · P new · C convert · m move · n note · Esc config · ? · q",
             "h/l tree/tabs · P new · m move · ? · q",
             "h/l · P new · m move · ? · q",

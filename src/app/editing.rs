@@ -46,6 +46,7 @@ impl App {
                 self.vim.end_input();
                 self.editor.reset(String::new());
                 self.editing_id = None;
+                self.renaming_project = None;
                 self.adding_parent = None;
                 self.adding_relative = None;
                 self.normalize_selection();

@@ -132,7 +132,9 @@ visibility rules above when adding or changing module boundaries.
   changes immediately.
   Projects shows one tab per project plus Inbox for unassigned tasks. Tab and
   Shift-Tab cycle project tabs, each preserving selection and scrolling. `P` creates
-  a project; `C` replaces a top-level task with a project, promoting its children
+  a project; `R` renames the active project; `D` deletes the active project and
+  all its tasks without undo; Inbox cannot be renamed or deleted.
+  `C` replaces a top-level task with a project, promoting its children
   to roots while preserving descendants; `m`
   moves a whole task tree using a destination picker. Alt+Return clears completed
   tasks using the configured soft/hard mode, preserving unfinished descendants.

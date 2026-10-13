@@ -127,3 +127,59 @@ fn migration_keeps_existing_tree_notes_and_timestamps_in_inbox() {
         (Some(1), 19, true, "Nested")
     );
 }
+
+#[test]
+fn rename_validates_name_and_keeps_task_assignment() {
+    let db = Database::memory();
+    let work = db.create_project("Work").unwrap();
+    let root = db
+        .add_project_root("Root", Priority::Mid, Some(work))
+        .unwrap();
+    db.create_project("Other").unwrap();
+    for invalid in ["", "  ", "Inbox", "inbox", "other", " OTHER "] {
+        assert!(db.rename_project(work, invalid).is_err());
+    }
+    assert!(db.rename_project(999, "Missing").is_err());
+    assert_eq!(db.projects().unwrap()[0].name, "Work");
+    db.rename_project(work, " Play 界 ").unwrap();
+    assert_eq!(db.projects().unwrap()[0].name, "Play 界");
+    assert_eq!(
+        db.list()
+            .unwrap()
+            .iter()
+            .find(|task| task.id == root)
+            .unwrap()
+            .project_id,
+        Some(work)
+    );
+}
+
+#[test]
+fn delete_project_removes_all_tasks_atomically_and_keeps_others() {
+    let mut db = Database::memory();
+    let work = db.create_project("Work").unwrap();
+    let root = db
+        .add_project_root("Root", Priority::Mid, Some(work))
+        .unwrap();
+    let child = db.add("Child", Some(root), Priority::Mid).unwrap();
+    db.connection
+        .execute("UPDATE todos SET deleted = 1 WHERE id = ?1", [child])
+        .unwrap();
+    let inbox = db.add("Inbox root", None, Priority::Mid).unwrap();
+    let before = db.list().unwrap();
+    db.connection.execute_batch("CREATE TRIGGER reject_project_delete BEFORE DELETE ON todos BEGIN SELECT RAISE(ABORT, 'rejected'); END;").unwrap();
+    assert!(db.delete_project(work).is_err());
+    assert_eq!(db.list().unwrap(), before);
+    assert_eq!(db.projects().unwrap().len(), 1);
+    db.connection
+        .execute_batch("DROP TRIGGER reject_project_delete;")
+        .unwrap();
+    assert_eq!(db.delete_project(work).unwrap(), 2);
+    assert!(db.projects().unwrap().is_empty());
+    assert!(db.list().unwrap().iter().all(|task| task.id == inbox));
+    assert!(db.list_deleted().unwrap().is_empty());
+    assert!(db.delete_project(work).is_err());
+    let empty = db.create_project("Empty").unwrap();
+    assert_eq!(db.delete_project(empty).unwrap(), 0);
+    assert!(db.projects().unwrap().is_empty());
+}

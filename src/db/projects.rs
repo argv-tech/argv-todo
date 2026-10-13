@@ -21,6 +21,48 @@ impl Database {
         Self::insert_project(&self.connection, name)
     }
 
+    pub(crate) fn rename_project(&self, id: i64, name: &str) -> Result<()> {
+        let name = name.trim();
+        ensure!(!name.is_empty(), "Project name cannot be empty");
+        ensure!(
+            !name.eq_ignore_ascii_case("Inbox"),
+            "Inbox is reserved for unassigned tasks"
+        );
+        let changed = self
+            .connection
+            .execute(
+                "UPDATE projects SET name = ?1 WHERE id = ?2",
+                params![name, id],
+            )
+            .context("Could not rename project; use a unique name")?;
+        ensure!(
+            changed > 0,
+            "Project no longer exists; press Ctrl-r to refresh"
+        );
+        Ok(())
+    }
+
+    /// Deleting a project also deletes its tasks, including archived ones.
+    /// Returns the number of deleted tasks.
+    pub(crate) fn delete_project(&mut self, id: i64) -> Result<usize> {
+        let transaction = self.connection.transaction()?;
+        let exists: bool = transaction.query_row(
+            "SELECT EXISTS(SELECT 1 FROM projects WHERE id = ?1)",
+            [id],
+            |row| row.get(0),
+        )?;
+        ensure!(exists, "Project no longer exists; press Ctrl-r to refresh");
+        let tasks: i64 = transaction.query_row(
+            "SELECT COUNT(*) FROM todos WHERE project_id = ?1",
+            [id],
+            |row| row.get(0),
+        )?;
+        transaction.execute("DELETE FROM todos WHERE project_id = ?1", [id])?;
+        transaction.execute("DELETE FROM projects WHERE id = ?1", [id])?;
+        transaction.commit()?;
+        Ok(tasks as usize)
+    }
+
     pub(super) fn insert_project(connection: &rusqlite::Connection, name: &str) -> Result<i64> {
         let name = name.trim();
         ensure!(!name.is_empty(), "Project name cannot be empty");

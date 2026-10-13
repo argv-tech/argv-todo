@@ -393,3 +393,118 @@ fn conversion_without_children_opens_an_empty_project() {
     );
     std::fs::remove_dir_all(folder).unwrap();
 }
+
+#[test]
+fn rename_project_updates_tab_and_rejects_invalid_names() {
+    let (folder, mut app) = app();
+    press(&mut app, KeyCode::Tab);
+    assert_eq!(
+        app.project_tabs()
+            .nth(app.active_project_index())
+            .unwrap()
+            .1,
+        "Work"
+    );
+    press(&mut app, KeyCode::Char('R'));
+    assert_eq!(app.vim.input(), Some(InputTarget::ProjectName));
+    assert_eq!(app.editor.text(), "Work");
+    app.handle_paste(" 2");
+    press(&mut app, KeyCode::Enter);
+    assert!(!app.error);
+    assert_eq!(app.vim.input(), None);
+    assert_eq!(
+        app.project_tabs()
+            .nth(app.active_project_index())
+            .unwrap()
+            .1,
+        "Work 2"
+    );
+    assert_eq!(app.selected_todo().unwrap().title, "Work root");
+    press(&mut app, KeyCode::Char('R'));
+    app.editor.reset("Empty".into());
+    press(&mut app, KeyCode::Enter);
+    assert!(app.error);
+    assert_eq!(app.vim.input(), Some(InputTarget::ProjectName));
+    press(&mut app, KeyCode::Esc);
+    press(&mut app, KeyCode::Esc);
+    assert_eq!(app.vim.input(), None);
+    assert_eq!(
+        app.project_tabs()
+            .nth(app.active_project_index())
+            .unwrap()
+            .1,
+        "Work 2"
+    );
+    press(&mut app, KeyCode::Char('R'));
+    press(&mut app, KeyCode::Esc);
+    press(&mut app, KeyCode::Esc);
+    assert!(app.renaming_project.is_none());
+    press(&mut app, KeyCode::BackTab);
+    press(&mut app, KeyCode::Char('R'));
+    assert_eq!(app.vim.input(), None);
+    assert!(app.status.contains("Inbox cannot be renamed"));
+    std::fs::remove_dir_all(folder).unwrap();
+}
+
+#[test]
+fn delete_project_removes_tab_and_tasks_then_blocks_inbox() {
+    let (folder, mut app) = app();
+    press(&mut app, KeyCode::Tab);
+    let project = app.active_project_id().unwrap();
+    let removed: Vec<i64> = app
+        .todos
+        .iter()
+        .filter(|task| task.project_id == Some(project))
+        .map(|task| task.id)
+        .collect();
+    assert_eq!(removed.len(), 2);
+    press(&mut app, KeyCode::Char('D'));
+    assert!(!app.error);
+    assert!(app.status.contains("Deleted project 'Work' and 2 task(s)."));
+    assert_eq!(
+        app.project_tabs().map(|(_, name)| name).collect::<Vec<_>>(),
+        ["Inbox", "Empty"]
+    );
+    assert_eq!(app.active_project_id(), None);
+    assert!(
+        app.todos
+            .iter()
+            .all(|task| task.project_id != Some(project))
+    );
+    assert!(
+        app.database
+            .list()
+            .unwrap()
+            .iter()
+            .all(|task| task.project_id != Some(project))
+    );
+    assert!(
+        app.database
+            .list_deleted()
+            .unwrap()
+            .iter()
+            .all(|task| task.project_id != Some(project))
+    );
+    press(&mut app, KeyCode::Char('D'));
+    assert!(!app.error);
+    assert!(app.status.contains("Inbox cannot be deleted"));
+    assert_eq!(app.project_tabs().len(), 2);
+    std::fs::remove_dir_all(folder).unwrap();
+}
+
+#[test]
+fn project_rename_and_delete_are_ignored_outside_projects_view() {
+    let (folder, mut app) = app();
+    app.config
+        .as_mut()
+        .unwrap()
+        .save_task_view(TaskView::Normal)
+        .unwrap();
+    let before = app.todos.clone();
+    press(&mut app, KeyCode::Char('R'));
+    press(&mut app, KeyCode::Char('D'));
+    assert_eq!(app.vim.input(), None);
+    assert_eq!(app.todos, before);
+    assert_eq!(app.database.projects().unwrap().len(), 2);
+    std::fs::remove_dir_all(folder).unwrap();
+}

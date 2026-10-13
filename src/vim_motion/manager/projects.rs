@@ -5,6 +5,25 @@ impl VimManager {
         if self.input.is_some() {
             return self.handle(key);
         }
+        if key.kind != KeyEventKind::Release
+            && !key
+                .modifiers
+                .intersects(KeyModifiers::ALT | KeyModifiers::SUPER | KeyModifiers::CONTROL)
+        {
+            let project_action = match (key.code, key.modifiers.contains(KeyModifiers::SHIFT)) {
+                (KeyCode::Char('R'), _) | (KeyCode::Char('r'), true) => {
+                    Some(VimAction::RenameProject)
+                }
+                (KeyCode::Char('D'), _) | (KeyCode::Char('d'), true) => {
+                    Some(VimAction::DeleteProject)
+                }
+                _ => None,
+            };
+            if let Some(action) = project_action {
+                self.reset();
+                return Some(action);
+            }
+        }
         let action = self.handle(key)?;
         Some(match (key.code, action) {
             (KeyCode::Char('h'), VimAction::Move(Motion::Left, count)) => {

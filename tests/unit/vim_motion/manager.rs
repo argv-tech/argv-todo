@@ -697,3 +697,41 @@ fn input_modes_ignore_releases_and_route_repeat_submit_and_replacement_digits() 
         assert_eq!(vim.handle(repeat), Some(VimAction::Move(Motion::Right, 1)));
     }
 }
+
+#[test]
+fn project_rename_and_delete_keys_map_only_in_projects_view() {
+    let mut vim = VimManager::default();
+    assert_eq!(
+        vim.handle_projects(key('R')),
+        Some(VimAction::RenameProject)
+    );
+    assert_eq!(
+        vim.handle_projects(key('D')),
+        Some(VimAction::DeleteProject)
+    );
+    assert_eq!(
+        vim.handle_projects(KeyEvent::new(KeyCode::Char('r'), KeyModifiers::SHIFT)),
+        Some(VimAction::RenameProject)
+    );
+    assert_eq!(
+        vim.handle_projects(KeyEvent::new(KeyCode::Char('d'), KeyModifiers::SHIFT)),
+        Some(VimAction::DeleteProject)
+    );
+    assert!(vim.pending_label().is_empty());
+    assert_eq!(
+        vim.handle_projects(KeyEvent::new_with_kind(
+            KeyCode::Char('R'),
+            KeyModifiers::NONE,
+            KeyEventKind::Release,
+        )),
+        None
+    );
+    assert_eq!(vim.handle(key('R')), None);
+    assert_eq!(vim.handle(key('D')), None);
+    vim.begin_input(InputTarget::ProjectName);
+    assert_eq!(vim.handle_projects(key('R')), Some(VimAction::Insert('R')));
+    assert_eq!(vim.handle_projects(key('D')), Some(VimAction::Insert('D')));
+    vim.end_input();
+    vim.handle(key('d'));
+    assert_eq!(vim.handle_projects(key('d')), Some(VimAction::Delete(1)));
+}

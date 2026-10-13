@@ -97,7 +97,7 @@ In Split, `Tab` or `Shift-Tab` switches pane focus. Each pane keeps its own sele
 
 In Projects, each project has its own tab and task tree. `l` expands and selects the first child when one exists; otherwise it selects the next project tab. `h` selects the parent when one exists; otherwise it selects the previous project tab. Counts such as `2l` repeat this navigation. `Tab` / `Shift-Tab` always selects the next / previous project, wrapping at either end. Left / Right arrows navigate the parent / first child within the active tree. Each tab keeps its selection and scroll position. The header count, search, and bottom Note section follow the active project. Existing unassigned tasks appear in **Inbox**. Normal and Split continue to show tasks from all projects.
 
-Press `P` from the task view to create a project; this opens Projects and saves the layout choice. Type its name and press `Enter` to create and select its empty tab, then `i` to add its first root task. Names must be nonempty and unique ignoring ASCII case; Inbox is reserved. Children and new siblings inherit their project. Press `m` on a task to choose a destination with `j` / `k` or arrows, then `Enter` to move the task and all descendants; `Esc` cancels. A child moved to another project becomes a root there. Notes, completion, priorities, and descendant links are preserved. Projects and task assignments are saved immediately in SQLite.
+Press `P` from the task view to create a project; this opens Projects and saves the layout choice. Type its name and press `Enter` to create and select its empty tab, then `i` to add its first root task. Names must be nonempty and unique ignoring ASCII case; Inbox is reserved. Press `R` in Projects to rename the active project with the same naming rules; `Esc` cancels. Press `D` (Shift-d) in Projects to delete the active project together with all its tasks, including archived ones; this cannot be undone. Inbox cannot be renamed or deleted. Children and new siblings inherit their project. Press `m` on a task to choose a destination with `j` / `k` or arrows, then `Enter` to move the task and all descendants; `Esc` cancels. A child moved to another project becomes a root there. Notes, completion, priorities, and descendant links are preserved. Projects and task assignments are saved immediately in SQLite.
 
 Press `C` on a top-level task to create a project named after its title and open that tab. The original task is removed, including its note. Its immediate children become project roots, preserving their descendants, notes, completion state, priorities, and sibling order. A task without children becomes an empty project. Conversion saves atomically; a duplicate or reserved project name leaves the task tree intact. Child tasks cannot be converted directly.
 
@@ -123,6 +123,8 @@ While editing configuration, `Esc` discards the draft and returns to the configu
 | `i`, `a` | Add a child of the selected task; add a root task when the list is empty |
 | `o`, `O` | Add a sibling below or above the selected task; add a root task when the list is empty |
 | `P` | Create a project and open its tab |
+| `R` in Projects | Rename the active project; Inbox cannot be renamed |
+| `D` in Projects | Delete the active project and all its tasks; cannot undo |
 | `C` | Convert a top-level task to a project, keeping its whole tree |
 | `m` | Move the selected task tree to a project |
 | `Alt+Enter` / `Alt+Return` | Clear completed tasks using the configured deletion mode |

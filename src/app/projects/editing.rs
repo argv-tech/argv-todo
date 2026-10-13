@@ -10,13 +10,76 @@ use crate::{
 impl App {
     pub(in crate::app) fn begin_project(&mut self) -> Result<()> {
         self.open_project_view()?;
+        self.renaming_project = None;
         self.editor.reset(String::new());
         self.vim.begin_input(InputTarget::ProjectName);
         self.message("New project. Enter saves. Esc enters Normal; Esc again cancels.");
         Ok(())
     }
 
+    pub(in crate::app) fn begin_rename_project(&mut self) -> Result<()> {
+        self.open_project_view()?;
+        let Some(project) = self.projects.tabs[self.projects.active].project.clone() else {
+            self.message("Inbox cannot be renamed.");
+            return Ok(());
+        };
+        self.renaming_project = Some(project.id);
+        self.editor.reset(project.name);
+        self.vim.begin_input(InputTarget::ProjectName);
+        self.message("Rename project. Enter saves. Esc enters Normal; Esc again cancels.");
+        Ok(())
+    }
+
+    pub(in crate::app) fn delete_active_project(&mut self) -> Result<()> {
+        self.open_project_view()?;
+        let Some(project) = self.projects.tabs[self.projects.active].project.clone() else {
+            self.message("Inbox cannot be deleted.");
+            return Ok(());
+        };
+        let stale: Vec<i64> = self
+            .todos
+            .iter()
+            .filter(|todo| todo.project_id == Some(project.id))
+            .map(|todo| todo.id)
+            .chain(
+                self.database
+                    .list_deleted()
+                    .unwrap_or_default()
+                    .into_iter()
+                    .filter(|todo| todo.project_id == Some(project.id))
+                    .map(|todo| todo.id),
+            )
+            .collect();
+        let tasks = self.database.delete_project(project.id)?;
+        self.discard_archive_undo(&stale);
+        self.query.clear();
+        self.reload(None)?;
+        self.activate_project(None);
+        self.normalize_selection();
+        if tasks == 0 {
+            self.message(format!("Deleted empty project '{}'.", project.name));
+        } else {
+            self.message(format!(
+                "Deleted project '{}' and {tasks} task(s).",
+                project.name
+            ));
+        }
+        Ok(())
+    }
+
     pub(in crate::app) fn save_project(&mut self) -> Result<()> {
+        if let Some(id) = self.renaming_project {
+            self.database.rename_project(id, self.editor.text())?;
+            self.projects.refresh(self.database.projects()?);
+            self.activate_project(Some(id));
+            self.query.clear();
+            self.vim.end_input();
+            self.editor.reset(String::new());
+            self.renaming_project = None;
+            self.normalize_selection();
+            self.message("Project renamed.");
+            return Ok(());
+        }
         let id = self.database.create_project(self.editor.text())?;
         self.projects.refresh(self.database.projects()?);
         self.activate_project(Some(id));

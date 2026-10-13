@@ -37,6 +37,11 @@ const SECTIONS: &[Section] = &[
             ("i / a", "Add a child; add a root when the list is empty"),
             ("o / O", "Add a sibling below / above"),
             ("P", "Create a project and open its tab"),
+            ("R", "Rename the active project; Inbox cannot be renamed"),
+            (
+                "D (Shift-d)",
+                "Delete the active project and all its tasks; cannot undo",
+            ),
             (
                 "C",
                 "Replace a top-level task with a project; keep descendants",

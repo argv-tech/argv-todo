@@ -105,6 +105,8 @@ pub(crate) enum VimAction {
     RestoreArchived,
     ClearArchived,
     AddProject,
+    RenameProject,
+    DeleteProject,
     AssignProject,
     AddChild,
     AddBelow,
