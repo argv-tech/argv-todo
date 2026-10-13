@@ -39,7 +39,7 @@ const SECTIONS: &[Section] = &[
             ("P", "Create a project and open its tab"),
             (
                 "C",
-                "Convert a top-level task to a project; keep its whole tree",
+                "Replace a top-level task with a project; keep descendants",
             ),
             (
                 "m",

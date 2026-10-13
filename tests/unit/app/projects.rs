@@ -312,6 +312,18 @@ fn conversion_selects_new_project_and_keeps_notes_and_hidden_descendants() {
         .find(|task| task.title == "Work root")
         .unwrap()
         .id;
+    let child = app
+        .todos
+        .iter()
+        .find(|task| task.parent_id == Some(root))
+        .unwrap()
+        .id;
+    let grandchild = app
+        .database
+        .add("Work grandchild", Some(child), Priority::Mid)
+        .unwrap();
+    app.database.update_note(child, "Child note").unwrap();
+    app.reload(Some(root)).unwrap();
     app.select_id(root);
     app.toggle_collapse();
     app.query = "Work root".into();
@@ -327,7 +339,18 @@ fn conversion_selects_new_project_and_keeps_notes_and_hidden_descendants() {
         "Work root"
     );
     assert!(app.query.is_empty());
-    assert_eq!(app.selected_todo().unwrap().id, root);
+    assert_eq!(app.selected_todo().unwrap().id, child);
+    assert_eq!(app.selected_todo().unwrap().note, "Child note");
+    assert_eq!(app.selected_todo().unwrap().parent_id, None);
+    assert!(app.todos.iter().all(|task| task.id != root));
+    assert_eq!(
+        app.todos
+            .iter()
+            .find(|task| task.id == grandchild)
+            .unwrap()
+            .parent_id,
+        Some(child)
+    );
     let project = app.active_project_id();
     assert!(
         app.todos
@@ -335,16 +358,38 @@ fn conversion_selects_new_project_and_keeps_notes_and_hidden_descendants() {
             .filter(|task| task.title.starts_with("Work "))
             .all(|task| task.project_id == project)
     );
-    assert!(app.is_collapsed(root));
+    assert!(!app.is_collapsed(root));
     press(&mut app, KeyCode::Right);
     let before = app.todos.clone();
     press(&mut app, KeyCode::Char('C'));
     assert!(app.error);
     assert_eq!(app.todos, before);
     assert_eq!(app.project_tabs().len(), 4);
-    press(&mut app, KeyCode::Left);
+    std::fs::remove_dir_all(folder).unwrap();
+}
+
+#[test]
+fn conversion_without_children_opens_an_empty_project() {
+    let (folder, mut app) = app();
+    let root = app.selected_todo().unwrap().id;
     press(&mut app, KeyCode::Char('C'));
-    assert!(app.error);
-    assert_eq!(app.todos, before);
+    assert!(!app.error);
+    assert_eq!(
+        app.project_tabs()
+            .nth(app.active_project_index())
+            .unwrap()
+            .1,
+        "Inbox task"
+    );
+    assert!(app.selected_todo().is_none());
+    assert!(app.visible_rows().is_empty());
+    assert!(app.todos.iter().all(|task| task.id != root));
+    assert!(
+        app.database
+            .list()
+            .unwrap()
+            .iter()
+            .all(|task| task.id != root)
+    );
     std::fs::remove_dir_all(folder).unwrap();
 }

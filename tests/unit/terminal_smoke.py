@@ -13,6 +13,7 @@ import tomllib
 
 TIMEOUT = 15
 TITLE = "Cross-platform task"
+CHILD_TITLE = "Smoke child"
 NOTE = "Task note: read 'chapter 2' first\n\nKeep this second line"
 PROJECT = "Smoke project"
 
@@ -77,7 +78,7 @@ def run_unix(command, settings, projects=False, cleanup=False, archive=None):
             send_and_wait(b"j\r", b"[Smoke project]")
             send_and_wait(b"C", b"[Cross-platform task]")
             send_and_wait(b"\x1b\r", b"0 tasks")
-            send_and_wait(b"u", TITLE.encode())
+            send_and_wait(b"u", CHILD_TITLE.encode())
             os.write(master, b"q")
         elif settings:
             send_and_wait(b"\x1b", b"configuration")
@@ -224,20 +225,25 @@ def main():
         run_terminal(command, settings=True)
         with (folder / "config.toml").open("rb") as config:
             assert tomllib.load(config)["task_view"] == "split", "Setting did not persist"
+        with closing(sqlite3.connect(database)) as connection:
+            root = connection.execute("SELECT id FROM todos").fetchone()[0]
+            connection.execute("INSERT INTO todos (title, done, note, parent_id) VALUES (?, 1, ?, ?)", (CHILD_TITLE, NOTE, root))
+            connection.commit()
         run_terminal(command, settings=False, projects=True)
         with closing(sqlite3.connect(database)) as connection:
-            assignments = connection.execute("SELECT todos.title, todos.done, todos.note, projects.name FROM todos JOIN projects ON todos.project_id = projects.id").fetchall()
-        assert assignments == [(TITLE, 1, NOTE, TITLE)], f"Project conversion failed: {assignments!r}"
+            assignments = connection.execute("SELECT todos.title, todos.done, todos.note, projects.name, todos.parent_id FROM todos JOIN projects ON todos.project_id = projects.id").fetchall()
+            assert connection.execute("SELECT COUNT(*) FROM todos WHERE id = ?", (root,)).fetchone()[0] == 0, "Converted task remained"
+        assert assignments == [(CHILD_TITLE, 1, NOTE, TITLE, None)], f"Project conversion failed: {assignments!r}"
         with (folder / "config.toml").open("rb") as config:
             assert tomllib.load(config)["task_view"] == "projects", "Project layout did not persist"
         run_terminal(command, settings=False, cleanup=True)
         with closing(sqlite3.connect(database)) as connection:
             archived = connection.execute("SELECT title, deleted FROM todos").fetchall()
-            assert archived == [(TITLE, 1)], f"Soft deletion lost records: {archived!r}"
+            assert archived == [(CHILD_TITLE, 1)], f"Soft deletion lost records: {archived!r}"
         run_terminal(command, settings=False, archive="restore")
         with closing(sqlite3.connect(database)) as connection:
             restored = connection.execute("SELECT title, done, note, deleted FROM todos").fetchall()
-            assert restored == [(TITLE, 1, NOTE, 0)], f"Archive restoration lost metadata: {restored!r}"
+            assert restored == [(CHILD_TITLE, 1, NOTE, 0)], f"Archive restoration lost metadata: {restored!r}"
         config_path = folder / "config.toml"
         config_path.write_text(config_path.read_text().replace('completed_delete = "soft"', 'completed_delete = "hard"'))
         run_terminal(command, settings=False, cleanup=True)

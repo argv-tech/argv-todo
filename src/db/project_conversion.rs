@@ -20,6 +20,12 @@ impl Database {
         );
         let project_id = Self::insert_project(&transaction, &title)?;
         Self::assign_project_tree(&transaction, id, Some(project_id))?;
+        // Detach live and archived children before deleting the root to avoid cascading.
+        transaction.execute(
+            "UPDATE todos SET parent_id = NULL WHERE parent_id = ?1",
+            [id],
+        )?;
+        transaction.execute("DELETE FROM todos WHERE id = ?1", [id])?;
         transaction.commit()?;
         Ok(project_id)
     }

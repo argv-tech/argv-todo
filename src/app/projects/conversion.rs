@@ -16,9 +16,10 @@ impl App {
         self.open_project_view()?;
         let project_id = self.database.convert_task_to_project(id)?;
         self.query.clear();
-        self.reload(Some(id))?;
+        self.reload(None)?;
         self.activate_project(Some(project_id));
-        self.message("Project created from task. Task tree and notes preserved.");
+        self.normalize_selection();
+        self.message("Task replaced by project. Descendants and their notes preserved.");
         Ok(())
     }
 }
