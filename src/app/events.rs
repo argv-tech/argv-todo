@@ -15,6 +15,8 @@ impl App {
             self.vim.handle_help(key)
         } else if self.pending_delete.is_some() {
             self.vim.handle_confirm(key)
+        } else if self.date_picker.is_some() {
+            self.vim.handle_date_picker(key)
         } else if self.archive.is_some() {
             self.vim.handle_archive(key)
         } else if self.project_picker().is_some() {

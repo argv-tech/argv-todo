@@ -1,4 +1,4 @@
-use crate::db::Priority;
+use crate::db::{Priority, Urgency};
 use ratatui::style::{Color, Modifier, Style};
 
 // ANSI colors follow the user's terminal palette; preserve its background.
@@ -13,6 +13,16 @@ pub(super) fn priority_style(priority: Priority) -> Style {
         Priority::High => Color::Red,
         Priority::Mid => Color::Yellow,
         Priority::Low => Color::Blue,
+    })
+}
+
+/// Due-date color escalates as the deadline approaches.
+pub(super) fn deadline_style(urgency: Urgency) -> Style {
+    Style::default().fg(match urgency {
+        Urgency::Overdue => Color::Red,
+        Urgency::Day => Color::Yellow,
+        Urgency::Week => Color::Blue,
+        Urgency::Later => MUTED,
     })
 }
 

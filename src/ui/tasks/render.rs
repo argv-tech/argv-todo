@@ -1,5 +1,6 @@
 use crate::{
     app::{App, TaskPane},
+    db::Urgency,
     vim_motion::InputTarget,
 };
 use ratatui::{
@@ -13,7 +14,7 @@ use ratatui::{
 use super::super::{
     input::editor_spans,
     text::truncate,
-    theme::{ACCENT, MUTED, TEXT, priority_style, task_title_style},
+    theme::{ACCENT, MUTED, TEXT, deadline_style, priority_style, task_title_style},
 };
 use super::rows::display_rows;
 
@@ -89,6 +90,7 @@ pub(super) fn draw_list(frame: &mut Frame, app: &mut App, area: Rect, pane: Task
         state.select(row);
     }
     let mut cursor = None;
+    let now = crate::db::now();
     let items: Vec<_> = visible
         .iter()
         .enumerate()
@@ -154,6 +156,20 @@ pub(super) fn draw_list(frame: &mut Frame, app: &mut App, area: Rect, pane: Task
             ancestors.push(!last_sibling[row]);
             let prefix_width =
                 2 + unicode_width::UnicodeWidthStr::width(branch.as_str()) as u16 + 8;
+            let due = if inline {
+                String::new()
+            } else {
+                todo.and_then(|todo| todo.deadline.as_deref())
+                    .map_or(String::new(), |deadline| format!("  due {deadline}"))
+            };
+            let due_style = if tree_row.ghost {
+                ghost_style
+            } else {
+                deadline_style(
+                    todo.map(|todo| todo.urgency(&now))
+                        .unwrap_or(Urgency::Later),
+                )
+            };
             let title = if inline {
                 let (spans, column) =
                     editor_spans(&app.editor, area.width.saturating_sub(prefix_width), style);
@@ -170,7 +186,8 @@ pub(super) fn draw_list(frame: &mut Frame, app: &mut App, area: Rect, pane: Task
                     truncate(
                         todo.map_or("", |todo| todo.title.as_str()),
                         usize::from(area.width.saturating_sub(prefix_width)).saturating_sub(
-                            unicode_width::UnicodeWidthStr::width(children.as_str()),
+                            unicode_width::UnicodeWidthStr::width(children.as_str())
+                                + unicode_width::UnicodeWidthStr::width(due.as_str()),
                         ),
                     ),
                     style,
@@ -206,6 +223,7 @@ pub(super) fn draw_list(frame: &mut Frame, app: &mut App, area: Rect, pane: Task
                     Style::default().fg(MUTED)
                 },
             ));
+            spans.push(Span::styled(due, due_style));
             ListItem::new(Line::from(spans))
         })
         .collect();

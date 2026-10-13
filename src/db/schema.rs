@@ -23,6 +23,7 @@ impl Database {
                  deleted INTEGER NOT NULL DEFAULT 0 CHECK(deleted IN (0, 1)),
                  parent_id INTEGER REFERENCES todos(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
                  priority INTEGER NOT NULL DEFAULT 3 CHECK(priority IN (1, 3, 5)),
+                 deadline TEXT,
                  position INTEGER NOT NULL DEFAULT 0,
                  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now')),
                  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now'))
@@ -57,6 +58,14 @@ impl Database {
                  CHECK(priority IN (1, 3, 5));",
             )?;
         }
+        if !columns.iter().any(|column| column == "deadline") {
+            transaction.execute_batch("ALTER TABLE todos ADD COLUMN deadline TEXT;")?;
+        }
+        // Deadlines predating the time picker stored bare dates as midnight.
+        transaction.execute_batch(
+            "UPDATE todos SET deadline = deadline || ' 00:00'
+             WHERE deadline IS NOT NULL AND length(deadline) = 10;",
+        )?;
         if !columns.iter().any(|column| column == "position") {
             transaction.execute_batch(
                 "ALTER TABLE todos ADD COLUMN position INTEGER NOT NULL DEFAULT 0;

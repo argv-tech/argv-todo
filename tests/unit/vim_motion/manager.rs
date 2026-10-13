@@ -766,3 +766,85 @@ fn confirm_keys_submit_cancel_or_quit_and_swallow_the_rest() {
         assert_eq!(vim.handle_confirm(key), None);
     }
 }
+
+#[test]
+fn deadline_key_opens_the_deadline_editor() {
+    let mut vim = VimManager::default();
+    assert_eq!(vim.handle(key('T')), Some(VimAction::EditDeadline));
+    vim.begin_input(InputTarget::Task);
+    assert_eq!(vim.handle(key('T')), Some(VimAction::Insert('T')));
+    vim.end_input();
+}
+
+#[test]
+fn date_picker_keys_step_save_or_cancel() {
+    let mut vim = VimManager::default();
+    for (code, expected) in [
+        (KeyCode::Char('h'), VimAction::ShiftDate(DateUnit::Day, -1)),
+        (KeyCode::Left, VimAction::ShiftDate(DateUnit::Day, -1)),
+        (KeyCode::Char('l'), VimAction::ShiftDate(DateUnit::Day, 1)),
+        (KeyCode::Right, VimAction::ShiftDate(DateUnit::Day, 1)),
+        (KeyCode::Char('j'), VimAction::ShiftDate(DateUnit::Week, 1)),
+        (KeyCode::Down, VimAction::ShiftDate(DateUnit::Week, 1)),
+        (KeyCode::Char('k'), VimAction::ShiftDate(DateUnit::Week, -1)),
+        (KeyCode::Up, VimAction::ShiftDate(DateUnit::Week, -1)),
+        (
+            KeyCode::Char('H'),
+            VimAction::ShiftDate(DateUnit::Month, -1),
+        ),
+        (KeyCode::Char('L'), VimAction::ShiftDate(DateUnit::Month, 1)),
+    ] {
+        assert_eq!(
+            vim.handle_date_picker(KeyEvent::new(code, KeyModifiers::NONE)),
+            Some(expected)
+        );
+    }
+    assert_eq!(
+        vim.handle_date_picker(key('H')),
+        Some(VimAction::ShiftDate(DateUnit::Month, -1))
+    );
+    vim.handle_date_picker(key('3'));
+    assert_eq!(
+        vim.handle_date_picker(key('l')),
+        Some(VimAction::ShiftDate(DateUnit::Day, 3))
+    );
+    vim.handle_date_picker(key('2'));
+    assert_eq!(
+        vim.handle_date_picker(key('L')),
+        Some(VimAction::ShiftDate(DateUnit::Month, 2))
+    );
+    assert_eq!(vim.handle_date_picker(key('t')), Some(VimAction::PickToday));
+    assert_eq!(
+        vim.handle_date_picker(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE)),
+        Some(VimAction::FocusNext)
+    );
+    assert_eq!(
+        vim.handle_date_picker(KeyEvent::new(KeyCode::BackTab, KeyModifiers::NONE)),
+        Some(VimAction::FocusPrev)
+    );
+    assert_eq!(
+        vim.handle_date_picker(key('x')),
+        Some(VimAction::ClearDeadline)
+    );
+    assert_eq!(
+        vim.handle_date_picker(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+        Some(VimAction::Submit)
+    );
+    assert_eq!(
+        vim.handle_date_picker(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE)),
+        Some(VimAction::Cancel)
+    );
+    assert_eq!(vim.handle_date_picker(key('q')), Some(VimAction::Quit));
+    assert_eq!(
+        vim.handle_date_picker(KeyEvent::new_with_kind(
+            KeyCode::Enter,
+            KeyModifiers::NONE,
+            KeyEventKind::Release
+        )),
+        None
+    );
+    for key in [key('e'), key('d'), key('u'), key(' ')] {
+        assert_eq!(vim.handle_date_picker(key), None);
+    }
+    assert!(vim.pending_label().is_empty());
+}

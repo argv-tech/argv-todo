@@ -26,7 +26,7 @@ impl Database {
             .context("Task no longer exists; press Ctrl-r to refresh")?;
         let tasks = {
             let mut statement = transaction.prepare(
-                "SELECT id, title, done, created_at, updated_at, parent_id, priority, position, note, project_id, deleted
+                "SELECT id, title, done, created_at, updated_at, parent_id, priority, position, note, project_id, deleted, deadline
                  FROM todos WHERE project_id IS ?1 AND deleted = 0 ORDER BY position, id",
             )?;
             statement

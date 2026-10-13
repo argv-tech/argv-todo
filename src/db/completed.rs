@@ -50,7 +50,7 @@ impl Database {
         transaction.execute_batch("PRAGMA defer_foreign_keys = ON;")?;
         let all_tasks = {
             let mut statement = transaction.prepare(
-                "SELECT id, title, done, created_at, updated_at, parent_id, priority, position, note, project_id, deleted FROM todos ORDER BY position, id",
+                "SELECT id, title, done, created_at, updated_at, parent_id, priority, position, note, project_id, deleted, deadline FROM todos ORDER BY position, id",
             )?;
             statement
                 .query_map([], Self::todo_from_row)?

@@ -310,3 +310,144 @@ fn migrates_numeric_priorities_without_losing_hierarchy_or_dates() {
             .is_err()
     );
 }
+
+#[test]
+fn deadlines_accept_only_real_datetimes() {
+    for (text, expected) in [
+        ("2026-10-20 14:30", Some((2026, 10, 20, 14, 30))),
+        ("2026-01-05 00:00", Some((2026, 1, 5, 0, 0))),
+        ("2024-02-29 23:59", Some((2024, 2, 29, 23, 59))),
+        ("2000-02-29 12:00", Some((2000, 2, 29, 12, 0))),
+        ("2026-10-20", Some((2026, 10, 20, 0, 0))),
+        ("2026-02-29 12:00", None),
+        ("1900-02-29 12:00", None),
+        ("2026-10-20 24:00", None),
+        ("2026-10-20 12:60", None),
+        ("2026-10-20 1:30", None),
+        ("2026-13-01 12:00", None),
+        ("2026-04-31 12:00", None),
+        ("2026-1-5 12:00", None),
+        ("2026/10/20 12:00", None),
+        ("2026-10-2012:00", None),
+        ("abcd-ef-gh ij:kl", None),
+        ("", None),
+    ] {
+        assert_eq!(split_deadline(text), expected, "{text:?}");
+    }
+    let (year, month, day, hour, minute) = split_deadline(&now()).unwrap();
+    assert_eq!(
+        format!("{year:04}-{month:02}-{day:02} {hour:02}:{minute:02}"),
+        now()
+    );
+}
+
+#[test]
+fn deadlines_save_clear_and_survive_delete_undo() {
+    let mut db = Database::memory();
+    let id = db.add("Dated task", None, Priority::Mid).unwrap();
+    assert_eq!(db.list().unwrap()[0].deadline, None);
+    db.set_deadline(id, Some("2026-10-20 14:30")).unwrap();
+    assert_eq!(
+        db.list().unwrap()[0].deadline.as_deref(),
+        Some("2026-10-20 14:30")
+    );
+    db.set_deadline(id, None).unwrap();
+    assert_eq!(db.list().unwrap()[0].deadline, None);
+    assert!(db.set_deadline(id + 100, Some("2026-10-20 14:30")).is_err());
+    db.set_deadline(id, Some("2026-10-20 14:30")).unwrap();
+    let todos = db.list().unwrap();
+    let deleted = db.delete(&todos).unwrap();
+    assert!(db.list().unwrap().is_empty());
+    db.restore(&deleted).unwrap();
+    assert_eq!(db.list().unwrap(), todos);
+    // Urgency bands ignore completion state; missing and done deadlines stay muted.
+    let dated = &db.list().unwrap()[0];
+    for (deadline, done, expected) in [
+        (Some("2026-10-20 11:59"), false, Urgency::Overdue),
+        (Some("2026-10-20 12:00"), false, Urgency::Day),
+        (Some("2026-10-21 11:59"), false, Urgency::Day),
+        (Some("2026-10-21 12:00"), false, Urgency::Week),
+        (Some("2026-10-27 11:59"), false, Urgency::Week),
+        (Some("2026-10-27 12:00"), false, Urgency::Later),
+        (Some("2999-12-31 23:59"), false, Urgency::Later),
+        (None, false, Urgency::Later),
+        (Some("2000-01-01 00:00"), true, Urgency::Later),
+        (Some("not a deadline"), false, Urgency::Later),
+    ] {
+        assert_eq!(
+            Todo {
+                deadline: deadline.map(str::to_owned),
+                done,
+                ..dated.clone()
+            }
+            .urgency("2026-10-20 12:00"),
+            expected,
+            "{deadline:?}"
+        );
+    }
+}
+
+#[test]
+fn migration_adds_nullable_deadline_to_legacy_databases() {
+    let connection = Connection::open_in_memory().unwrap();
+    connection
+        .execute_batch(
+            "CREATE TABLE projects (
+                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 name TEXT NOT NULL UNIQUE COLLATE NOCASE
+             );
+             CREATE TABLE todos (
+                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 title TEXT NOT NULL,
+                 note TEXT NOT NULL DEFAULT '',
+                 project_id INTEGER REFERENCES projects(id),
+                 done INTEGER NOT NULL DEFAULT 0,
+                 deleted INTEGER NOT NULL DEFAULT 0,
+                 parent_id INTEGER REFERENCES todos(id),
+                 priority INTEGER NOT NULL DEFAULT 3,
+                 position INTEGER NOT NULL DEFAULT 0,
+                 created_at TEXT NOT NULL DEFAULT '2026-01-01 00:00:00',
+                 updated_at TEXT NOT NULL DEFAULT '2026-01-02 00:00:00'
+             );
+             INSERT INTO todos (id, title, note, done) VALUES (1, 'Legacy task', 'kept', 0);",
+        )
+        .unwrap();
+    let db = Database::initialize(connection).unwrap();
+    let todos = db.list().unwrap();
+    assert_eq!(todos.len(), 1);
+    assert_eq!(todos[0].title, "Legacy task");
+    assert_eq!(todos[0].note, "kept");
+    assert_eq!(todos[0].deadline, None);
+    db.set_deadline(1, Some("2026-10-20 14:30")).unwrap();
+    assert_eq!(
+        db.list().unwrap()[0].deadline.as_deref(),
+        Some("2026-10-20 14:30")
+    );
+    let db = Database::initialize(db.connection).unwrap();
+    assert_eq!(
+        db.list().unwrap()[0].deadline.as_deref(),
+        Some("2026-10-20 14:30")
+    );
+}
+
+#[test]
+fn migration_normalizes_bare_date_deadlines_to_midnight() {
+    let db = Database::memory();
+    let id = db.add("Bare date", None, Priority::Mid).unwrap();
+    db.connection
+        .execute(
+            "UPDATE todos SET deadline = '2026-10-20' WHERE id = ?1",
+            [id],
+        )
+        .unwrap();
+    let db = Database::initialize(db.connection).unwrap();
+    assert_eq!(
+        db.list().unwrap()[0].deadline.as_deref(),
+        Some("2026-10-20 00:00")
+    );
+    let db = Database::initialize(db.connection).unwrap();
+    assert_eq!(
+        db.list().unwrap()[0].deadline.as_deref(),
+        Some("2026-10-20 00:00")
+    );
+}

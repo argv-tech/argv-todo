@@ -1,5 +1,6 @@
 mod actions;
 mod archive;
+mod deadlines;
 mod deletion;
 mod editing;
 mod events;
@@ -14,6 +15,7 @@ mod settings;
 mod tasks;
 mod views;
 
+pub(crate) use deadlines::{DatePicker, PickerFocus};
 pub(crate) use settings::{ConfigCategory, ConfigSetting};
 pub(crate) use views::TaskPane;
 
@@ -65,6 +67,7 @@ pub struct App {
     pub(crate) config_setting: ConfigSetting,
     undo: Vec<deletion::DeletionUndo>,
     pending_delete: Option<deletion::PendingDelete>,
+    pub(crate) date_picker: Option<DatePicker>,
     running: bool,
 }
 
@@ -97,6 +100,7 @@ impl App {
             config_setting: ConfigSetting::default(),
             undo: Vec::new(),
             pending_delete: None,
+            date_picker: None,
             running: true,
         };
         app.normalize_selection();

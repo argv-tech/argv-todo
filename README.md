@@ -5,7 +5,7 @@ A small terminal todo app with Vim-style keys, nested tasks, and local SQLite st
 - Keep parents and children together in one task tree.
 - Choose normal, split todo/completed, or project tab layouts in Settings.
 - Give each project its own tab and move whole task trees between projects.
-- Create and edit tasks inline, with three priority levels and saved sibling order.
+- Create and edit tasks inline, with three priority levels, optional deadlines, and saved sibling order.
 - Keep a saved note for each task, shown in the bottom section when selected.
 - Search titles, complete subtrees, and undo deletions.
 - Use Unicode text, bracketed paste, and your terminal's color palette.
@@ -133,6 +133,7 @@ While editing configuration, `Esc` discards the draft and returns to the configu
 | `D` in archive | Permanently clear all soft-deleted tasks; `Enter` confirms, `Esc` cancels |
 | `e`, `cc` | Edit selected task |
 | `n` | Add or edit the selected task's note in the bottom section |
+| `T` | Open the deadline picker for the selected task; `Enter` saves, `x` clears, `Esc` cancels |
 | `t` | Cycle priority: low → mid → high → low |
 | `ph`, `pm`, `pl` | Set priority to high, mid, or low |
 | `Ctrl-p` | Cycle priority, including while creating or editing inline |
@@ -179,6 +180,8 @@ While typing, arrow keys, `Home`, and `End` move the cursor; `Ctrl-Left` / `Ctrl
 Tasks can contain nested child tasks. `j` / `k` moves through visible rows at every level; use `h` / `l` to select the parent or first child. `Enter` hides or reveals descendants without changing task data; a `+` beside the child count marks a collapsed branch. Collapse state lasts for the current session and is shared across panes. Starting a search expands branches so hidden tasks can appear in the results. Existing databases are upgraded automatically, preserving hierarchy and keeping unassigned tasks in Inbox. Deleting a parent also deletes its descendants; deletion asks for confirmation (`Enter` confirms, `Esc` cancels) and `u` restores the entire tree. Completing or reopening a parent gives all its descendants the same state, including tasks hidden by search. Toggling a child affects its own subtree without changing its ancestors or siblings. Changes are saved atomically.
 
 Tasks have **high**, **mid**, or **low** priority; new roots and existing tasks default to **mid**. New children inherit their parent's priority. Siblings created with `o` or `O` start with the selected task's priority so they appear beside it. Roots and children within each parent are sorted high first, then mid, then low. Equal priorities keep their saved sibling order, including insertion above or below. Changing a priority keeps the task selected, and children stay with their parent. Priorities and sibling order are saved in SQLite and preserved by deletion undo.
+
+Press `T` on a task to open a calendar picker for its optional deadline. Move with `h` / `l` by day, `j` / `k` by week, and `H` / `L` by month (counts work, so `3L` jumps three months); `t` jumps back to today. Press `Tab` to switch between the date, hour, and minute fields and adjust the time with `h` / `l` (`H` jumps to the start of the day, `L` to the end). Press `Enter` to save the picked date and time, `x` to clear the deadline, or `Esc` to close the picker without saving; `q` still quits. The deadline appears beside the task as `due YYYY-MM-DD HH:MM`, colored by urgency: red when overdue, yellow when due within a day, blue when due within a week, and dimmed beyond that. Deadlines are saved in SQLite and survive deletion undo, archive restore, and project moves.
 
 The fullscreen interface uses your terminal's background and ANSI color palette. Tasks occupy one row each, with bold parents and indented connecting branches. A small cyan caret and an underlined title mark the selection; checkmarks and tree lines use normal text color and turn cyan when selected. Focus and completion preserve title and priority colors; a checkmark and a struck-through title identify completed tasks. A `done/total` count beside a parent shows its direct children. Long titles show an ellipsis so the count stays visible, without splitting Unicode graphemes. The header shows the app name, version in red, and completion count. Split pane headings show the number of visible selectable tasks, excluding ghost parents. Short key hints stay at the bottom and fit the available width, with keys in cyan and descriptions dimmed; input and errors appear when needed. Help keeps its scroll and close instructions visible. Layout and key hints adapt to the terminal size.
 

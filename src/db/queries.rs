@@ -14,7 +14,7 @@ impl Database {
 
     fn list_by_deleted(&self, deleted: bool) -> Result<Vec<Todo>> {
         let mut statement = self.connection.prepare(
-            "SELECT id, title, done, created_at, updated_at, parent_id, priority, position, note, project_id, deleted
+            "SELECT id, title, done, created_at, updated_at, parent_id, priority, position, note, project_id, deleted, deadline
              FROM todos WHERE deleted = ?1 ORDER BY priority ASC, position ASC, id ASC",
         )?;
         Ok(statement
@@ -35,6 +35,7 @@ impl Database {
             note: row.get(8)?,
             project_id: row.get(9)?,
             deleted: row.get(10)?,
+            deadline: row.get(11)?,
         })
     }
 
@@ -136,6 +137,19 @@ impl Database {
             "UPDATE todos SET priority = ?1,
              updated_at = strftime('%Y-%m-%d %H:%M:%S', 'now') WHERE id = ?2 AND deleted = 0",
             params![priority, id],
+        )?;
+        anyhow::ensure!(
+            changed == 1,
+            "Task no longer exists; press Ctrl-r to refresh"
+        );
+        Ok(())
+    }
+
+    pub(crate) fn set_deadline(&self, id: i64, deadline: Option<&str>) -> Result<()> {
+        let changed = self.connection.execute(
+            "UPDATE todos SET deadline = ?1,
+             updated_at = strftime('%Y-%m-%d %H:%M:%S', 'now') WHERE id = ?2 AND deleted = 0",
+            params![deadline, id],
         )?;
         anyhow::ensure!(
             changed == 1,

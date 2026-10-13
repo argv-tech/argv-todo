@@ -88,6 +88,13 @@ pub(crate) enum EditAction {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DateUnit {
+    Day,
+    Week,
+    Month,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum VimAction {
     Move(Motion, usize),
     MoveTask(TaskMove, usize),
@@ -113,6 +120,12 @@ pub(crate) enum VimAction {
     AddAbove,
     Edit,
     EditNote,
+    EditDeadline,
+    ShiftDate(DateUnit, i32),
+    FocusNext,
+    FocusPrev,
+    PickToday,
+    ClearDeadline,
     Priority(Priority),
     CyclePriority,
     Toggle,

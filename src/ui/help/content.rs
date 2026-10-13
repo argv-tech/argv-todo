@@ -85,6 +85,30 @@ const SECTIONS: &[Section] = &[
             ),
             ("u", "Restore the last deletion in this session"),
             ("t / Ctrl-p", "Cycle priority: low > mid > high > low"),
+            ("T", "Open the deadline picker for the selected task"),
+            (
+                "Picker h / l",
+                "Previous / next day, hour, or minute by picker field (counts work)",
+            ),
+            (
+                "Picker j / k",
+                "Previous / next week, hour, or five minutes by picker field",
+            ),
+            (
+                "Picker H / L",
+                "Previous / next month, or start / end of day in time fields",
+            ),
+            (
+                "Picker Tab",
+                "Cycle the deadline picker through date, hour, minute",
+            ),
+            ("Picker t", "Jump the deadline picker back to today"),
+            ("Picker x", "Clear the deadline from the deadline picker"),
+            (
+                "Picker Enter",
+                "Save the picked deadline and close the picker",
+            ),
+            ("Picker Esc", "Close the deadline picker without saving"),
             ("ph / pm / pl", "Set high / mid / low priority"),
             ("Shift-J / K", "Move a task tree down / up in manual sort"),
             (

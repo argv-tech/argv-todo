@@ -125,6 +125,12 @@ fn footer_hint(app: &App, width: usize) -> &'static str {
             "Enter confirm · Esc",
             "Enter · Esc",
         ]
+    } else if app.date_picker.is_some() {
+        &[
+            "h/l day · j/k week · H/L month · Tab time · t today · x clear · Enter · Esc",
+            "Tab time · t today · x clear · Enter · Esc",
+            "Enter · Esc",
+        ]
     } else if app.vim.input().is_some() && app.vim.mode().visual() {
         &[
             "d delete · c change · y yank · Esc normal",

@@ -13,7 +13,10 @@ mod trees;
 mod tests;
 
 pub(crate) use completed::{CompletedDeletion, TaskScope};
-pub(crate) use model::{DEFAULT_PRIORITY, DeleteMode, Priority, Project, Todo};
+pub(crate) use model::{
+    DEFAULT_PRIORITY, DeleteMode, Priority, Project, Todo, Urgency, civil_from_days,
+    days_from_civil, month_len, now, split_deadline, today,
+};
 pub(crate) use ordering::TaskMove;
 
 use anyhow::{Context, Result};

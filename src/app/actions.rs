@@ -24,6 +24,9 @@ impl App {
             // A delete confirmation swallows every action except Submit/Cancel.
             return self.apply_pending_delete(action);
         }
+        if self.date_picker.is_some() {
+            return self.apply_date_picker(action);
+        }
         if self.archive.is_some() {
             return self.apply_archive(action);
         }

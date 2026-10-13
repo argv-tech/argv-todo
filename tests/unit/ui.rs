@@ -2,6 +2,7 @@ use super::config::CONFIG_LOGO;
 use super::*;
 use crate::db::Database;
 use crate::db::Priority;
+use crate::db::{civil_from_days, days_from_civil, now, split_deadline};
 use crate::{
     app::App,
     vim_motion::{InputTarget, VimMode},
@@ -841,4 +842,117 @@ fn visual_line_styles_cover_only_field_text_and_pending_commands_stay_visible() 
     field_keys(&mut app, "\u{1b}2d3i");
     terminal.draw(|frame| draw(frame, &mut app)).unwrap();
     text_position(&terminal, "normal  2d3i");
+}
+
+#[test]
+fn deadlines_show_due_dates_and_flag_only_open_overdue_tasks() {
+    fn shifted_iso(minutes: i64) -> String {
+        let (year, month, day, hour, minute) = split_deadline(&now()).unwrap();
+        let total = days_from_civil(year, month, day) * 1440
+            + i64::from(hour) * 60
+            + i64::from(minute)
+            + minutes;
+        let (year, month, day) = civil_from_days(total.div_euclid(1440));
+        let rest = total.rem_euclid(1440);
+        format!(
+            "{year:04}-{month:02}-{day:02} {:02}:{:02}",
+            rest / 60,
+            rest % 60
+        )
+    }
+    let database = Database::memory();
+    let overdue = database.add("Overdue task", None, Priority::Mid).unwrap();
+    database.set_deadline(overdue, Some("2000-01-15")).unwrap();
+    let today = database.add("Due today", None, Priority::Mid).unwrap();
+    let today_iso = shifted_iso(60);
+    database.set_deadline(today, Some(&today_iso)).unwrap();
+    let week = database.add("Due this week", None, Priority::Mid).unwrap();
+    let week_iso = shifted_iso(3 * 1440);
+    database.set_deadline(week, Some(&week_iso)).unwrap();
+    let future = database.add("Future task", None, Priority::Mid).unwrap();
+    database.set_deadline(future, Some("2999-12-31")).unwrap();
+    let done = database.add("Done overdue", None, Priority::Mid).unwrap();
+    database.set_deadline(done, Some("2000-01-15")).unwrap();
+    database.add("No deadline", None, Priority::Mid).unwrap();
+    let mut db = database;
+    db.toggle(done).unwrap();
+    let mut app = App::new(db).unwrap();
+    let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    let (overdue_x, overdue_y) = text_position(&terminal, "due 2000-01-15");
+    assert_eq!(
+        terminal.backend().buffer()[(overdue_x, overdue_y)].fg,
+        Color::Red
+    );
+    let (today_x, today_y) = text_position(&terminal, today_iso.as_str());
+    assert_eq!(
+        terminal.backend().buffer()[(today_x, today_y)].fg,
+        Color::Yellow
+    );
+    let (week_x, week_y) = text_position(&terminal, week_iso.as_str());
+    assert_eq!(
+        terminal.backend().buffer()[(week_x, week_y)].fg,
+        Color::Blue
+    );
+    let (future_x, future_y) = text_position(&terminal, "due 2999-12-31");
+    assert_eq!(
+        terminal.backend().buffer()[(future_x, future_y)].fg,
+        Color::DarkGray
+    );
+    assert!(
+        terminal_row(&terminal, text_position(&terminal, "No deadline").1)
+            .trim_end()
+            .ends_with("No deadline")
+    );
+    // A completed task keeps its deadline but loses the overdue flag.
+    let done_y = (0..24)
+        .find(|&y| terminal_row(&terminal, y).contains("Done overdue"))
+        .unwrap();
+    let buffer = terminal.backend().buffer();
+    let mut line = String::new();
+    let mut columns = Vec::new();
+    for x in 0..buffer.area.width {
+        columns.push((line.len(), x));
+        line.push_str(buffer[(x, done_y)].symbol());
+    }
+    let byte = line.find("due 2000-01-15").unwrap();
+    let due_x = columns
+        .iter()
+        .find(|(offset, _)| *offset == byte)
+        .unwrap()
+        .1;
+    assert_eq!(buffer[(due_x, done_y)].fg, Color::DarkGray);
+}
+
+#[test]
+fn date_picker_popup_shows_month_time_and_marks_selection() {
+    let database = Database::memory();
+    let id = database.add("Dated task", None, Priority::Mid).unwrap();
+    database.set_deadline(id, Some("2026-10-20 14:30")).unwrap();
+    let mut app = App::new(database).unwrap();
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Char('T'),
+        crossterm::event::KeyModifiers::NONE,
+    ));
+    assert!(app.date_picker.is_some());
+    let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    text_position(&terminal, "Pick deadline");
+    text_position(&terminal, "Tue 20 Oct 2026");
+    text_position(&terminal, "14:30");
+    text_position(&terminal, "Su Mo Tu We Th Fr Sa");
+    text_position(&terminal, "x clear");
+    let buffer = terminal.backend().buffer();
+    assert!(
+        buffer
+            .content
+            .iter()
+            .any(|cell| cell.modifier.contains(Modifier::REVERSED))
+    );
+    // October 2026 fills five weeks, so September days pad the grid dimmed.
+    assert!((25..54).any(|x| {
+        terminal.backend().buffer()[(x, 9)]
+            .modifier
+            .contains(Modifier::DIM)
+    }));
 }

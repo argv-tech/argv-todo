@@ -9,6 +9,7 @@ use ratatui::{
 use super::{
     chrome::{draw_footer, draw_header, draw_input},
     config::draw_config,
+    deadlines::draw_date_picker,
     help::draw_help,
     layout::workspace,
     projects::{draw_picker, draw_tabs},
@@ -78,4 +79,5 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
     draw_input(frame, app, input);
     draw_footer(frame, app, footer);
     draw_picker(frame, app);
+    draw_date_picker(frame, app);
 }

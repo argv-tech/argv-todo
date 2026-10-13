@@ -2,6 +2,7 @@ mod archive;
 mod branding;
 mod chrome;
 mod config;
+mod deadlines;
 mod frame;
 mod help;
 mod input;
