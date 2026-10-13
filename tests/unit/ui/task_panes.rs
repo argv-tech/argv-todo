@@ -39,6 +39,7 @@ fn app(view: TaskView) -> App {
         show_completed: true,
         sort_order: crate::config::SortOrder::Priority,
         show_hints: true,
+        completed_delete: crate::db::DeleteMode::Soft,
     });
     app
 }

@@ -42,6 +42,12 @@ impl VimManager {
                 return action;
             }
         }
+        if key.code == KeyCode::Char('C')
+            || (key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::SHIFT))
+        {
+            self.reset();
+            return (key.kind == KeyEventKind::Press).then_some(VimAction::ConvertProject);
+        }
         let movement = match key.code {
             KeyCode::Char('H') => Some(TaskMove::Outdent),
             KeyCode::Char('J') => Some(TaskMove::Down),
@@ -72,6 +78,8 @@ impl VimManager {
             KeyCode::Char('j') | KeyCode::Down => VimAction::Move(Motion::Down, count),
             KeyCode::Char('k') | KeyCode::Up => VimAction::Move(Motion::Up, count),
             KeyCode::Char('l') | KeyCode::Right => VimAction::Move(Motion::Right, count),
+            KeyCode::Char('P') => VimAction::AddProject,
+            KeyCode::Char('m') => VimAction::AssignProject,
             KeyCode::Char('e') => VimAction::Edit,
             KeyCode::Char('n') => VimAction::EditNote,
             KeyCode::Char('t') => VimAction::CyclePriority,

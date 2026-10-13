@@ -14,9 +14,10 @@ import tomllib
 TIMEOUT = 15
 TITLE = "Cross-platform task"
 NOTE = "Task note: read 'chapter 2' first"
+PROJECT = "Smoke project"
 
 
-def run_unix(command, settings):
+def run_unix(command, settings, projects=False, cleanup=False):
     import fcntl
     import pty
     import select
@@ -51,7 +52,21 @@ def run_unix(command, settings):
             wait_for(text, start)
 
         wait_for(b"argv-todo", 0)
-        if settings:
+        if cleanup:
+            send_and_wait(b"\t\t", b"[Cross-platform task]")
+            send_and_wait(b"\x1b\r", b"0 tasks")
+            os.write(master, b"q")
+        elif projects:
+            send_and_wait(b"P", b"Project")
+            send_and_wait(PROJECT.encode() + b"\r", b"[Smoke project]")
+            send_and_wait(b"\t", b"[Inbox]")
+            send_and_wait(b"m", b"Move task tree to project")
+            send_and_wait(b"j\r", b"[Smoke project]")
+            send_and_wait(b"C", b"[Cross-platform task]")
+            send_and_wait(b"\x1b\r", b"0 tasks")
+            send_and_wait(b"u", TITLE.encode())
+            os.write(master, b"q")
+        elif settings:
             send_and_wait(b"\x1b", b"configuration")
             send_and_wait(b"j\r", b"split")
             send_and_wait(b"\x1b", b"argv-todo")
@@ -83,7 +98,7 @@ def run_unix(command, settings):
         os.close(slave)
 
 
-def run_windows(command, settings):
+def run_windows(command, settings, projects=False, cleanup=False):
     import ctypes
     from ctypes import wintypes
     import msvcrt
@@ -141,16 +156,19 @@ def run_windows(command, settings):
                             raise AssertionError("App did not enter raw mode")
                         time.sleep(0.05)
 
-                    keys = "\x1bj\r\x1bq" if settings else f"i{TITLE}\rn{NOTE}\rxq"
+                    keys = ("\t\t\rq" if cleanup else
+                            f"P{PROJECT}\r\tmj\rCq" if projects else
+                            "\x1bj\r\x1bq" if settings else f"i{TITLE}\rn{NOTE}\rxq")
                     records = []
                     for character in keys:
                         for down in [True, False]:
                             record = InputRecord()
                             record.event_type = 1  # KEY_EVENT
-                            virtual_key = {"\r": 0x0D, "\x1b": 0x1B}.get(character, 0)
+                            virtual_key = {"\r": 0x0D, "\x1b": 0x1B, "\t": 0x09}.get(character, 0)
                             record.event.key = KeyEvent(
                                 down, 1, virtual_key, 0, character,
-                                0x10 if character.isupper() else 0,  # SHIFT_PRESSED
+                                0x2 if cleanup and character == "\r" else
+                                0x10 if character.isupper() else 0,  # ALT / SHIFT_PRESSED
                             )
                             records.append(record)
                     events = (InputRecord * len(records))(*records)
@@ -191,8 +209,25 @@ def main():
         run_terminal(command, settings=True)
         with (folder / "config.toml").open("rb") as config:
             assert tomllib.load(config)["task_view"] == "split", "Setting did not persist"
+        run_terminal(command, settings=False, projects=True)
+        with closing(sqlite3.connect(database)) as connection:
+            assignments = connection.execute("SELECT todos.title, todos.done, todos.note, projects.name FROM todos JOIN projects ON todos.project_id = projects.id").fetchall()
+        assert assignments == [(TITLE, 1, NOTE, TITLE)], f"Project conversion failed: {assignments!r}"
+        with (folder / "config.toml").open("rb") as config:
+            assert tomllib.load(config)["task_view"] == "projects", "Project layout did not persist"
+        run_terminal(command, settings=False, cleanup=True)
+        with closing(sqlite3.connect(database)) as connection:
+            archived = connection.execute("SELECT title, deleted FROM todos").fetchall()
+            assert archived == [(TITLE, 1)], f"Soft deletion lost records: {archived!r}"
+            connection.execute("UPDATE todos SET deleted = 0")
+            connection.commit()
+        config_path = folder / "config.toml"
+        config_path.write_text(config_path.read_text().replace('completed_delete = "soft"', 'completed_delete = "hard"'))
+        run_terminal(command, settings=False, cleanup=True)
+        with closing(sqlite3.connect(database)) as connection:
+            assert connection.execute("SELECT COUNT(*) FROM todos").fetchone()[0] == 0, "Hard deletion retained records"
         assert "# Task layouts:" in (folder / "config.toml").read_text(), "Config comments were lost"
-    print("Terminal startup, input, storage, settings, and cleanup passed.")
+    print("Terminal startup, input, storage, settings, projects, deletion modes, and cleanup passed.")
 
 
 if __name__ == "__main__":

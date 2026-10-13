@@ -33,11 +33,19 @@ pub(super) fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
     let [brand_area, summary] =
         Layout::horizontal([Constraint::Length(brand_width), Constraint::Min(0)]).areas(area);
     frame.render_widget(Paragraph::new(brand), brand_area);
-    let done = app.todos.iter().filter(|todo| todo.done).count();
-    let text = if app.todos.is_empty() {
+    let (done, total) = app
+        .todos
+        .iter()
+        .filter(|todo| {
+            app.task_view() != TaskView::Projects || todo.project_id == app.active_project_id()
+        })
+        .fold((0, 0), |(done, total), todo| {
+            (done + usize::from(todo.done), total + 1)
+        });
+    let text = if total == 0 {
         "0 tasks".into()
     } else {
-        format!("{done}/{} done", app.todos.len())
+        format!("{done}/{total} done")
     };
     frame.render_widget(
         Paragraph::new(text)
@@ -67,10 +75,19 @@ pub(super) fn draw_input(frame: &mut Frame, app: &App, area: Rect) {
         }
         return;
     }
-    if app.vim.input() != Some(InputTarget::Search) {
-        return;
-    }
-    draw_editor(frame, &app.editor, "/ ", Style::default(), area, !app.help);
+    let prefix = match app.vim.input() {
+        Some(InputTarget::Search) => "/ ",
+        Some(InputTarget::ProjectName) => "Project › ",
+        _ => return,
+    };
+    draw_editor(
+        frame,
+        &app.editor,
+        prefix,
+        Style::default(),
+        area,
+        !app.help,
+    );
 }
 
 pub(super) fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
@@ -94,7 +111,7 @@ pub(super) fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
     }
     let hint = footer_hint(app, usize::from(keys.width));
     frame.render_widget(
-        Paragraph::new(hint)
+        Paragraph::new(shortcut_line(hint))
             .alignment(Alignment::Right)
             .style(Style::default().fg(MUTED)),
         keys,
@@ -152,25 +169,37 @@ fn footer_hint(app: &App, width: usize) -> &'static str {
         ]
     } else if !app.query.is_empty() {
         &[
-            "j/k move · i child · Esc clear · ? help · q quit",
+            "j/k move · i child · n note · Esc clear · ? help · q quit",
             "Esc clear · ? help · q quit",
             "Esc clear · ? · q",
         ]
-    } else if app.task_view() != TaskView::Normal {
+    } else if app.task_view() == TaskView::Projects {
+        &[
+            "Tab project · P new · C convert · m move · Alt-Enter clear done · n note · Esc config · ? help · q quit",
+            "Tab project · P new · C convert · m move · n note · Esc config · ? · q",
+            "Tab project · P new · m move · ? · q",
+            "Tab · P new · m move · ? · q",
+            "Tab · P · m · ? · q",
+        ]
+    } else if app.task_view() == TaskView::Split {
         &[
             "Tab pane · j/k move · h/l tree · Enter fold · i child · n note · Esc config · ? help · q quit",
-            "Tab pane · i child · n note · Esc config · ? help · q quit",
+            "Tab pane · j/k move · n note · Esc config · ? help · q quit",
+            "Tab pane · n note · Esc config · ? · q",
             "Tab pane · Esc config · ? · q",
             "Tab pane · ? · q",
-            "Tab · ? · q",
+            "Tab · n · Esc · ? · q",
         ]
     } else {
         &[
             "j/k move · h/l tree · i/a child · o/O sibling · n note · Enter fold · x done · t priority · Esc config · ? help · q quit",
+            "j/k move · P project · C convert · Alt-Enter clear done · n note · Esc config · ? · q",
+            "j/k move · i child · P project · n note · Esc config · ? · q",
+            "j/k move · i child · n note · Esc config · ? help · q quit",
             "i child · o/O sibling · n note · Esc config · ? help · q quit",
             "i child · n note · Esc config · ? help · q quit",
-            "i · Esc config · ? · q",
-            "i · ? · q",
+            "i · n note · Esc · ? · q",
+            "i · n · Esc · ? · q",
         ]
     };
     candidates
@@ -178,4 +207,22 @@ fn footer_hint(app: &App, width: usize) -> &'static str {
         .copied()
         .find(|hint| hint.width() <= width)
         .unwrap_or("")
+}
+
+fn shortcut_line(hint: &str) -> Line<'_> {
+    let mut spans = Vec::new();
+    for (index, shortcut) in hint.split(" · ").enumerate() {
+        if index > 0 {
+            spans.push(Span::styled(" · ", Style::default().fg(MUTED)));
+        }
+        let (key, description) = shortcut.split_once(' ').unwrap_or((shortcut, ""));
+        spans.push(Span::styled(key, Style::default().fg(ACCENT)));
+        if !description.is_empty() {
+            spans.push(Span::styled(
+                format!(" {description}"),
+                Style::default().fg(MUTED),
+            ));
+        }
+    }
+    Line::from(spans)
 }

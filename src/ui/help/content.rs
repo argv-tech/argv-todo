@@ -2,10 +2,9 @@ use ratatui::{
     style::{Modifier, Style},
     text::{Line, Span},
 };
-use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
-use super::super::theme::ACCENT;
+use super::super::{text::wrap, theme::ACCENT};
 
 struct Section {
     title: &'static str,
@@ -21,10 +20,7 @@ const SECTIONS: &[Section] = &[
             ("Enter", "Collapse / expand the selected task's children"),
             ("gg / G", "First / last task"),
             ("3j / 2k", "Repeat a movement"),
-            (
-                "Tab / Shift-Tab",
-                "Switch panes in Split; skip ghost parents",
-            ),
+            ("Tab / Shift-Tab", "Switch project tabs or Split panes"),
         ],
     },
     Section {
@@ -32,11 +28,24 @@ const SECTIONS: &[Section] = &[
         shortcuts: &[
             ("i / a", "Add a child; add a root when the list is empty"),
             ("o / O", "Add a sibling below / above"),
+            ("P", "Create a project and open its tab"),
+            (
+                "C",
+                "Convert a top-level task to a project; keep its whole tree",
+            ),
+            (
+                "m",
+                "Move a task tree to a project; Enter confirms, Esc cancels",
+            ),
             ("e / cc", "Edit the selected task"),
             ("n", "Edit the selected task's note in the bottom section"),
             (
                 "Space / x",
                 "Complete or reopen the task and its descendants",
+            ),
+            (
+                "Alt-Enter",
+                "Clear completed tasks; Settings chooses soft or hard deletion",
             ),
             ("dd / 3dd", "Delete one / three task trees from selection"),
             ("u", "Restore the last deletion in this session"),
@@ -52,7 +61,10 @@ const SECTIONS: &[Section] = &[
     Section {
         title: "APP / Search & settings",
         shortcuts: &[
-            ("/", "Search all titles; keep ancestors visible"),
+            (
+                "/",
+                "Search titles in the current view; keep ancestors visible",
+            ),
             (
                 "Esc",
                 "Clear an applied search, otherwise open configuration",
@@ -154,35 +166,6 @@ pub(super) fn document(width: u16) -> Document {
         }
     }
     Document { lines, sections }
-}
-
-// Wrap before rendering so scrolling and page limits count actual terminal rows.
-fn wrap(text: &str, width: usize) -> Vec<String> {
-    let mut lines = Vec::new();
-    let mut line = String::new();
-    let mut used = 0;
-    for word in text.split_whitespace() {
-        if !line.is_empty() && used + 1 + word.width() > width {
-            lines.push(std::mem::take(&mut line));
-            used = 0;
-        }
-        if !line.is_empty() {
-            line.push(' ');
-            used += 1;
-        }
-        for grapheme in word.graphemes(true) {
-            if used + grapheme.width() > width && !line.is_empty() {
-                lines.push(std::mem::take(&mut line));
-                used = 0;
-            }
-            line.push_str(grapheme);
-            used += grapheme.width();
-        }
-    }
-    if !line.is_empty() {
-        lines.push(line);
-    }
-    lines
 }
 
 #[cfg(test)]

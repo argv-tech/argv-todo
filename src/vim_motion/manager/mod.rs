@@ -1,6 +1,7 @@
 mod help;
 mod input;
 mod pending;
+mod projects;
 mod tasks;
 
 use crate::db::Priority;
@@ -123,6 +124,11 @@ impl VimManager {
             };
             self.reset();
             return action;
+        }
+        if key.code == KeyCode::Enter && key.modifiers == KeyModifiers::ALT && self.input.is_none()
+        {
+            self.reset();
+            return (key.kind == KeyEventKind::Press).then_some(VimAction::ClearCompleted);
         }
         if key
             .modifiers

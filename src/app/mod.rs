@@ -1,4 +1,5 @@
 mod actions;
+mod deletion;
 mod editing;
 mod events;
 mod folding;
@@ -7,6 +8,7 @@ mod navigation;
 mod notes;
 mod ordering;
 mod preferences;
+mod projects;
 mod settings;
 mod tasks;
 mod views;
@@ -44,6 +46,7 @@ pub(crate) struct App {
     pub(crate) adding_relative: Option<(i64, bool)>,
     pub(crate) list: ListState,
     panes: TaskPanes,
+    projects: projects::ProjectState,
     collapsed: HashSet<i64>,
     pub(crate) vim: VimManager,
     pub(crate) editor: Editor,
@@ -57,13 +60,14 @@ pub(crate) struct App {
     pub(crate) config: Option<Config>,
     pub(crate) configuring: bool,
     pub(crate) config_setting: ConfigSetting,
-    undo: Vec<Vec<Todo>>,
+    undo: Vec<deletion::DeletionUndo>,
     running: bool,
 }
 
 impl App {
     pub(crate) fn new(database: Database) -> Result<Self> {
         let todos = database.list()?;
+        let projects = projects::ProjectState::new(database.projects()?);
         let mut app = Self {
             database,
             todos,
@@ -71,6 +75,7 @@ impl App {
             adding_relative: None,
             list: ListState::default(),
             panes: TaskPanes::default(),
+            projects,
             collapsed: HashSet::new(),
             vim: VimManager::default(),
             editor: Editor::default(),

@@ -25,6 +25,7 @@ fn app() -> App {
         show_completed: true,
         sort_order: crate::config::SortOrder::Priority,
         show_hints: true,
+        completed_delete: crate::db::DeleteMode::Soft,
     });
     app
 }
@@ -103,7 +104,7 @@ fn task_view_details_survive_resize_and_nonzero_origins() {
     let mut app = app();
     app.config_setting = ConfigSetting::TaskView;
     let mut terminal = Terminal::new(TestBackend::new(120, 35)).unwrap();
-    for view in [TaskView::Normal, TaskView::Split] {
+    for view in [TaskView::Normal, TaskView::Split, TaskView::Projects] {
         app.config.as_mut().unwrap().task_view = view;
         for (width, height) in [
             (120, 35),
@@ -130,6 +131,7 @@ fn task_view_details_survive_resize_and_nonzero_origins() {
                 match view {
                     TaskView::Normal => "Full tree, including done tasks.",
                     TaskView::Split => "Todo / Completed · Tab switches",
+                    TaskView::Projects => "Project tabs · Tab switches",
                 },
             );
             assert!(!contains(&terminal, "active database"));
@@ -146,7 +148,7 @@ fn task_view_details_survive_resize_and_nonzero_origins() {
     )
     .unwrap();
     terminal.draw(|frame| draw(frame, &mut app)).unwrap();
-    let position = text_position(&terminal, "task view · split (live)");
+    let position = text_position(&terminal, "task view · projects (live)");
     assert!(area.contains(position.into()));
     let buffer = terminal.backend().buffer();
     for y in 0..buffer.area.height {
@@ -167,6 +169,7 @@ fn new_settings_scroll_into_view_and_details_follow_selection_on_resize() {
         ConfigSetting::DefaultPriority,
         ConfigSetting::ShowCompleted,
         ConfigSetting::SortOrder,
+        ConfigSetting::CompletedDelete,
         ConfigSetting::ShowHints,
     ] {
         app.config_setting = setting;

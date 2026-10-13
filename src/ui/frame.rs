@@ -1,4 +1,4 @@
-use crate::{app::App, vim_motion::InputTarget};
+use crate::{app::App, config::TaskView, vim_motion::InputTarget};
 use ratatui::{
     Frame,
     layout::{Constraint, Layout},
@@ -11,7 +11,8 @@ use super::{
     config::draw_config,
     help::draw_help,
     layout::workspace,
-    tasks::{draw_note, draw_tasks},
+    projects::{draw_picker, draw_tabs},
+    tasks::{draw_note, draw_tasks, note_height},
     theme::{ACCENT, BG, ERROR, TEXT},
 };
 
@@ -38,21 +39,30 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
         draw_config(frame, app, workspace(area));
         return;
     }
-    let show_input = app.vim.input() == Some(InputTarget::Search)
-        || (app.vim.input().is_none() && !app.query.is_empty());
+    let show_input = matches!(
+        app.vim.input(),
+        Some(InputTarget::Search | InputTarget::ProjectName)
+    ) || (app.vim.input().is_none() && !app.query.is_empty());
     let workspace = workspace(area);
-    let note_height = (workspace.height / 4).clamp(2, 5);
-    let [header, _, body, note, message, input, footer] = Layout::vertical([
+    let reserved_rows = 3 + u16::from(app.error) + u16::from(show_input);
+    let note_area = ratatui::layout::Rect {
+        height: workspace.height.saturating_sub(reserved_rows),
+        ..workspace
+    };
+    let [header, tabs, body, note, message, input, footer] = Layout::vertical([
         Constraint::Length(1),
         Constraint::Length(1),
         Constraint::Min(1),
-        Constraint::Length(note_height),
+        Constraint::Length(note_height(app, note_area)),
         Constraint::Length(u16::from(app.error)),
         Constraint::Length(u16::from(show_input)),
         Constraint::Length(1),
     ])
     .areas(workspace);
     draw_header(frame, app, header);
+    if app.task_view() == TaskView::Projects {
+        draw_tabs(frame, app, tabs);
+    }
     draw_tasks(frame, app, body);
     draw_note(frame, app, note);
     if app.error {
@@ -63,4 +73,5 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
     }
     draw_input(frame, app, input);
     draw_footer(frame, app, footer);
+    draw_picker(frame, app);
 }

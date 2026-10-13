@@ -12,7 +12,7 @@ impl App {
     }
 
     pub(crate) fn show_completed(&self) -> bool {
-        self.task_view() == TaskView::Normal
+        self.task_view() != TaskView::Split
             && self
                 .config
                 .as_ref()

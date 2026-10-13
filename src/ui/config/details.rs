@@ -29,9 +29,10 @@ fn draw_preference(frame: &mut Frame, app: &App, setting: ConfigSetting, area: R
         ConfigSetting::ShowCompleted if app.task_view() == TaskView::Split => {
             "Always false in Split."
         }
-        ConfigSetting::ShowCompleted => "Show done tasks in Normal view.",
+        ConfigSetting::ShowCompleted => "Show done tasks in tree views.",
         ConfigSetting::SortOrder => "Order siblings; keep subtrees.",
         ConfigSetting::ShowHints => "Show footer shortcuts.",
+        ConfigSetting::CompletedDelete => "Alt+Enter clears completed tasks.",
         _ => return,
     };
     let mut lines = vec![
@@ -56,7 +57,7 @@ fn draw_preference(frame: &mut Frame, app: &App, setting: ConfigSetting, area: R
             ],
             ConfigSetting::ShowCompleted if app.task_view() == TaskView::Split => &[
                 "Done tasks use the Completed pane.",
-                "Your Normal preference is kept.",
+                "Your tree-view preference is kept.",
             ],
             ConfigSetting::ShowCompleted => &[
                 "Hidden tasks remain in SQLite.",
@@ -68,6 +69,13 @@ fn draw_preference(frame: &mut Frame, app: &App, setting: ConfigSetting, area: R
                 "J/K moves down/up among siblings.",
                 "H outdents; L indents.",
                 "Enter / h / l changes ordering.",
+            ],
+            ConfigSetting::CompletedDelete => &[
+                "soft: hide; keep SQLite records.",
+                "hard: remove SQLite records.",
+                "Unfinished tasks are preserved.",
+                "u undoes either in this session.",
+                "Projects: current project only.",
             ],
             ConfigSetting::ShowHints => &[
                 "Mode and errors stay visible.",
@@ -88,6 +96,7 @@ fn draw_task_view(frame: &mut Frame, view: TaskView, area: Rect) {
     let description = match view {
         TaskView::Normal => "Full tree, including done tasks.",
         TaskView::Split => "Todo / Completed · Tab switches",
+        TaskView::Projects => "Project tabs · Tab switches",
     };
     let mut lines = vec![
         Line::from(vec![
@@ -109,6 +118,12 @@ fn draw_task_view(frame: &mut Frame, view: TaskView, area: Rect) {
                 Line::from("○ Parent"),
                 Line::from("  ├─ ○ Todo"),
                 Line::from("  └─ ✓ Completed"),
+            ]),
+            TaskView::Projects => lines.extend([
+                Line::from(Span::styled("[Inbox]  Work  Personal", heading.fg(ACCENT))),
+                Line::from("○ Parent"),
+                Line::from("  └─ ○ Child"),
+                Line::from(Span::styled("P creates · m moves task trees", muted)),
             ]),
             TaskView::Split => {
                 lines.extend([

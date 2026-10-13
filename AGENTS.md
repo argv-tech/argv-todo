@@ -78,16 +78,18 @@ Current source layout:
 | Module            | Responsibility                                                  |
 | ----------------- | --------------------------------------------------------------- |
 | `src/main.rs`     | Startup, terminal setup and cleanup                             |
-| `src/app/`        | State, actions, editing, task notes, events, tree navigation, folding, settings, tasks, pane focus and projections |
-| `src/ui/`         | Frame composition, shared branding, geometry, text, editors, chrome, help, theme |
+| `src/app/`        | State, actions, editing, task notes, events, tree navigation, folding, settings, tasks, completed-task cleanup and deletion undo, pane focus and projections |
+| `src/app/projects/` | Project tabs, per-project selection and scrolling, project creation, task conversion and tree assignment |
+| `src/ui/`         | Frame composition, shared branding, geometry, text and wrapping, editors, chrome, help, theme |
+| `src/ui/projects/` | Project tab strip and destination picker |
 | `src/ui/tasks/`   | Pane composition, draft placement, task-tree rendering, and bottom task-note section |
 | `src/ui/help/`    | Shortcut content, wrapping, section guide, footer, and help rendering                  |
 | `src/ui/config/`  | Configuration panes, setting editor, selected-setting details and layout previews |
-| `src/db/`         | Database entry point, task model, queries, migrations, trees    |
+| `src/db/`         | Database entry point, task and project models, queries, migrations, trees, project assignment, conversion and completed-task cleanup    |
 | `src/cli.rs`      | Command-line options and path overrides                         |
 | `src/config/`     | Configuration paths, loading, validation, and atomic saving     |
 | `src/vim_motion/` | Keyboard mapping, modes, actions, and Unicode text editing      |
-| `src/vim_motion/manager/` | Task, field, and help key mapping, counts, pending command parsing |
+| `src/vim_motion/manager/` | Task, field, help, and project picker key mapping, counts, pending command parsing |
 | `src/vim_motion/editor/` | Unicode cursor and selection, edits, motions, objects, history, viewport |
 | `tests/unit/`     | Unit suites, test helpers, and the platform terminal smoke check |
 
@@ -127,6 +129,11 @@ visibility rules above when adding or changing module boundaries.
   shows todo/completed panes, with unfinished ancestors as nonselectable ghost
   context for completed children. Tab switches pane focus; settings apply layout
   changes immediately.
+  Projects shows one tab per project plus Inbox for unassigned tasks. Tab and
+  Shift-Tab cycle project tabs, each preserving selection and scrolling. `P` creates
+  a project; `C` converts a top-level task while preserving its whole tree; `m`
+  moves a whole task tree using a destination picker. Alt+Return clears completed
+  tasks using the configured soft/hard mode, preserving unfinished descendants.
   Avoid separate task pages, dashboards, and large panels.
 - `j/k` selects visible tasks at every level. Return collapses or expands
   children. `h` selects the parent. `l` expands and selects the first child and

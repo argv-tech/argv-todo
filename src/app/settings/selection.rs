@@ -2,12 +2,13 @@ use super::ConfigSetting;
 use crate::app::App;
 
 impl ConfigSetting {
-    pub(crate) const ALL: [Self; 6] = [
+    pub(crate) const ALL: [Self; 7] = [
         Self::DatabasePath,
         Self::TaskView,
         Self::DefaultPriority,
         Self::ShowCompleted,
         Self::SortOrder,
+        Self::CompletedDelete,
         Self::ShowHints,
     ];
 
@@ -19,6 +20,7 @@ impl ConfigSetting {
             Self::ShowCompleted => "show_completed",
             Self::SortOrder => "sort_order",
             Self::ShowHints => "show_hints",
+            Self::CompletedDelete => "completed_delete",
         }
     }
 
@@ -38,6 +40,7 @@ impl ConfigSetting {
                 }
             }
             Self::SortOrder => app.sort_order().label(),
+            Self::CompletedDelete => app.completed_delete().label(),
             Self::ShowHints => {
                 if app.show_hints() {
                     "true"

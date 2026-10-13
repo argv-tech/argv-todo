@@ -20,6 +20,9 @@ impl App {
             self.running = false;
             return Ok(());
         }
+        if self.project_picker().is_some() {
+            return self.apply_project_picker(action);
+        }
         if self.configuring {
             return self.apply_config(action);
         }

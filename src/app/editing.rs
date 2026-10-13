@@ -56,6 +56,9 @@ impl App {
                 if self.vim.input() == Some(InputTarget::Note) {
                     return self.save_note();
                 }
+                if self.vim.input() == Some(InputTarget::ProjectName) {
+                    return self.save_project();
+                }
                 let text = self.editor.text().trim().to_owned();
                 if self.vim.input() == Some(InputTarget::Search) {
                     self.query = text;
@@ -75,6 +78,14 @@ impl App {
                     } else if let Some((id, above)) = self.adding_relative {
                         self.database
                             .add_relative(&text, id, above, self.input_priority)?
+                    } else if self.adding_parent.is_none()
+                        && self.task_view() == crate::config::TaskView::Projects
+                    {
+                        self.database.add_project_root(
+                            &text,
+                            self.input_priority,
+                            self.active_project_id(),
+                        )?
                     } else {
                         self.database
                             .add(&text, self.adding_parent, self.input_priority)?

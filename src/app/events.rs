@@ -13,6 +13,8 @@ impl App {
     pub(crate) fn handle_key(&mut self, key: KeyEvent) {
         let action = if self.help {
             self.vim.handle_help(key)
+        } else if self.project_picker().is_some() {
+            self.vim.handle_project_picker(key)
         } else {
             self.vim.handle(key)
         };

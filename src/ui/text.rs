@@ -23,3 +23,40 @@ pub(super) fn truncate(text: &str, width: usize) -> Cow<'_, str> {
     }
     Cow::Owned(format!("{}…", &text[..end]))
 }
+
+/// Wrap at words and grapheme boundaries so previews and help share row geometry.
+pub(super) fn wrap(text: &str, width: usize) -> Vec<String> {
+    if width == 0 {
+        return Vec::new();
+    }
+    let mut lines = Vec::new();
+    let mut line = String::new();
+    let mut used = 0;
+    for word in text.split_whitespace() {
+        if !line.is_empty() && used + 1 + word.width() > width {
+            lines.push(std::mem::take(&mut line));
+            used = 0;
+        }
+        if !line.is_empty() {
+            line.push(' ');
+            used += 1;
+        }
+        for grapheme in word.graphemes(true) {
+            if used + grapheme.width() > width && !line.is_empty() {
+                lines.push(std::mem::take(&mut line));
+                used = 0;
+            }
+            if grapheme.width() > width {
+                line.push('…');
+                used += 1;
+            } else {
+                line.push_str(grapheme);
+                used += grapheme.width();
+            }
+        }
+    }
+    if !line.is_empty() {
+        lines.push(line);
+    }
+    lines
+}

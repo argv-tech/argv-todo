@@ -54,9 +54,40 @@ pub(crate) struct Todo {
     pub(crate) title: String,
     pub(crate) note: String,
     pub(crate) done: bool,
+    pub(crate) deleted: bool,
     pub(crate) parent_id: Option<i64>,
+    pub(crate) project_id: Option<i64>,
     pub(crate) priority: Priority,
     pub(crate) position: i64,
     pub(crate) created_at: String,
     pub(crate) updated_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Project {
+    pub(crate) id: i64,
+    pub(crate) name: String,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DeleteMode {
+    #[default]
+    Soft,
+    Hard,
+}
+
+impl DeleteMode {
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::Soft => "soft",
+            Self::Hard => "hard",
+        }
+    }
+
+    pub(crate) fn next(self) -> Self {
+        match self {
+            Self::Soft => Self::Hard,
+            Self::Hard => Self::Soft,
+        }
+    }
 }

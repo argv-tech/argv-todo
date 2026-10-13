@@ -27,7 +27,7 @@ impl App {
 
     pub(crate) fn task_pane(&self) -> TaskPane {
         match (self.task_view(), self.panes.focus) {
-            (TaskView::Normal, _) => TaskPane::Tree,
+            (TaskView::Normal | TaskView::Projects, _) => TaskPane::Tree,
             (TaskView::Split, TaskPane::Completed) => TaskPane::Completed,
             (TaskView::Split, _) => TaskPane::Todo,
         }
@@ -35,6 +35,7 @@ impl App {
 
     pub(crate) fn pane_list(&self, pane: TaskPane) -> &ListState {
         match pane {
+            TaskPane::Tree if self.task_view() == TaskView::Projects => self.project_list(),
             TaskPane::Tree => &self.list,
             TaskPane::Todo => &self.panes.todo,
             TaskPane::Completed => &self.panes.completed,
@@ -43,6 +44,7 @@ impl App {
 
     pub(crate) fn pane_list_mut(&mut self, pane: TaskPane) -> &mut ListState {
         match pane {
+            TaskPane::Tree if self.task_view() == TaskView::Projects => self.project_list_mut(),
             TaskPane::Tree => &mut self.list,
             TaskPane::Todo => &mut self.panes.todo,
             TaskPane::Completed => &mut self.panes.completed,
@@ -68,7 +70,7 @@ impl App {
     }
 
     pub(super) fn switch_task_pane(&mut self) {
-        if self.task_view() == TaskView::Normal {
+        if self.task_view() != TaskView::Split {
             return;
         }
         self.normalize_selection();

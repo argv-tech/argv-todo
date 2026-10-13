@@ -3,7 +3,8 @@
 A small terminal todo app with Vim-style keys, nested tasks, and local SQLite storage. Built with Rust, Ratatui, and Crossterm.
 
 - Keep parents and children together in one task tree.
-- Choose normal or split todo/completed layouts in Settings.
+- Choose normal, split todo/completed, or project tab layouts in Settings.
+- Give each project its own tab and move whole task trees between projects.
 - Create and edit tasks inline, with three priority levels and saved sibling order.
 - Keep a saved note for each task, shown in the bottom section when selected.
 - Search titles, complete subtrees, and undo deletions.
@@ -90,9 +91,17 @@ The app reads settings on startup and when opening configuration, preserving exi
 
 Press `Esc` from the task view to open configuration. Use `j` / `k`, arrows, or `Tab` to select a setting. At 74 columns or wider, the screen shows settings on the left and details for the selected setting on the right. Selecting `database_path` shows database and configuration-file paths; selecting `task_view` shows the active layout, its controls, and a small layout preview when space permits. Details update as you select or change a setting. Smaller terminals stack these sections and keep the details concise. Paths wrap in spacious panes and show an ellipsis when space is limited. The screen shows the ARGV-TODO ASCII logo when space permits. On `database_path`, press `Enter`, `e`, or `i` to edit, then `Enter` to save. Editing uses the same Unicode controls and paste support as task titles. Database-path changes apply on the next launch; the current database stays open, and `--db` retains precedence.
 
-On `task_view`, press `Enter`, `e`, `i`, `h` / `l`, or Left / Right to switch between `normal` and `split`. The choice saves to TOML and applies immediately. Press `Esc` to return to tasks without restarting. Normal keeps the full task tree. Split shows unfinished todos on the left and completed tasks on the right, stacking them below 74 columns. Unfinished ancestors of completed children appear in the Completed pane as dimmed ghost rows labeled `(parent)`. These rows provide context and are skipped by selection and task commands. An obsolete `nested` setting falls back to Normal.
+On `task_view`, press `Enter`, `e`, `i`, `h` / `l`, or Left / Right to cycle through `normal`, `split`, and `projects`. The choice saves to TOML and applies immediately. Press `Esc` to return to tasks without restarting. Normal keeps the full task tree. Split shows unfinished todos on the left and completed tasks on the right, stacking them below 70 columns. Unfinished ancestors of completed children appear in the Completed pane as dimmed ghost rows labeled `(parent)`. These rows provide context and are skipped by selection and task commands. An obsolete `nested` setting falls back to Normal.
 
 In Split, `Tab` or `Shift-Tab` switches pane focus. Each pane keeps its own selection and scroll position; task commands operate on the focused pane. Completing or reopening a task moves it to the corresponding pane and keeps it selected. Search filters both panes. Tab leaves focus in an active editor while typing.
+
+In Projects, each project has its own tab and task tree. `Tab` selects the next project; `Shift-Tab` selects the previous one, wrapping at either end. Each tab keeps its selection and scroll position. The header count, search, and bottom Note section follow the active project. Existing unassigned tasks appear in **Inbox**. Normal and Split continue to show tasks from all projects.
+
+Press `P` from the task view to create a project; this opens Projects and saves the layout choice. Type its name and press `Enter` to create and select its empty tab, then `i` to add its first root task. Names must be nonempty and unique ignoring ASCII case; Inbox is reserved. Children and new siblings inherit their project. Press `m` on a task to choose a destination with `j` / `k` or arrows, then `Enter` to move the task and all descendants; `Esc` cancels. A child moved to another project becomes a root there. Notes, completion, priorities, and descendant links are preserved. Projects and task assignments are saved immediately in SQLite.
+
+Press `C` on a top-level task to create a project named after its title and open that tab. The original task and all descendants stay together inside the new project, including their notes, completion state, and priorities. Conversion saves atomically; a duplicate or reserved project name leaves the task tree intact. Child tasks cannot be converted directly.
+
+`Alt+Enter` (also called `Alt+Return`) clears completed tasks, including those hidden by search or folding. In Projects it affects the active project; in Normal and Split it affects all projects. Unfinished descendants are retained under their nearest surviving ancestor, or promoted to roots when necessary. In Settings, `completed_delete` selects **soft** (the default, hides tasks and retains their SQLite records) or **hard** (removes records). The choice saves and applies immediately. Add `completed_delete = "hard"` or `completed_delete = "soft"` to TOML to configure it directly. Press `u` to undo either mode during the same session; undo restores task data and original parent links. Soft-deleted records remain hidden after restart; session undo is the available in-app restoration mechanism.
 
 A database preview labeled “after restart” appears below the active database when the draft or saved setting resolves to a different path. Relative paths resolve against the config directory. The preview updates while editing; `--db` still takes precedence on launch.
 
@@ -103,13 +112,17 @@ While editing configuration, `Esc` discards the draft and returns to the configu
 | Key | Action |
 | --- | --- |
 | `j` / `k` | Next / previous visible row in the task tree (also Up / Down) |
-| `Tab`, `Shift-Tab` | Switch panes in Split; select a setting in configuration |
+| `Tab`, `Shift-Tab` | Switch project tabs or Split panes; select a setting in configuration |
 | `l` | Expand and select the first child; stay selected if there are none |
 | `h` | Select the parent task |
 | `gg` / `G` | First / last task |
 | `3j`, `2k` | Repeat a motion |
 | `i`, `a` | Add a child of the selected task; add a root task when the list is empty |
 | `o`, `O` | Add a sibling below or above the selected task; add a root task when the list is empty |
+| `P` | Create a project and open its tab |
+| `C` | Convert a top-level task to a project, keeping its whole tree |
+| `m` | Move the selected task tree to a project |
+| `Alt+Enter` / `Alt+Return` | Clear completed tasks using the configured deletion mode |
 | `e`, `cc` | Edit selected task |
 | `n` | Add or edit the selected task's note in the bottom section |
 | `t` | Cycle priority: low → mid → high → low |
@@ -119,7 +132,7 @@ While editing configuration, `Esc` discards the draft and returns to the configu
 | `Space`, `x` | Toggle the selected task and all its descendants in normal mode |
 | `dd`, `3dd` | Delete one / three tasks and all their children starting at selection |
 | `u` | Restore the last deleted task tree(s) in the current session |
-| `/` | Search all titles, ignoring case; keep ancestors visible for context |
+| `/` | Search titles in the current view, ignoring case; keep ancestors visible |
 | `?` | Open help; press again to close |
 | `Esc` | Open configuration; close help or clear applied search first. In a field, return to Normal, then press again to cancel |
 | `Ctrl-r` | Reload tasks from disk |
@@ -155,15 +168,15 @@ Motions and operators accept counts: `3dw` deletes three words and `2d3w` delete
 
 While typing, arrow keys, `Home`, and `End` move the cursor; `Ctrl-Left` / `Ctrl-Right` move by word. `Backspace`, `Delete`, `Ctrl-w`, and `Ctrl-u` edit text. Replace-mode `Backspace` restores the overwritten grapheme. Insert/Replace sessions undo as one change. `Ctrl-p` cycles task priority in any task-field mode. Bracketed paste inserts text, puts it after the cursor in Normal, or replaces a Visual selection. Newlines and other control characters become spaces. Editing and selection respect Unicode grapheme boundaries and display widths.
 
-Tasks can contain nested child tasks. `j` / `k` moves through visible rows at every level; use `h` / `l` to select the parent or first child. `Enter` hides or reveals descendants without changing task data; a `+` beside the child count marks a collapsed branch. Collapse state lasts for the current session and is shared across panes. Starting a search expands branches so hidden tasks can appear in the results. Existing databases are upgraded automatically, keeping existing tasks at the top level. Deleting a parent also deletes its descendants; `u` restores the entire tree. Completing or reopening a parent gives all its descendants the same state, including tasks hidden by search. Toggling a child affects its own subtree without changing its ancestors or siblings. Changes are saved atomically.
+Tasks can contain nested child tasks. `j` / `k` moves through visible rows at every level; use `h` / `l` to select the parent or first child. `Enter` hides or reveals descendants without changing task data; a `+` beside the child count marks a collapsed branch. Collapse state lasts for the current session and is shared across panes. Starting a search expands branches so hidden tasks can appear in the results. Existing databases are upgraded automatically, preserving hierarchy and keeping unassigned tasks in Inbox. Deleting a parent also deletes its descendants; `u` restores the entire tree. Completing or reopening a parent gives all its descendants the same state, including tasks hidden by search. Toggling a child affects its own subtree without changing its ancestors or siblings. Changes are saved atomically.
 
 Tasks have **high**, **mid**, or **low** priority; new roots and existing tasks default to **mid**. New children inherit their parent's priority. Siblings created with `o` or `O` start with the selected task's priority so they appear beside it. Roots and children within each parent are sorted high first, then mid, then low. Equal priorities keep their saved sibling order, including insertion above or below. Changing a priority keeps the task selected, and children stay with their parent. Priorities and sibling order are saved in SQLite and preserved by deletion undo.
 
-The fullscreen interface uses your terminal's background and ANSI color palette. Tasks occupy one row each, with bold parents and indented connecting branches. A small cyan caret and an underlined title mark the selection; checkmarks and tree lines use normal text color and turn cyan when selected. Focus and completion preserve title and priority colors; a checkmark and a struck-through title identify completed tasks. A `done/total` count beside a parent shows its direct children. Long titles show an ellipsis so the count stays visible, without splitting Unicode graphemes. The header shows the app name, version in red, and completion count. Short key hints stay at the bottom and fit the available width; input and errors appear when needed. Help keeps its scroll and close instructions visible. Layout and key hints adapt to the terminal size.
+The fullscreen interface uses your terminal's background and ANSI color palette. Tasks occupy one row each, with bold parents and indented connecting branches. A small cyan caret and an underlined title mark the selection; checkmarks and tree lines use normal text color and turn cyan when selected. Focus and completion preserve title and priority colors; a checkmark and a struck-through title identify completed tasks. A `done/total` count beside a parent shows its direct children. Long titles show an ellipsis so the count stays visible, without splitting Unicode graphemes. The header shows the app name, version in red, and completion count. Split pane headings show the number of visible selectable tasks, excluding ghost parents. Short key hints stay at the bottom and fit the available width, with keys in cyan and descriptions dimmed; input and errors appear when needed. Help keeps its scroll and close instructions visible. Layout and key hints adapt to the terminal size.
 
 Create and edit tasks directly in the tree. A new draft appears at its sorted position among siblings or directly beneath a parent when creating its first child. `Ctrl-p` changes the draft priority and its position before saving. Starting a new task clears search to show its context. `Enter` saves the inline row; `Esc` enters Normal and another `Esc` cancels it. Search stays at the bottom and remains live in every field mode.
 
-The bottom Note section shows a wrapped preview of the selected task's note, following the focused pane in Split. Press `n` to add or edit it, then `Enter` to save. Notes use the same horizontally scrolling single-line editor and Unicode paste support as titles. `Esc` enters Normal; another `Esc` discards the draft. Clear the field and save to remove a note. Notes are stored in SQLite and preserved when moving tasks or undoing deletion. Existing tasks start with empty notes.
+The bottom Note section names the selected task and shows a wrapped preview of its note, following the focused pane in Split. Short notes leave more room for tasks; longer previews grow to four text rows and end with an ellipsis when clipped. On short stacked layouts, the preview yields space to task panes, search, and errors. Press `n` to add or edit a note, then `Enter` to save. The active note editor has a cyan separator, a focus marker, and a placeholder when empty. Notes use the same horizontally scrolling single-line editor and Unicode paste support as titles. `Esc` enters Normal; another `Esc` discards the draft. Clear the field and save to remove a note. Turning off hints also hides the note heading's shortcuts. Notes are stored in SQLite and preserved when moving tasks or undoing deletion. Existing tasks start with empty notes.
 
 ## Check
 

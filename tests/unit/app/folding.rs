@@ -153,6 +153,7 @@ fn folding_preserves_unrelated_pane_selection_and_skips_ghosts() {
         show_completed: true,
         sort_order: crate::config::SortOrder::Priority,
         show_hints: true,
+        completed_delete: crate::db::DeleteMode::Soft,
     });
     assert_eq!(app.task_view(), TaskView::Split);
     let child = app

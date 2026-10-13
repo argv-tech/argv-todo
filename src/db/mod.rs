@@ -1,5 +1,8 @@
+mod completed;
 mod model;
 mod ordering;
+mod project_conversion;
+mod projects;
 mod queries;
 mod schema;
 mod trees;
@@ -8,7 +11,8 @@ mod trees;
 #[path = "../../tests/unit/db.rs"]
 mod tests;
 
-pub(crate) use model::{DEFAULT_PRIORITY, Priority, Todo};
+pub(crate) use completed::{CompletedDeletion, TaskScope};
+pub(crate) use model::{DEFAULT_PRIORITY, DeleteMode, Priority, Project, Todo};
 pub(crate) use ordering::TaskMove;
 
 use anyhow::{Context, Result};

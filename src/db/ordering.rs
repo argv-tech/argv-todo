@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashMap};
 
 use anyhow::{Context, Result};
-use rusqlite::params;
+use rusqlite::{OptionalExtension, params};
 
 use super::Database;
 
@@ -16,13 +16,21 @@ pub(crate) enum TaskMove {
 impl Database {
     pub(crate) fn move_task(&mut self, id: i64, movement: TaskMove, count: usize) -> Result<bool> {
         let transaction = self.connection.transaction()?;
+        let project_id: Option<i64> = transaction
+            .query_row(
+                "SELECT project_id FROM todos WHERE id = ?1 AND deleted = 0",
+                [id],
+                |row| row.get(0),
+            )
+            .optional()?
+            .context("Task no longer exists; press Ctrl-r to refresh")?;
         let tasks = {
             let mut statement = transaction.prepare(
-                "SELECT id, title, done, created_at, updated_at, parent_id, priority, position, note
-                 FROM todos ORDER BY position, id",
+                "SELECT id, title, done, created_at, updated_at, parent_id, priority, position, note, project_id, deleted
+                 FROM todos WHERE project_id IS ?1 AND deleted = 0 ORDER BY position, id",
             )?;
             statement
-                .query_map([], Self::todo_from_row)?
+                .query_map([project_id], Self::todo_from_row)?
                 .collect::<rusqlite::Result<Vec<_>>>()?
         };
         let mut parents: HashMap<_, _> =

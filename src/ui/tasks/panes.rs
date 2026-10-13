@@ -2,6 +2,7 @@ use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
     style::{Modifier, Style},
+    text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
 };
 
@@ -18,7 +19,7 @@ use crate::{
 };
 
 pub(in crate::ui) fn draw_tasks(frame: &mut Frame, app: &mut App, area: Rect) {
-    if app.task_view() == TaskView::Normal {
+    if app.task_view() != TaskView::Split {
         draw_list(frame, app, area, TaskPane::Tree);
         return;
     }
@@ -78,7 +79,19 @@ fn draw_pane(frame: &mut Frame, app: &mut App, area: Rect, pane: TaskPane, title
     } else {
         Style::default().fg(MUTED)
     };
-    frame.render_widget(Paragraph::new(title).style(style), heading);
+    let count = app
+        .rows_for_pane(pane)
+        .iter()
+        .filter(|row| !row.ghost)
+        .count();
+    let mut spans = vec![Span::styled(title, style)];
+    let count = format!("  {count}");
+    if spans[0].width() + unicode_width::UnicodeWidthStr::width(count.as_str())
+        <= usize::from(area.width)
+    {
+        spans.push(Span::styled(count, Style::default().fg(MUTED)));
+    }
+    frame.render_widget(Paragraph::new(Line::from(spans)), heading);
     draw_list(frame, app, list, pane);
 }
 

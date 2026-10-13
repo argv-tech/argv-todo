@@ -33,6 +33,7 @@ pub(crate) enum InputTarget {
     Note,
     Search,
     DatabasePath,
+    ProjectName,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -94,6 +95,10 @@ pub(crate) enum VimAction {
     PageDown,
     SwitchPane,
     SwitchPaneBackward,
+    ConvertProject,
+    ClearCompleted,
+    AddProject,
+    AssignProject,
     AddChild,
     AddBelow,
     AddAbove,

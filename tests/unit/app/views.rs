@@ -28,6 +28,7 @@ fn app(view: TaskView) -> App {
         show_completed: true,
         sort_order: crate::config::SortOrder::Priority,
         show_hints: true,
+        completed_delete: crate::db::DeleteMode::Soft,
     });
     app
 }
@@ -49,7 +50,7 @@ fn settings_save_and_apply_layouts_live_and_preserve_selection_on_return_to_norm
     let mut app = app(TaskView::Normal);
     app.config = Some(Config::load(&folder.join("db.sql"), true).unwrap());
     let tasks = app.todos.clone();
-    for view in [TaskView::Split, TaskView::Normal] {
+    for view in [TaskView::Split, TaskView::Projects, TaskView::Normal] {
         press(&mut app, KeyCode::Esc);
         press(&mut app, KeyCode::Char('j'));
         press(&mut app, KeyCode::Enter);

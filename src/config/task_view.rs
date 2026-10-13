@@ -5,6 +5,7 @@ pub(crate) enum TaskView {
     #[default]
     Normal,
     Split,
+    Projects,
 }
 
 impl TaskView {
@@ -12,13 +13,15 @@ impl TaskView {
         match self {
             Self::Normal => "normal",
             Self::Split => "split",
+            Self::Projects => "projects",
         }
     }
 
     pub(crate) fn next(self) -> Self {
         match self {
             Self::Normal => Self::Split,
-            Self::Split => Self::Normal,
+            Self::Split => Self::Projects,
+            Self::Projects => Self::Normal,
         }
     }
 
@@ -27,7 +30,8 @@ impl TaskView {
             // Removed layouts fall back to the normal view for existing configs.
             "normal" | "nested" => Ok(Self::Normal),
             "split" => Ok(Self::Split),
-            _ => bail!("task_view must be normal or split"),
+            "projects" => Ok(Self::Projects),
+            _ => bail!("task_view must be normal, split, or projects"),
         }
     }
 }

@@ -9,5 +9,6 @@ pub(crate) enum ConfigSetting {
     DefaultPriority,
     ShowCompleted,
     SortOrder,
+    CompletedDelete,
     ShowHints,
 }

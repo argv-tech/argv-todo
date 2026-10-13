@@ -5,6 +5,7 @@ mod frame;
 mod help;
 mod input;
 mod layout;
+mod projects;
 mod tasks;
 mod text;
 mod theme;

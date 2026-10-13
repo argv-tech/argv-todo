@@ -1,4 +1,126 @@
 use super::*;
+
+#[test]
+fn project_commands_and_picker_keep_fields_modifiers_and_key_kinds_isolated() {
+    let mut manager = VimManager::default();
+    assert_eq!(
+        manager.handle(KeyEvent::new(KeyCode::Char('P'), KeyModifiers::SHIFT)),
+        Some(VimAction::AddProject)
+    );
+    assert_eq!(
+        manager.handle(KeyEvent::new(KeyCode::Char('m'), KeyModifiers::NONE)),
+        Some(VimAction::AssignProject)
+    );
+    manager.begin_input(InputTarget::ProjectName);
+    assert_eq!(
+        manager.handle(KeyEvent::new(KeyCode::Char('P'), KeyModifiers::SHIFT)),
+        Some(VimAction::Insert('P'))
+    );
+    assert_eq!(
+        manager.handle(KeyEvent::new(KeyCode::Char('m'), KeyModifiers::NONE)),
+        Some(VimAction::Insert('m'))
+    );
+    assert_eq!(
+        manager.handle(KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL)),
+        None
+    );
+    manager.end_input();
+    for kind in [KeyEventKind::Release, KeyEventKind::Repeat] {
+        assert_eq!(
+            manager.handle_project_picker(KeyEvent::new_with_kind(
+                KeyCode::Enter,
+                KeyModifiers::NONE,
+                kind
+            )),
+            None
+        );
+    }
+    for code in [
+        KeyCode::Char('P'),
+        KeyCode::Char('i'),
+        KeyCode::Char('x'),
+        KeyCode::Char('d'),
+    ] {
+        assert_eq!(
+            manager.handle_project_picker(KeyEvent::new(code, KeyModifiers::NONE)),
+            None
+        );
+    }
+    assert_eq!(
+        manager.handle_project_picker(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::ALT)),
+        None
+    );
+    assert_eq!(
+        manager.handle_project_picker(KeyEvent::new(KeyCode::BackTab, KeyModifiers::SHIFT)),
+        Some(VimAction::Move(Motion::Up, 1))
+    );
+    assert_eq!(
+        manager.handle_project_picker(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+        Some(VimAction::Submit)
+    );
+    assert_eq!(
+        manager.handle_project_picker(KeyEvent::new(KeyCode::Char('['), KeyModifiers::CONTROL)),
+        Some(VimAction::Cancel)
+    );
+}
+
+#[test]
+fn conversion_and_cleanup_accept_press_only_and_keep_editor_commands() {
+    let mut vim = VimManager::default();
+    for event in [
+        KeyEvent::new(KeyCode::Char('C'), KeyModifiers::NONE),
+        KeyEvent::new(KeyCode::Char('c'), KeyModifiers::SHIFT),
+        KeyEvent::new(KeyCode::Enter, KeyModifiers::ALT),
+    ] {
+        let expected = if event.code == KeyCode::Enter {
+            VimAction::ClearCompleted
+        } else {
+            VimAction::ConvertProject
+        };
+        assert_eq!(vim.handle(event), Some(expected));
+        for kind in [KeyEventKind::Repeat, KeyEventKind::Release] {
+            assert_eq!(
+                vim.handle(KeyEvent::new_with_kind(event.code, event.modifiers, kind)),
+                None
+            );
+        }
+    }
+    for target in [
+        InputTarget::Task,
+        InputTarget::Note,
+        InputTarget::Search,
+        InputTarget::ProjectName,
+        InputTarget::DatabasePath,
+    ] {
+        vim.begin_input(target);
+        assert_eq!(
+            vim.handle(KeyEvent::new(KeyCode::Char('C'), KeyModifiers::SHIFT)),
+            Some(VimAction::Insert('C'))
+        );
+        assert_eq!(
+            vim.handle(KeyEvent::new(KeyCode::Enter, KeyModifiers::ALT)),
+            None
+        );
+        vim.set_mode(VimMode::Normal);
+        assert!(matches!(
+            vim.handle(KeyEvent::new(KeyCode::Char('C'), KeyModifiers::SHIFT)),
+            Some(VimAction::Input(_))
+        ));
+    }
+    vim.end_input();
+    assert_eq!(
+        vim.handle_help(KeyEvent::new(KeyCode::Enter, KeyModifiers::ALT)),
+        None
+    );
+    assert_eq!(
+        vim.handle_project_picker(KeyEvent::new(KeyCode::Char('C'), KeyModifiers::SHIFT)),
+        None
+    );
+    assert_eq!(
+        vim.handle_project_picker(KeyEvent::new(KeyCode::Enter, KeyModifiers::ALT)),
+        None
+    );
+}
 fn key(c: char) -> KeyEvent {
     KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE)
 }

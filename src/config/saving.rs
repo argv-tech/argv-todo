@@ -6,7 +6,7 @@ use std::{
 };
 
 use super::{Config, SortOrder, TaskView, parsing::parse};
-use crate::db::Priority;
+use crate::db::{DeleteMode, Priority};
 
 impl Config {
     pub(crate) fn save_database_path(&mut self, path: &str) -> Result<()> {
@@ -45,6 +45,12 @@ impl Config {
     pub(crate) fn save_show_hints(&mut self, show: bool) -> Result<()> {
         self.save_setting("show_hints", toml::Value::Boolean(show))?;
         self.show_hints = show;
+        Ok(())
+    }
+
+    pub(crate) fn save_completed_delete(&mut self, mode: DeleteMode) -> Result<()> {
+        self.save_setting("completed_delete", toml::Value::String(mode.label().into()))?;
+        self.completed_delete = mode;
         Ok(())
     }
 

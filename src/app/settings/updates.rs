@@ -33,7 +33,10 @@ impl App {
             .config
             .as_mut()
             .context("Configuration is unavailable")?;
-        let steps = if self.config_setting == ConfigSetting::DefaultPriority {
+        let steps = if matches!(
+            self.config_setting,
+            ConfigSetting::DefaultPriority | ConfigSetting::TaskView
+        ) {
             if forward {
                 count % 3
             } else {
@@ -47,7 +50,13 @@ impl App {
         }
         match self.config_setting {
             ConfigSetting::DatabasePath => return Ok(()),
-            ConfigSetting::TaskView => config.save_task_view(config.task_view.next())?,
+            ConfigSetting::TaskView => {
+                let mut view = config.task_view;
+                for _ in 0..steps {
+                    view = view.next();
+                }
+                config.save_task_view(view)?;
+            }
             ConfigSetting::DefaultPriority => {
                 let mut priority = config.default_priority;
                 for _ in 0..steps {
@@ -58,6 +67,9 @@ impl App {
             ConfigSetting::ShowCompleted => config.save_show_completed(!config.show_completed)?,
             ConfigSetting::SortOrder => config.save_sort_order(config.sort_order.next())?,
             ConfigSetting::ShowHints => config.save_show_hints(!config.show_hints)?,
+            ConfigSetting::CompletedDelete => {
+                config.save_completed_delete(config.completed_delete.next())?
+            }
         }
         self.reconcile_task_view(selected_id);
         self.message(format!(

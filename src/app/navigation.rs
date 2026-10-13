@@ -21,6 +21,10 @@ impl App {
         let mut children: HashMap<Option<i64>, Vec<usize>> = HashMap::new();
         let mut included = HashSet::new();
         for (index, todo) in self.todos.iter().enumerate() {
+            if self.task_view() == TaskView::Projects && todo.project_id != self.active_project_id()
+            {
+                continue;
+            }
             let parent = todo.parent_id.filter(|id| by_id.contains_key(id));
             children.entry(parent).or_default().push(index);
             let visible_completion =
@@ -88,6 +92,15 @@ impl App {
     }
 
     pub(super) fn select_id(&mut self, id: i64) {
+        if self.task_view() == TaskView::Projects
+            && let Some(project_id) = self
+                .todos
+                .iter()
+                .find(|todo| todo.id == id)
+                .map(|todo| todo.project_id)
+        {
+            self.activate_project(project_id);
+        }
         self.expand_ancestors(id);
         let row = self
             .visible_indices()

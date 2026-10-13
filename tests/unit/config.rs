@@ -12,6 +12,7 @@ fn accepts_toml_and_rejects_invalid_settings() {
     assert_eq!(defaults.default_priority, Priority::Mid);
     assert!(defaults.show_completed && defaults.show_hints);
     assert_eq!(defaults.sort_order, SortOrder::Priority);
+    assert_eq!(defaults.completed_delete, DeleteMode::Soft);
     assert_eq!(
         parse("task_view = 'nested'").unwrap().task_view,
         TaskView::Normal
@@ -41,10 +42,12 @@ fn accepts_toml_and_rejects_invalid_settings() {
         "show_hints = []",
         "sort_order = 'title'",
         "sort_order = false",
+        "completed_delete = false",
+        "completed_delete = 'trash'",
     ] {
         assert!(parse(content).is_err(), "Accepted {content}");
     }
-    for view in [TaskView::Normal, TaskView::Split] {
+    for view in [TaskView::Normal, TaskView::Split, TaskView::Projects] {
         assert_eq!(
             parse(&format!("task_view = '{}'", view.label()))
                 .unwrap()
@@ -52,6 +55,42 @@ fn accepts_toml_and_rejects_invalid_settings() {
             view
         );
     }
+    for mode in [DeleteMode::Soft, DeleteMode::Hard] {
+        assert_eq!(
+            parse(&format!("completed_delete = '{}'", mode.label()))
+                .unwrap()
+                .completed_delete,
+            mode
+        );
+    }
+}
+
+#[test]
+fn deletion_mode_saves_comments_reloads_and_keeps_value_after_failure() {
+    let folder = std::env::temp_dir().join(format!("argv-deletion-config-{}", std::process::id()));
+    let mut config = Config::load(&folder.join("db.sql"), true).unwrap();
+    fs::write(
+        &config.path,
+        "# header\ncompleted_delete = 'soft' # keep note\n",
+    )
+    .unwrap();
+    config.save_completed_delete(DeleteMode::Hard).unwrap();
+    assert_eq!(
+        fs::read_to_string(&config.path).unwrap(),
+        "# header\ncompleted_delete = \"hard\" # keep note\n"
+    );
+    config.reload().unwrap();
+    assert_eq!(config.completed_delete, DeleteMode::Hard);
+    fs::write(
+        config
+            .path
+            .with_file_name(format!(".config.toml.{}.tmp", std::process::id())),
+        "blocked",
+    )
+    .unwrap();
+    assert!(config.save_completed_delete(DeleteMode::Soft).is_err());
+    assert_eq!(config.completed_delete, DeleteMode::Hard);
+    std::fs::remove_dir_all(folder).unwrap();
 }
 
 #[test]

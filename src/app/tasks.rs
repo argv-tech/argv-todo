@@ -18,6 +18,7 @@ impl App {
 
     pub(super) fn reload(&mut self, selected_id: Option<i64>) -> Result<()> {
         self.todos = self.database.list()?;
+        self.projects.refresh(self.database.projects()?);
         self.collapsed
             .retain(|id| self.todos.iter().any(|todo| todo.id == *id));
         if let Some(id) = selected_id {
@@ -69,7 +70,17 @@ impl App {
                 let last = self.visible_indices().len().checked_sub(1);
                 self.active_list_mut().select(last);
             }
-            VimAction::SwitchPane | VimAction::SwitchPaneBackward => self.switch_task_pane(),
+            VimAction::SwitchPane | VimAction::SwitchPaneBackward => {
+                if self.task_view() == crate::config::TaskView::Projects {
+                    self.switch_project(action == VimAction::SwitchPane);
+                } else {
+                    self.switch_task_pane();
+                }
+            }
+            VimAction::ConvertProject => self.convert_selected_project()?,
+            VimAction::ClearCompleted => self.clear_completed()?,
+            VimAction::AddProject => self.begin_project()?,
+            VimAction::AssignProject => self.begin_project_move(),
             VimAction::AddChild => {
                 let parent = self.selected_todo().map(|todo| todo.id);
                 self.begin_add(parent);
@@ -129,23 +140,13 @@ impl App {
                         return Ok(());
                     }
                     let len = deleted.len();
-                    self.undo.push(deleted);
+                    self.undo
+                        .push(super::deletion::DeletionUndo::Trees(deleted));
                     self.reload(None)?;
                     self.message(format!("Deleted {len} task(s). Press u to undo."));
                 }
             }
-            VimAction::Undo => {
-                if let Some(deleted) = self.undo.last() {
-                    self.database.restore(deleted)?;
-                    let id = deleted[0].id;
-                    self.query.clear();
-                    self.undo.pop();
-                    self.reload(Some(id))?;
-                    self.message("Deletion undone.");
-                } else {
-                    self.message("No deletion to undo in this session.");
-                }
-            }
+            VimAction::Undo => self.undo_deletion()?,
             VimAction::Search => {
                 let selected_id = self.selected_todo().map(|todo| todo.id);
                 self.collapsed.clear();

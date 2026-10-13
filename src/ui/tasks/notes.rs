@@ -1,35 +1,78 @@
 use ratatui::{
     Frame,
-    layout::Rect,
+    layout::{Alignment, Rect},
     style::{Modifier, Style},
-    widgets::{Block, Borders, Paragraph, Wrap},
+    text::{Line, Span},
+    widgets::{Block, Borders, Padding, Paragraph},
 };
 
 use super::super::{
     input::draw_editor,
+    text::{truncate, wrap},
     theme::{ACCENT, MUTED, TEXT},
 };
-use crate::{app::App, vim_motion::InputTarget};
+use crate::{app::App, config::TaskView, vim_motion::InputTarget};
+use unicode_width::UnicodeWidthStr;
+
+pub(in crate::ui) fn note_height(app: &App, area: Rect) -> u16 {
+    if area.is_empty() {
+        return 0;
+    }
+    let tree_rows = if app.task_view() == TaskView::Split && area.width < 70 {
+        5
+    } else {
+        3
+    };
+    if app.vim.input() == Some(InputTarget::Note) {
+        return area.height.min(2);
+    }
+    let maximum = area.height.saturating_sub(tree_rows).min(5);
+    // Keep both stacked task lists and the active search visible on short terminals.
+    if maximum < 2 {
+        return 0;
+    }
+    let (text, _) = note_text(app);
+    let lines = wrap(text, usize::from(area.width.saturating_sub(2))).len();
+    lines.saturating_add(1).clamp(2, usize::from(maximum)) as u16
+}
 
 pub(in crate::ui) fn draw_note(frame: &mut Frame, app: &App, area: Rect) {
     if area.is_empty() {
         return;
     }
     let editing = app.vim.input() == Some(InputTarget::Note);
-    let heading = if editing {
-        " › Note · Enter save "
+    let heading = if editing { " › Note " } else { " Note " };
+    let hint = if !app.show_hints() {
+        ""
+    } else if editing {
+        " Enter save "
+    } else if app.selected_todo().is_some() && !adding_task(app) {
+        " n edit "
     } else {
-        " Note · n edit "
+        ""
     };
+    let title_width = usize::from(area.width).saturating_sub(heading.width() + hint.width() + 3);
+    let mut title = vec![Span::styled(
+        heading,
+        Style::default()
+            .fg(if editing { ACCENT } else { TEXT })
+            .add_modifier(Modifier::BOLD),
+    )];
+    if !adding_task(app)
+        && let Some(todo) = app.selected_todo()
+        && title_width > 0
+    {
+        title.push(Span::styled(
+            format!("· {} ", truncate(&todo.title, title_width)),
+            Style::default().fg(MUTED),
+        ));
+    }
     let block = Block::default()
         .borders(Borders::TOP)
-        .border_style(Style::default().fg(MUTED))
-        .title(heading)
-        .title_style(
-            Style::default()
-                .fg(if editing { ACCENT } else { MUTED })
-                .add_modifier(Modifier::BOLD),
-        );
+        .border_style(Style::default().fg(if editing { ACCENT } else { MUTED }))
+        .padding(Padding::horizontal(1))
+        .title(Line::from(title))
+        .title(Line::styled(hint, Style::default().fg(MUTED)).alignment(Alignment::Right));
     let content = block.inner(area);
     frame.render_widget(block, area);
     if editing {
@@ -41,10 +84,36 @@ pub(in crate::ui) fn draw_note(frame: &mut Frame, app: &App, area: Rect) {
             content,
             true,
         );
+        if app.editor.text().is_empty() {
+            frame.render_widget(
+                Paragraph::new("Write a note…").style(Style::default().fg(MUTED)),
+                content,
+            );
+        }
         return;
     }
-    let adding = app.vim.input() == Some(InputTarget::Task) && app.editing_id.is_none();
-    let (text, color) = if adding {
+    let (text, color) = note_text(app);
+    let width = usize::from(content.width);
+    let mut lines = wrap(text, width);
+    if lines.len() > usize::from(content.height) {
+        lines.truncate(usize::from(content.height));
+        if let Some(last) = lines.last_mut() {
+            *last = truncate(&format!("{last}…"), width).into_owned();
+        }
+    }
+    frame.render_widget(
+        Paragraph::new(lines.into_iter().map(Line::from).collect::<Vec<_>>())
+            .style(Style::default().fg(color)),
+        content,
+    );
+}
+
+fn adding_task(app: &App) -> bool {
+    app.vim.input() == Some(InputTarget::Task) && app.editing_id.is_none()
+}
+
+fn note_text(app: &App) -> (&str, ratatui::style::Color) {
+    if adding_task(app) {
         ("Save the task before adding a note.", MUTED)
     } else if let Some(todo) = app.selected_todo() {
         if todo.note.is_empty() {
@@ -54,13 +123,7 @@ pub(in crate::ui) fn draw_note(frame: &mut Frame, app: &App, area: Rect) {
         }
     } else {
         ("Select a task to see its note.", MUTED)
-    };
-    frame.render_widget(
-        Paragraph::new(text)
-            .style(Style::default().fg(color))
-            .wrap(Wrap { trim: false }),
-        content,
-    );
+    }
 }
 
 #[cfg(test)]

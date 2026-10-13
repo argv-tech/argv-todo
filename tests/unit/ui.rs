@@ -107,6 +107,7 @@ fn database_preview_tracks_drafts_and_saved_paths() {
         show_completed: true,
         sort_order: crate::config::SortOrder::Priority,
         show_hints: true,
+        completed_delete: crate::db::DeleteMode::Soft,
     });
     let mut terminal = Terminal::new(TestBackend::new(120, 35)).unwrap();
     let absolute = folder.join("absolute.sql").display().to_string();
@@ -181,6 +182,7 @@ fn database_preview_remains_visible_on_resize() {
         show_completed: true,
         sort_order: crate::config::SortOrder::Priority,
         show_hints: true,
+        completed_delete: crate::db::DeleteMode::Soft,
     });
     let mut terminal = Terminal::new(TestBackend::new(120, 35)).unwrap();
     for (width, height) in [(120, 35), (100, 17), (74, 12), (73, 12), (35, 12)] {
@@ -226,6 +228,7 @@ fn config_view_shows_logo_when_it_fits_and_keeps_editor_visible() {
         show_completed: true,
         sort_order: crate::config::SortOrder::Priority,
         show_hints: true,
+        completed_delete: crate::db::DeleteMode::Soft,
     });
     for (width, height) in [(20, 5), (35, 12), (60, 16), (80, 24), (120, 35)] {
         let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
@@ -416,7 +419,7 @@ fn renders_small_and_large_terminals_and_input_modes() {
             assert!(rows[positions[3].0].contains("└──"));
             let note_row = rows
                 .iter()
-                .position(|line| line.contains("Note · n edit"))
+                .position(|line| line.contains("Note · Parent task"))
                 .unwrap();
             assert!(
                 rows[..note_row]
@@ -513,6 +516,35 @@ fn truncation_preserves_graphemes_and_display_width() {
         assert_eq!(actual, expected);
         assert!(actual.width() <= width);
     }
+}
+
+#[test]
+fn shared_wrapping_handles_empty_and_too_narrow_unicode_columns() {
+    assert!(text::wrap("text", 0).is_empty());
+    assert!(text::wrap("", 5).is_empty());
+    assert_eq!(text::wrap("界é👩‍💻", 1), ["…", "é", "…"]);
+    assert_eq!(text::wrap("two words", 8), ["two", "words"]);
+    for width in [1, 2, 3, 4, 33, 76] {
+        assert!(
+            text::wrap("界é👩‍💻 abcdefgh", width)
+                .iter()
+                .all(|line| line.width() <= width)
+        );
+    }
+}
+
+#[test]
+fn task_footer_styles_keys_separately_from_descriptions() {
+    let mut app = App::new(Database::memory()).unwrap();
+    let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    let movement = text_position(&terminal, "j/k move");
+    let note = text_position(&terminal, "n note");
+    let buffer = terminal.backend().buffer();
+    assert_eq!(buffer[movement].fg, Color::Cyan);
+    assert_eq!(buffer[(movement.0 + 4, movement.1)].fg, Color::DarkGray);
+    assert_eq!(buffer[note].fg, Color::Cyan);
+    assert_eq!(buffer[(note.0 + 2, note.1)].fg, Color::DarkGray);
 }
 
 #[test]
@@ -665,6 +697,7 @@ fn configuration_splits_editor_and_paths_then_stacks_on_resize() {
         show_completed: true,
         sort_order: crate::config::SortOrder::Priority,
         show_hints: true,
+        completed_delete: crate::db::DeleteMode::Soft,
     });
     let mut terminal = Terminal::new(TestBackend::new(100, 17)).unwrap();
     for (width, height) in [(100, 17), (74, 12), (73, 12), (35, 12), (120, 35)] {

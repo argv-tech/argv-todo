@@ -1,5 +1,5 @@
 use super::{SortOrder, TaskView};
-use crate::db::Priority;
+use crate::db::{DeleteMode, Priority};
 use anyhow::{Context, Result, ensure};
 use std::path::PathBuf;
 
@@ -10,6 +10,7 @@ pub(super) struct Settings {
     pub(super) show_completed: bool,
     pub(super) sort_order: SortOrder,
     pub(super) show_hints: bool,
+    pub(super) completed_delete: DeleteMode,
 }
 
 pub(super) fn parse(content: &str) -> Result<Settings> {
@@ -24,6 +25,7 @@ pub(super) fn parse(content: &str) -> Result<Settings> {
                     | "show_completed"
                     | "sort_order"
                     | "show_hints"
+                    | "completed_delete"
             ),
             "Unknown setting: {key}"
         );
@@ -65,6 +67,17 @@ pub(super) fn parse(content: &str) -> Result<Settings> {
             }
         },
         show_hints: boolean(&table, "show_hints", true)?,
+        completed_delete: match table.get("completed_delete") {
+            None => DeleteMode::Soft,
+            Some(value) => match value
+                .as_str()
+                .context("completed_delete must be a string")?
+            {
+                "soft" => DeleteMode::Soft,
+                "hard" => DeleteMode::Hard,
+                _ => anyhow::bail!("completed_delete must be soft or hard"),
+            },
+        },
     })
 }
 
