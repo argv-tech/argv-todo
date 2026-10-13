@@ -1,6 +1,6 @@
 [package]
 name = "argv-todo"
-version = "0.1.0"
+version = "0.2.0-dev"
 authors = ["argv-tech contributors"]
 edition = "2024"
 rust-version = "1.88"

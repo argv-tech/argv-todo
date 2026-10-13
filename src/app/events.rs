@@ -7,7 +7,7 @@ use crossterm::{
 use ratatui::DefaultTerminal;
 
 use super::App;
-use crate::vim_motion::VimMode;
+use crate::{config::TaskView, vim_motion::VimMode};
 
 impl App {
     pub(crate) fn handle_key(&mut self, key: KeyEvent) {
@@ -15,6 +15,11 @@ impl App {
             self.vim.handle_help(key)
         } else if self.project_picker().is_some() {
             self.vim.handle_project_picker(key)
+        } else if self.task_view() == TaskView::Projects
+            && !self.configuring
+            && self.archive.is_none()
+        {
+            self.vim.handle_projects(key)
         } else {
             self.vim.handle(key)
         };

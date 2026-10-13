@@ -72,9 +72,23 @@ impl App {
             }
             VimAction::SwitchPane | VimAction::SwitchPaneBackward => {
                 if self.task_view() == crate::config::TaskView::Projects {
-                    self.switch_project(action == VimAction::SwitchPane);
+                    self.switch_project(action == VimAction::SwitchPane, 1);
                 } else {
                     self.switch_task_pane();
+                }
+            }
+            VimAction::ProjectRight(count) => {
+                for _ in 0..count {
+                    if !self.select_child() {
+                        self.switch_project(true, 1);
+                    }
+                }
+            }
+            VimAction::ProjectLeft(count) => {
+                for _ in 0..count {
+                    if !self.select_parent() {
+                        self.switch_project(false, 1);
+                    }
                 }
             }
             VimAction::ConvertProject => self.convert_selected_project()?,

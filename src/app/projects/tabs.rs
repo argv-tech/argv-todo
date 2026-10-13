@@ -95,12 +95,13 @@ impl App {
         }
     }
 
-    pub(in crate::app) fn switch_project(&mut self, forward: bool) {
+    pub(in crate::app) fn switch_project(&mut self, forward: bool, count: usize) {
         let len = self.projects.tabs.len();
+        let step = count % len;
         self.projects.active = if forward {
-            (self.projects.active + 1) % len
+            (self.projects.active + step) % len
         } else {
-            (self.projects.active + len - 1) % len
+            (self.projects.active + len - step) % len
         };
         self.normalize_selection();
         self.message("");

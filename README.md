@@ -95,7 +95,7 @@ On `task_view`, press `Enter`, `e`, `i`, `h` / `l`, or Left / Right to cycle thr
 
 In Split, `Tab` or `Shift-Tab` switches pane focus. Each pane keeps its own selection and scroll position; task commands operate on the focused pane. Completing or reopening a task moves it to the corresponding pane and keeps it selected. Search filters both panes. Tab leaves focus in an active editor while typing.
 
-In Projects, each project has its own tab and task tree. `Tab` selects the next project; `Shift-Tab` selects the previous one, wrapping at either end. Each tab keeps its selection and scroll position. The header count, search, and bottom Note section follow the active project. Existing unassigned tasks appear in **Inbox**. Normal and Split continue to show tasks from all projects.
+In Projects, each project has its own tab and task tree. `l` expands and selects the first child when one exists; otherwise it selects the next project tab. `h` selects the parent when one exists; otherwise it selects the previous project tab. Counts such as `2l` repeat this navigation. `Tab` / `Shift-Tab` always selects the next / previous project, wrapping at either end. Left / Right arrows navigate the parent / first child within the active tree. Each tab keeps its selection and scroll position. The header count, search, and bottom Note section follow the active project. Existing unassigned tasks appear in **Inbox**. Normal and Split continue to show tasks from all projects.
 
 Press `P` from the task view to create a project; this opens Projects and saves the layout choice. Type its name and press `Enter` to create and select its empty tab, then `i` to add its first root task. Names must be nonempty and unique ignoring ASCII case; Inbox is reserved. Children and new siblings inherit their project. Press `m` on a task to choose a destination with `j` / `k` or arrows, then `Enter` to move the task and all descendants; `Esc` cancels. A child moved to another project becomes a root there. Notes, completion, priorities, and descendant links are preserved. Projects and task assignments are saved immediately in SQLite.
 
@@ -115,8 +115,9 @@ While editing configuration, `Esc` discards the draft and returns to the configu
 | --- | --- |
 | `j` / `k` | Next / previous visible row in the task tree (also Up / Down) |
 | `Tab`, `Shift-Tab` | Switch project tabs or Split panes; select a setting in configuration |
-| `l` | Expand and select the first child; stay selected if there are none |
-| `h` | Select the parent task |
+| `l` | Expand and select the first child; in Projects, next tab if there is no child |
+| `h` | Select the parent task; in Projects, previous tab if there is no parent |
+| Right / Left arrows | Expand and select the first child / select the parent; stay if there is no child |
 | `gg` / `G` | First / last task |
 | `3j`, `2k` | Repeat a motion |
 | `i`, `a` | Add a child of the selected task; add a root task when the list is empty |

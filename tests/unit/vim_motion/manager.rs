@@ -174,6 +174,91 @@ fn key(c: char) -> KeyEvent {
 }
 
 #[test]
+fn project_tab_mapping_honors_counts_key_kinds_and_existing_commands() {
+    let mut vim = VimManager::default();
+    for (letter, expected) in [
+        ('h', VimAction::ProjectLeft(2)),
+        ('l', VimAction::ProjectRight(2)),
+    ] {
+        vim.handle_projects(key('2'));
+        assert_eq!(vim.handle_projects(key(letter)), Some(expected));
+        assert!(vim.pending_label().is_empty());
+        assert_eq!(
+            vim.handle_projects(KeyEvent::new_with_kind(
+                KeyCode::Char(letter),
+                KeyModifiers::NONE,
+                KeyEventKind::Repeat,
+            )),
+            Some(if letter == 'h' {
+                VimAction::ProjectLeft(1)
+            } else {
+                VimAction::ProjectRight(1)
+            })
+        );
+        assert_eq!(
+            vim.handle_projects(KeyEvent::new_with_kind(
+                KeyCode::Char(letter),
+                KeyModifiers::NONE,
+                KeyEventKind::Release,
+            )),
+            None
+        );
+        for modifiers in [
+            KeyModifiers::CONTROL,
+            KeyModifiers::ALT,
+            KeyModifiers::SUPER,
+        ] {
+            assert_eq!(
+                vim.handle_projects(KeyEvent::new(KeyCode::Char(letter), modifiers)),
+                None
+            );
+        }
+    }
+    for (code, motion) in [
+        (KeyCode::Left, Motion::Left),
+        (KeyCode::Right, Motion::Right),
+    ] {
+        assert_eq!(
+            vim.handle_projects(KeyEvent::new(code, KeyModifiers::NONE)),
+            Some(VimAction::Move(motion, 1))
+        );
+    }
+    assert_eq!(
+        vim.handle_projects(KeyEvent::new(KeyCode::Char('h'), KeyModifiers::SHIFT)),
+        Some(VimAction::MoveTask(crate::db::TaskMove::Outdent, 1))
+    );
+    assert_eq!(
+        vim.handle_projects(KeyEvent::new(KeyCode::Char('l'), KeyModifiers::SHIFT)),
+        Some(VimAction::MoveTask(crate::db::TaskMove::Indent, 1))
+    );
+    for target in [
+        InputTarget::Task,
+        InputTarget::Note,
+        InputTarget::Search,
+        InputTarget::DatabasePath,
+        InputTarget::ProjectName,
+    ] {
+        vim.begin_input(target);
+        for letter in ['h', 'l'] {
+            assert_eq!(
+                vim.handle_projects(key(letter)),
+                Some(VimAction::Insert(letter))
+            );
+        }
+        vim.set_mode(VimMode::Normal);
+        assert_eq!(
+            vim.handle_projects(key('h')),
+            Some(VimAction::Input(EditAction::Move(Motion::Left, 1)))
+        );
+        assert_eq!(
+            vim.handle_projects(key('l')),
+            Some(VimAction::Input(EditAction::Move(Motion::Right, 1)))
+        );
+        vim.end_input();
+    }
+}
+
+#[test]
 fn return_folds_only_on_press_and_completion_keeps_its_own_keys() {
     let mut vim = VimManager::default();
     vim.handle(key('3'));

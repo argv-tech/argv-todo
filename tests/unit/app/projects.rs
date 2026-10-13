@@ -68,6 +68,83 @@ fn project_tabs_scope_navigation_search_and_keep_independent_selection() {
 }
 
 #[test]
+fn horizontal_keys_prefer_subtasks_and_preserve_selection_when_switching_tabs() {
+    let (folder, mut app) = app();
+    press(&mut app, KeyCode::Char('h'));
+    assert_eq!(app.active_project_index(), 2);
+    assert!(app.selected_todo().is_none());
+    press(&mut app, KeyCode::Char('l'));
+    assert_eq!(app.active_project_index(), 0);
+    press(&mut app, KeyCode::Char('l'));
+    press(&mut app, KeyCode::Enter);
+    press(&mut app, KeyCode::Char('l'));
+    assert_eq!(app.selected_todo().unwrap().title, "Work child");
+    press(&mut app, KeyCode::Char('h'));
+    assert_eq!(app.selected_todo().unwrap().title, "Work root");
+    press(&mut app, KeyCode::Char('l'));
+    *app.project_list_mut().offset_mut() = 1;
+    press(&mut app, KeyCode::Char('l'));
+    assert_eq!(app.active_project_index(), 2);
+    press(&mut app, KeyCode::Char('l'));
+    assert_eq!(app.selected_todo().unwrap().title, "Inbox task");
+    press(&mut app, KeyCode::Char('2'));
+    press(&mut app, KeyCode::Char('h'));
+    assert_eq!(app.active_project_index(), 1);
+    assert_eq!(app.selected_todo().unwrap().title, "Work child");
+    assert_eq!(app.project_list().offset(), 1);
+    press(&mut app, KeyCode::Char('2'));
+    press(&mut app, KeyCode::Char('h'));
+    assert_eq!(app.active_project_index(), 0);
+    press(&mut app, KeyCode::Char('2'));
+    press(&mut app, KeyCode::Char('l'));
+    assert_eq!(app.active_project_index(), 1);
+    assert_eq!(app.selected_todo().unwrap().title, "Work child");
+    app.query = "Inbox".into();
+    press(&mut app, KeyCode::Char('l'));
+    assert_eq!(app.active_project_index(), 2);
+    assert!(app.visible_rows().is_empty());
+    assert_eq!(app.query, "Inbox");
+    std::fs::remove_dir_all(folder).unwrap();
+}
+
+#[test]
+fn horizontal_tab_keys_keep_editors_priority_commands_and_overlays_isolated() {
+    let (folder, mut app) = app();
+    press(&mut app, KeyCode::Char('p'));
+    press(&mut app, KeyCode::Char('h'));
+    assert_eq!(app.selected_todo().unwrap().priority, Priority::High);
+    press(&mut app, KeyCode::Char('p'));
+    press(&mut app, KeyCode::Char('l'));
+    assert_eq!(app.selected_todo().unwrap().priority, Priority::Low);
+    press(&mut app, KeyCode::Char('e'));
+    press(&mut app, KeyCode::Char('h'));
+    press(&mut app, KeyCode::Char('l'));
+    assert!(app.editor.text().contains("hl"));
+    press(&mut app, KeyCode::Esc);
+    press(&mut app, KeyCode::Char('h'));
+    press(&mut app, KeyCode::Char('l'));
+    assert_eq!(app.active_project_index(), 0);
+    press(&mut app, KeyCode::Esc);
+    press(&mut app, KeyCode::Char('m'));
+    press(&mut app, KeyCode::Char('h'));
+    press(&mut app, KeyCode::Char('l'));
+    assert!(app.project_picker().is_some());
+    assert_eq!(app.project_picker().unwrap().1.selected(), Some(0));
+    press(&mut app, KeyCode::Esc);
+    press(&mut app, KeyCode::Char('?'));
+    press(&mut app, KeyCode::Char('h'));
+    press(&mut app, KeyCode::Char('l'));
+    assert!(app.help);
+    press(&mut app, KeyCode::Esc);
+    press(&mut app, KeyCode::Char('A'));
+    press(&mut app, KeyCode::Char('h'));
+    press(&mut app, KeyCode::Char('l'));
+    assert!(app.archive.is_some());
+    assert_eq!(app.active_project_index(), 0);
+    std::fs::remove_dir_all(folder).unwrap();
+}
+
+#[test]
 fn project_creation_validation_paste_and_task_inheritance() {
     let (folder, mut app) = app();
     press(&mut app, KeyCode::Char('P'));
@@ -110,7 +187,7 @@ fn project_creation_validation_paste_and_task_inheritance() {
 fn move_picker_isolates_input_moves_whole_tree_and_undo_preserves_project() {
     let (folder, mut app) = app();
     press(&mut app, KeyCode::Tab);
-    press(&mut app, KeyCode::Char('l'));
+    press(&mut app, KeyCode::Right);
     let id = app.selected_todo().unwrap().id;
     press(&mut app, KeyCode::Char('m'));
     let before = app.todos.clone();
@@ -259,13 +336,13 @@ fn conversion_selects_new_project_and_keeps_notes_and_hidden_descendants() {
             .all(|task| task.project_id == project)
     );
     assert!(app.is_collapsed(root));
-    press(&mut app, KeyCode::Char('l'));
+    press(&mut app, KeyCode::Right);
     let before = app.todos.clone();
     press(&mut app, KeyCode::Char('C'));
     assert!(app.error);
     assert_eq!(app.todos, before);
     assert_eq!(app.project_tabs().len(), 4);
-    press(&mut app, KeyCode::Char('h'));
+    press(&mut app, KeyCode::Left);
     press(&mut app, KeyCode::Char('C'));
     assert!(app.error);
     assert_eq!(app.todos, before);

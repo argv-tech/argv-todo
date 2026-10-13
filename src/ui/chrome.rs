@@ -175,12 +175,12 @@ fn footer_hint(app: &App, width: usize) -> &'static str {
         ]
     } else if app.task_view() == TaskView::Projects {
         &[
-            "Tab project · P new · C convert · m move · A archive · Alt-Enter clear done · n note · Esc config · ? help · q quit",
-            "Tab project · P new · A archive · n note · Esc config · ? · q",
-            "Tab project · P new · C convert · m move · n note · Esc config · ? · q",
-            "Tab project · P new · m move · ? · q",
-            "Tab · P new · m move · ? · q",
-            "Tab · P · m · ? · q",
+            "h/l tree/tabs · P new · C convert · m move · A archive · Alt-Enter clear done · n note · Esc config · ? help · q quit",
+            "h/l tree/tabs · P new · A archive · n note · Esc config · ? · q",
+            "h/l tree/tabs · P new · C convert · m move · n note · Esc config · ? · q",
+            "h/l tree/tabs · P new · m move · ? · q",
+            "h/l · P new · m move · ? · q",
+            "h/l · P · m · ? · q",
         ]
     } else if app.task_view() == TaskView::Split {
         &[

@@ -68,7 +68,7 @@ fn tabs_keep_active_project_visible_with_styles_and_scoped_notes_on_resize() {
             if name == "Work" {
                 text_position(&terminal, "Note for Work");
             }
-            app.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+            app.handle_key(KeyEvent::new(KeyCode::Char('l'), KeyModifiers::NONE));
         }
     }
 }

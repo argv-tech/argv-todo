@@ -16,7 +16,14 @@ const SECTIONS: &[Section] = &[
         title: "TASKS / Navigation",
         shortcuts: &[
             ("j / k", "Next / previous task (or Up / Down)"),
-            ("l / h", "First child / parent; stay if there is no child"),
+            (
+                "l / h",
+                "Child / parent; in Projects, switch tabs at tree edges",
+            ),
+            (
+                "Right / Left",
+                "First child / parent; stay if there is no child",
+            ),
             ("Enter", "Collapse / expand the selected task's children"),
             ("gg / G", "First / last task"),
             ("3j / 2k", "Repeat a movement"),

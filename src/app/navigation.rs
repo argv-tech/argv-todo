@@ -114,9 +114,9 @@ impl App {
         self.normalize_selection();
     }
 
-    pub(super) fn select_child(&mut self) {
+    pub(super) fn select_child(&mut self) -> bool {
         let Some(id) = self.selected_todo().map(|todo| todo.id) else {
-            return;
+            return false;
         };
         if let Some(child) = self
             .todos
@@ -131,6 +131,9 @@ impl App {
             self.query.clear();
             self.select_id(child);
             self.message("Child selected.");
+            true
+        } else {
+            false
         }
     }
 

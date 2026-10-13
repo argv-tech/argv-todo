@@ -138,8 +138,10 @@ visibility rules above when adding or changing module boundaries.
   returns to the active tree. Keep the archive read-only and preserve live view state.
   Avoid separate task pages, dashboards, and large panels.
 - `j/k` selects visible tasks at every level. Return collapses or expands
-  children. `h` selects the parent. `l` expands and selects the first child and
-  stays selected if there are none. `i/a` creates a child, or a root when the
+  children. `h` selects the parent and `l` expands and selects the first child.
+  In Projects, `h` switches to the previous tab if there is no parent, and `l`
+  switches to the next tab if there is no child. Otherwise they stay selected.
+  Left/Right arrows navigate the tree in every layout. `i/a` creates a child, or a root when the
   list is empty.
 - Keep input hints short and adapt the layout to narrow terminals.
 - Keep help text and `README.md` consistent with the actual keybindings.

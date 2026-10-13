@@ -95,6 +95,8 @@ pub(crate) enum VimAction {
     PageDown,
     SwitchPane,
     SwitchPaneBackward,
+    ProjectRight(usize),
+    ProjectLeft(usize),
     ConvertProject,
     ClearCompleted,
     ShowDeleted,
