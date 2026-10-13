@@ -26,6 +26,9 @@ fn app() -> App {
         sort_order: crate::config::SortOrder::Priority,
         show_hints: true,
         completed_delete: crate::db::DeleteMode::Soft,
+        notifications: true,
+        notify_reminder_1_minutes: 60,
+        notify_reminder_2_minutes: 1440,
     });
     app
 }
@@ -237,6 +240,14 @@ fn settings_are_grouped_and_keyboard_navigation_skips_headings() {
                 ConfigSetting::CompletedDelete,
             ],
         ),
+        (
+            "NOTIFICATIONS",
+            &[
+                ConfigSetting::Notifications,
+                ConfigSetting::NotifyReminder1Minutes,
+                ConfigSetting::NotifyReminder2Minutes,
+            ],
+        ),
     ];
     terminal.draw(|frame| draw(frame, &mut app)).unwrap();
     let mut previous_y = 0;
@@ -255,7 +266,7 @@ fn settings_are_grouped_and_keyboard_navigation_skips_headings() {
             press(&mut app, KeyCode::Char('j'));
         }
     }
-    assert_eq!(app.config_setting, ConfigSetting::CompletedDelete);
+    assert_eq!(app.config_setting, ConfigSetting::NotifyReminder2Minutes);
     for &(_, settings) in groups.iter().rev() {
         for &setting in settings.iter().rev() {
             assert_eq!(app.config_setting, setting);
@@ -275,6 +286,7 @@ fn short_forms_keep_the_selected_category_and_setting_visible() {
             crate::app::ConfigCategory::Storage => "STORAGE",
             crate::app::ConfigCategory::Display => "DISPLAY",
             crate::app::ConfigCategory::TaskBehavior => "TASK BEHAVIOR",
+            crate::app::ConfigCategory::Notifications => "NOTIFICATIONS",
         };
         for height in [3, 2, 1, 0] {
             let area = Rect::new(4, 3, 35, height);

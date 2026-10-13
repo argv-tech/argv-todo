@@ -14,6 +14,7 @@ fn main() -> Result<()> {
         .with_context(|| format!("Could not open database {}", path.display()))?;
     let mut app = App::new(database)?;
     app.config = Some(config);
+    app.push_notify_schedule();
     ratatui::run(|terminal| -> Result<()> {
         let _guard = TerminalInputGuard;
         // Crossterm 0.29 reads native Windows key events, not bracketed-paste sequences.

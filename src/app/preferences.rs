@@ -28,6 +28,24 @@ impl App {
     pub(crate) fn show_hints(&self) -> bool {
         self.config.as_ref().is_none_or(|config| config.show_hints)
     }
+
+    pub(crate) fn notifications(&self) -> bool {
+        self.config
+            .as_ref()
+            .is_none_or(|config| config.notifications)
+    }
+
+    pub(crate) fn notify_reminder_1_minutes(&self) -> u32 {
+        self.config
+            .as_ref()
+            .map_or(60, |config| config.notify_reminder_1_minutes)
+    }
+
+    pub(crate) fn notify_reminder_2_minutes(&self) -> u32 {
+        self.config
+            .as_ref()
+            .map_or(1440, |config| config.notify_reminder_2_minutes)
+    }
 }
 
 #[cfg(test)]

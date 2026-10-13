@@ -189,9 +189,9 @@ fn setting_navigation_cycles_all_values_and_failed_saves_leave_behavior_intact()
     }
     assert_eq!(app.config_setting, ConfigSetting::DatabasePath);
     press(&mut app, KeyCode::BackTab);
-    assert_eq!(app.config_setting, ConfigSetting::CompletedDelete);
+    assert_eq!(app.config_setting, ConfigSetting::NotifyReminder2Minutes);
     press(&mut app, KeyCode::End);
-    assert_eq!(app.config_setting, ConfigSetting::CompletedDelete);
+    assert_eq!(app.config_setting, ConfigSetting::NotifyReminder2Minutes);
     press(&mut app, KeyCode::Home);
     press(&mut app, KeyCode::Char('3'));
     press(&mut app, KeyCode::Char('j'));
@@ -215,5 +215,34 @@ fn setting_navigation_cycles_all_values_and_failed_saves_leave_behavior_intact()
     app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
     assert!(app.error);
     assert_eq!(app.default_priority(), Priority::Low);
+    std::fs::remove_dir_all(folder).unwrap();
+}
+
+#[test]
+fn notification_settings_toggle_step_and_push() {
+    let (folder, mut app) = app();
+    assert!(app.notifications());
+    assert_eq!(app.notify_reminder_1_minutes(), 60);
+    assert_eq!(app.notify_reminder_2_minutes(), 1440);
+    change(&mut app, ConfigSetting::Notifications);
+    assert!(!app.notifications());
+    assert!(app.status.contains("notifications = false"));
+    change(&mut app, ConfigSetting::NotifyReminder1Minutes);
+    assert_eq!(app.notify_reminder_1_minutes(), 65);
+    assert!(app.status.contains("notify_reminder_1_minutes = 65"));
+    change(&mut app, ConfigSetting::NotifyReminder2Minutes);
+    assert_eq!(app.notify_reminder_2_minutes(), 1445);
+    app.configuring = true;
+    app.config_setting = ConfigSetting::NotifyReminder1Minutes;
+    press(&mut app, KeyCode::Char('3'));
+    press(&mut app, KeyCode::Char('l'));
+    assert_eq!(app.notify_reminder_1_minutes(), 80);
+    press(&mut app, KeyCode::Char('h'));
+    assert_eq!(app.notify_reminder_1_minutes(), 75);
+    // Reloading the config file picks the saved values back up.
+    app.config.as_mut().unwrap().reload().unwrap();
+    assert!(!app.notifications());
+    assert_eq!(app.notify_reminder_1_minutes(), 75);
+    assert_eq!(app.notify_reminder_2_minutes(), 1445);
     std::fs::remove_dir_all(folder).unwrap();
 }

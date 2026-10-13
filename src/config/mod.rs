@@ -20,10 +20,10 @@ use std::{
 use self::parsing::parse;
 use crate::db::{DeleteMode, Priority};
 
-const DEFAULT_CONFIG: &str = "# Paths are relative to this config file. --db overrides this setting.\ndatabase_path = \"db.sql\"\n\n# Task layouts: normal, split, projects. Changes apply immediately in Settings.\ntask_view = \"normal\"\n\n# New roots use this priority; children inherit their parent's priority.\ndefault_priority = \"mid\"\n\n# Normal and Projects views. Split always separates completed tasks.\nshow_completed = true\n\n# Sibling ordering: priority or manual. Shift+H/J/K/L moves tasks in manual mode.\nsort_order = \"priority\"\n\n# Alt+Enter clears completed tasks: soft retains records; hard removes them.\ncompleted_delete = \"soft\"\n\n# Show task and configuration footer shortcuts.\nshow_hints = true\n";
+const DEFAULT_CONFIG: &str = "# Paths are relative to this config file. --db overrides this setting.\ndatabase_path = \"db.sql\"\n\n# Task layouts: normal, split, projects. Changes apply immediately in Settings.\ntask_view = \"normal\"\n\n# New roots use this priority; children inherit their parent's priority.\ndefault_priority = \"mid\"\n\n# Normal and Projects views. Split always separates completed tasks.\nshow_completed = true\n\n# Sibling ordering: priority or manual. Shift+H/J/K/L moves tasks in manual mode.\nsort_order = \"priority\"\n\n# Alt+Enter clears completed tasks: soft retains records; hard removes them.\ncompleted_delete = \"soft\"\n\n# Show task and configuration footer shortcuts.\nshow_hints = true\n\n# Send upcoming deadlines to argv-todo-daemon for desktop notifications.\nnotifications = true\n\n# Extra reminders, in minutes before a deadline (0 disables each).\nnotify_reminder_1_minutes = 60\nnotify_reminder_2_minutes = 1440\n";
 
 pub struct Config {
-    pub(crate) path: PathBuf,
+    pub path: PathBuf,
     pub(crate) database_path: String,
     pub active_database: PathBuf,
     pub(crate) database_override: bool,
@@ -33,6 +33,9 @@ pub struct Config {
     pub(crate) sort_order: SortOrder,
     pub(crate) show_hints: bool,
     pub(crate) completed_delete: DeleteMode,
+    pub notifications: bool,
+    pub notify_reminder_1_minutes: u32,
+    pub notify_reminder_2_minutes: u32,
 }
 
 impl Config {
@@ -93,6 +96,9 @@ impl Config {
             sort_order: configured.sort_order,
             show_hints: configured.show_hints,
             completed_delete: configured.completed_delete,
+            notifications: configured.notifications,
+            notify_reminder_1_minutes: configured.notify_reminder_1_minutes,
+            notify_reminder_2_minutes: configured.notify_reminder_2_minutes,
         })
     }
 
@@ -108,6 +114,9 @@ impl Config {
         self.sort_order = configured.sort_order;
         self.show_hints = configured.show_hints;
         self.completed_delete = configured.completed_delete;
+        self.notifications = configured.notifications;
+        self.notify_reminder_1_minutes = configured.notify_reminder_1_minutes;
+        self.notify_reminder_2_minutes = configured.notify_reminder_2_minutes;
         Ok(())
     }
 }

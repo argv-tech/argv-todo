@@ -33,6 +33,9 @@ fn draw_preference(frame: &mut Frame, app: &App, setting: ConfigSetting, area: R
         ConfigSetting::SortOrder => "Order siblings; keep subtrees.",
         ConfigSetting::ShowHints => "Show footer shortcuts.",
         ConfigSetting::CompletedDelete => "Alt+Enter clears completed tasks.",
+        ConfigSetting::Notifications => "Notify argv-todo-daemon about deadlines.",
+        ConfigSetting::NotifyReminder1Minutes => "First reminder before a deadline.",
+        ConfigSetting::NotifyReminder2Minutes => "Second reminder before a deadline.",
         _ => return,
     };
     let mut lines = vec![
@@ -81,6 +84,21 @@ fn draw_preference(frame: &mut Frame, app: &App, setting: ConfigSetting, area: R
                 "Mode and errors stay visible.",
                 "Help is available with ?.",
                 "Enter / h / l toggles hints.",
+            ],
+            ConfigSetting::Notifications => &[
+                "The daemon must run separately.",
+                "Off skips schedule updates.",
+                "Enter / h / l toggles notifications.",
+            ],
+            ConfigSetting::NotifyReminder1Minutes => &[
+                "Enter / h / l steps five minutes.",
+                "Counts multiply the step.",
+                "0 disables this reminder.",
+            ],
+            ConfigSetting::NotifyReminder2Minutes => &[
+                "Enter / h / l steps five minutes.",
+                "Counts multiply the step.",
+                "0 disables this reminder.",
             ],
             _ => &[],
         };

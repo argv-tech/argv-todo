@@ -14,7 +14,8 @@ Notable changes to argv-todo, grouped by release.
 - **notes:** Support multiline editing and preserved line breaks ([6e6d7cb](https://github.com/argv-tech/argv-todo/commit/6e6d7cb717cc16933f8172e53bcf133dab9a14bb))
 - **projects:** Add keybinds to rename and delete projects ([503fd84](https://github.com/argv-tech/argv-todo/commit/503fd84a7d9168383aa74561a76df8c0bfd02acb))
 - **deletion:** Require confirmation for destructive deletions ([3f8e59b](https://github.com/argv-tech/argv-todo/commit/3f8e59beebc07dd3f828132076cca8952dd38c28))
-- **deadlines:** Add optional date-time deadlines with calendar picker ([4381303](https://github.com/argv-tech/argv-todo/commit/43813039d77cdaf0aab5a03980109f6479f5b5f9))
+- **deadlines:** Add optional date-time deadlines with calendar picker ([afa7023](https://github.com/argv-tech/argv-todo/commit/afa7023d218acbc8ec46957950e22c96ca9fbe6d))
+- **notify:** Add argv-todo-daemon deadline notifications ([55feee0](https://github.com/argv-tech/argv-todo/commit/55feee048d266b37ad213eacb13012eb821ecbf6))
 
 ### Fixed
 

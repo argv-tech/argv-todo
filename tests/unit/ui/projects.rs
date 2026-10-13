@@ -37,6 +37,9 @@ fn app() -> App {
         sort_order: SortOrder::Priority,
         show_hints: true,
         completed_delete: crate::db::DeleteMode::Soft,
+        notifications: true,
+        notify_reminder_1_minutes: 60,
+        notify_reminder_2_minutes: 1440,
     });
     app
 }

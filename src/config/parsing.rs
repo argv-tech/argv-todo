@@ -11,6 +11,9 @@ pub(super) struct Settings {
     pub(super) sort_order: SortOrder,
     pub(super) show_hints: bool,
     pub(super) completed_delete: DeleteMode,
+    pub(super) notifications: bool,
+    pub(super) notify_reminder_1_minutes: u32,
+    pub(super) notify_reminder_2_minutes: u32,
 }
 
 pub(super) fn parse(content: &str) -> Result<Settings> {
@@ -26,6 +29,9 @@ pub(super) fn parse(content: &str) -> Result<Settings> {
                     | "sort_order"
                     | "show_hints"
                     | "completed_delete"
+                    | "notifications"
+                    | "notify_reminder_1_minutes"
+                    | "notify_reminder_2_minutes"
             ),
             "Unknown setting: {key}"
         );
@@ -78,7 +84,23 @@ pub(super) fn parse(content: &str) -> Result<Settings> {
                 _ => anyhow::bail!("completed_delete must be soft or hard"),
             },
         },
+        notifications: boolean(&table, "notifications", true)?,
+        notify_reminder_1_minutes: reminder_minutes(&table, "notify_reminder_1_minutes", 60)?,
+        notify_reminder_2_minutes: reminder_minutes(&table, "notify_reminder_2_minutes", 1440)?,
     })
+}
+
+fn reminder_minutes(table: &toml::Table, key: &str, default: u32) -> Result<u32> {
+    match table.get(key) {
+        None => Ok(default),
+        Some(value) => {
+            let minutes = value
+                .as_integer()
+                .with_context(|| format!("{key} must be an integer"))?;
+            ensure!((0..=10080).contains(&minutes), "{key} must be 0-10080");
+            Ok(minutes as u32)
+        }
+    }
 }
 
 fn boolean(table: &toml::Table, key: &str, default: bool) -> Result<bool> {

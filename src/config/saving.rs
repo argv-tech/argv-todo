@@ -54,6 +54,30 @@ impl Config {
         Ok(())
     }
 
+    pub(crate) fn save_notifications(&mut self, enabled: bool) -> Result<()> {
+        self.save_setting("notifications", toml::Value::Boolean(enabled))?;
+        self.notifications = enabled;
+        Ok(())
+    }
+
+    pub(crate) fn save_notify_reminder_1_minutes(&mut self, minutes: u32) -> Result<()> {
+        self.save_setting(
+            "notify_reminder_1_minutes",
+            toml::Value::Integer(i64::from(minutes)),
+        )?;
+        self.notify_reminder_1_minutes = minutes;
+        Ok(())
+    }
+
+    pub(crate) fn save_notify_reminder_2_minutes(&mut self, minutes: u32) -> Result<()> {
+        self.save_setting(
+            "notify_reminder_2_minutes",
+            toml::Value::Integer(i64::from(minutes)),
+        )?;
+        self.notify_reminder_2_minutes = minutes;
+        Ok(())
+    }
+
     fn save_setting(&self, setting: &str, value: toml::Value) -> Result<()> {
         let mut content = fs::read_to_string(&self.path)
             .with_context(|| format!("Could not read config {}", self.path.display()))?;

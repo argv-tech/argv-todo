@@ -4,7 +4,7 @@ use rusqlite::{
 };
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) enum Priority {
+pub enum Priority {
     High = 1,
     #[default]
     Mid = 3,
@@ -49,7 +49,7 @@ impl FromSql for Priority {
 pub(crate) const DEFAULT_PRIORITY: Priority = Priority::Mid;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Todo {
+pub struct Todo {
     pub(crate) id: i64,
     pub(crate) title: String,
     pub(crate) note: String,

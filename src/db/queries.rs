@@ -4,7 +4,7 @@ use rusqlite::{OptionalExtension, params};
 use super::{Database, Priority, Todo};
 
 impl Database {
-    pub(crate) fn list(&self) -> Result<Vec<Todo>> {
+    pub fn list(&self) -> Result<Vec<Todo>> {
         self.list_by_deleted(false)
     }
 

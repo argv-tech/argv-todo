@@ -47,6 +47,7 @@ fn draw_category(frame: &mut Frame, category: ConfigCategory, area: Rect) {
         ConfigCategory::Storage => "STORAGE",
         ConfigCategory::Display => "DISPLAY",
         ConfigCategory::TaskBehavior => "TASK BEHAVIOR",
+        ConfigCategory::Notifications => "NOTIFICATIONS",
     };
     frame.render_widget(
         Paragraph::new(title).style(Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
@@ -131,9 +132,10 @@ pub(super) fn draw_form(frame: &mut Frame, app: &App, area: Rect) {
             ));
             setting.name().len() + 2
         };
+        let value = setting.value(app);
         spans.push(Span::styled(
             truncate(
-                setting.value(app),
+                value.as_str(),
                 usize::from(area.width).saturating_sub(label_width + 2),
             ),
             value_style,

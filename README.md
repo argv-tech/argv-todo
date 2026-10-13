@@ -89,7 +89,7 @@ For Windows paths in TOML, use literal strings such as `database_path = 'C:\User
 
 The app reads settings on startup and when opening configuration, preserving existing config files and comments. An empty config uses `db.sql` and the normal task view. Invalid TOML, unknown settings, invalid layout names, and invalid database paths produce an error before the terminal interface opens. `--help` and `--version` do not create files.
 
-Press `Esc` from the task view to open configuration. Settings are grouped under **Storage** (`database_path`), **Display** (`task_view`, `show_completed`, `show_hints`), and **Task behavior** (`default_priority`, `sort_order`, `completed_delete`). Use `j` / `k`, arrows, or `Tab` / `Shift-Tab` to select settings across categories, skipping their headings. `gg` / `G` or `Home` / `End` selects the first / last setting. Short panes scroll to the selected setting and keep its category visible when space permits. At 74 columns or wider, the screen shows settings on the left and details for the selected setting on the right. Selecting `database_path` shows database and configuration-file paths; selecting `task_view` shows the active layout, its controls, and a small layout preview when space permits. Details update as you select or change a setting. Smaller terminals stack these sections and keep the details concise. Paths wrap in spacious panes and show an ellipsis when space is limited. The screen shows the ARGV-TODO ASCII logo when space permits. On `database_path`, press `Enter`, `e`, or `i` to edit, then `Enter` to save. Editing uses the same Unicode controls and paste support as task titles. Database-path changes apply on the next launch; the current database stays open, and `--db` retains precedence.
+Press `Esc` from the task view to open configuration. Settings are grouped under **Storage** (`database_path`), **Display** (`task_view`, `show_completed`, `show_hints`), **Task behavior** (`default_priority`, `sort_order`, `completed_delete`), and **Notifications** (`notifications`, `notify_reminder_1_minutes`, `notify_reminder_2_minutes`). Use `j` / `k`, arrows, or `Tab` / `Shift-Tab` to select settings across categories, skipping their headings. `gg` / `G` or `Home` / `End` selects the first / last setting. Short panes scroll to the selected setting and keep its category visible when space permits. At 74 columns or wider, the screen shows settings on the left and details for the selected setting on the right. Selecting `database_path` shows database and configuration-file paths; selecting `task_view` shows the active layout, its controls, and a small layout preview when space permits. Details update as you select or change a setting. Smaller terminals stack these sections and keep the details concise. Paths wrap in spacious panes and show an ellipsis when space is limited. The screen shows the ARGV-TODO ASCII logo when space permits. On `database_path`, press `Enter`, `e`, or `i` to edit, then `Enter` to save. Editing uses the same Unicode controls and paste support as task titles. Database-path changes apply on the next launch; the current database stays open, and `--db` retains precedence.
 
 On `task_view`, press `Enter`, `e`, `i`, `h` / `l`, or Left / Right to cycle through `normal`, `split`, and `projects`. The choice saves to TOML and applies immediately. Press `Esc` to return to tasks without restarting. Normal keeps the full task tree. Split shows unfinished todos on the left and completed tasks on the right, stacking them below 70 columns. Unfinished ancestors of completed children appear in the Completed pane as dimmed ghost rows labeled `(parent)`. These rows provide context and are skipped by selection and task commands. An obsolete `nested` setting falls back to Normal.
 
@@ -108,6 +108,40 @@ Press `A` to browse all soft-deleted tasks, including tasks from other projects 
 A database preview labeled “after restart” appears below the active database when the draft or saved setting resolves to a different path. Relative paths resolve against the config directory. The preview updates while editing; `--db` still takes precedence on launch.
 
 While editing configuration, `Esc` discards the draft and returns to the configuration view. Press `Esc` again to return to tasks. In the task view, `Esc` first cancels active input, closes help, or clears an applied search; press it again to open configuration.
+
+## Deadline notifications
+
+`argv-todo-daemon` runs in the background and sends native desktop notifications for deadlines. Start it independently; the TUI never starts it:
+
+```sh
+argv-todo-daemon &
+```
+
+Both binaries must use the same database: pass the same `--db` path to each, or use the default location. The daemon reads the schedule from SQLite once at startup, then the TUI pushes updates whenever tasks change. A second daemon exits while one is already running. Each deadline notifies three times at most — two reminders plus the deadline itself — once per daemon run; editing the deadline re-arms all three.
+
+Three settings control notifications, editable on the settings page or directly in TOML:
+
+```toml
+notifications = true
+notify_reminder_1_minutes = 60
+notify_reminder_2_minutes = 1440
+```
+
+`notifications` is the master switch; when off, the TUI stops sending schedule updates. `notify_reminder_1_minutes` and `notify_reminder_2_minutes` (0–10080 each, 0 disables that reminder) set how many minutes before a deadline each reminder fires; the deadline itself always notifies at its time. On the settings page `Enter` / `h` / `l` steps five minutes and counts multiply the step. Notification urgency follows the time left — overdue or due now is critical, due within a day is normal, earlier is low — and high-priority tasks bump one level up. Setting changes apply without restarting the daemon.
+
+Autostart options per platform:
+
+```sh
+# systemd user unit (~/.config/systemd/user/argv-todo-daemon.service)
+systemctl --user enable --now argv-todo-daemon
+```
+
+```xml
+<!-- launchd (~/Library/LaunchAgents/tech.argv.argv-todo-daemon.plist) -->
+<!-- ProgramArguments: /path/to/argv-todo-daemon -->
+```
+
+On Windows, point Task Scheduler at `argv-todo-daemon.exe` with the "At log on" trigger.
 
 ## Keys
 

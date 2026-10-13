@@ -44,10 +44,15 @@ code-of-conduct = "https://github.com/argv-tech/argv-todo/blob/main/CODE_OF_COND
 name = "argv-todo"
 path = "src/bin/argv-todo.rs"
 
+[[bin]]
+name = "argv-todo-daemon"
+path = "src/bin/argv-todo-daemon.rs"
+
 [dependencies]
 anyhow = "1"
 crossterm = "0.29"
 dirs = "6"
+notify-rust = "4"
 ratatui = "0.30.2"
 rusqlite = { version = "0.40.2", features = ["bundled"] }
 toml = { version = "1.0", default-features = false, features = ["std", "parse", "serde", "display"] }

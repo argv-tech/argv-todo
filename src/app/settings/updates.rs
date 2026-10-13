@@ -7,6 +7,11 @@ use crate::{
     vim_motion::{InputTarget, Motion, VimAction, VimMode},
 };
 
+fn step_minutes(current: u32, forward: bool, steps: usize) -> u32 {
+    let delta = steps as i64 * 5 * if forward { 1 } else { -1 };
+    (i64::from(current) + delta).clamp(0, 10080) as u32
+}
+
 impl App {
     pub(in crate::app) fn open_config(&mut self) -> Result<()> {
         let selected_id = self.selected_todo().map(|todo| todo.id);
@@ -42,6 +47,11 @@ impl App {
             } else {
                 (3 - count % 3) % 3
             }
+        } else if self.config_setting == ConfigSetting::NotifyReminder1Minutes
+            || self.config_setting == ConfigSetting::NotifyReminder2Minutes
+        {
+            // Each step is five minutes; counts multiply it.
+            count
         } else {
             count % 2
         };
@@ -70,6 +80,21 @@ impl App {
             ConfigSetting::CompletedDelete => {
                 config.save_completed_delete(config.completed_delete.next())?
             }
+            ConfigSetting::Notifications => config.save_notifications(!config.notifications)?,
+            ConfigSetting::NotifyReminder1Minutes => {
+                config.save_notify_reminder_1_minutes(step_minutes(
+                    config.notify_reminder_1_minutes,
+                    forward,
+                    steps,
+                ))?;
+            }
+            ConfigSetting::NotifyReminder2Minutes => {
+                config.save_notify_reminder_2_minutes(step_minutes(
+                    config.notify_reminder_2_minutes,
+                    forward,
+                    steps,
+                ))?;
+            }
         }
         self.reconcile_task_view(selected_id);
         self.message(format!(
@@ -77,6 +102,7 @@ impl App {
             self.config_setting.name(),
             self.config_setting.value(self)
         ));
+        self.push_notify_schedule();
         Ok(())
     }
 

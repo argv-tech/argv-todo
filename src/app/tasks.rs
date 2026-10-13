@@ -25,7 +25,17 @@ impl App {
             self.select_id(id);
         }
         self.normalize_selection();
+        self.push_notify_schedule();
         Ok(())
+    }
+
+    /// Best-effort schedule push to the daemon. A missing daemon or disabled
+    /// notifications silently skip; never fails.
+    pub fn push_notify_schedule(&self) {
+        let Some(config) = &self.config else {
+            return;
+        };
+        crate::notify::push_schedule(config, &self.todos);
     }
 
     pub(super) fn apply_tasks(&mut self, action: VimAction) -> Result<()> {

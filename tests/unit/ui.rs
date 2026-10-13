@@ -109,6 +109,9 @@ fn database_preview_tracks_drafts_and_saved_paths() {
         sort_order: crate::config::SortOrder::Priority,
         show_hints: true,
         completed_delete: crate::db::DeleteMode::Soft,
+        notifications: true,
+        notify_reminder_1_minutes: 60,
+        notify_reminder_2_minutes: 1440,
     });
     let mut terminal = Terminal::new(TestBackend::new(120, 35)).unwrap();
     let absolute = folder.join("absolute.sql").display().to_string();
@@ -184,6 +187,9 @@ fn database_preview_remains_visible_on_resize() {
         sort_order: crate::config::SortOrder::Priority,
         show_hints: true,
         completed_delete: crate::db::DeleteMode::Soft,
+        notifications: true,
+        notify_reminder_1_minutes: 60,
+        notify_reminder_2_minutes: 1440,
     });
     let mut terminal = Terminal::new(TestBackend::new(120, 35)).unwrap();
     for (width, height) in [(120, 35), (100, 17), (74, 12), (73, 12), (35, 12)] {
@@ -230,6 +236,9 @@ fn config_view_shows_logo_when_it_fits_and_keeps_editor_visible() {
         sort_order: crate::config::SortOrder::Priority,
         show_hints: true,
         completed_delete: crate::db::DeleteMode::Soft,
+        notifications: true,
+        notify_reminder_1_minutes: 60,
+        notify_reminder_2_minutes: 1440,
     });
     for (width, height) in [(20, 5), (35, 12), (60, 16), (80, 24), (120, 35)] {
         let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
@@ -702,6 +711,9 @@ fn configuration_splits_editor_and_paths_then_stacks_on_resize() {
         sort_order: crate::config::SortOrder::Priority,
         show_hints: true,
         completed_delete: crate::db::DeleteMode::Soft,
+        notifications: true,
+        notify_reminder_1_minutes: 60,
+        notify_reminder_2_minutes: 1440,
     });
     let mut terminal = Terminal::new(TestBackend::new(100, 17)).unwrap();
     for (width, height) in [(100, 17), (74, 12), (73, 12), (35, 12), (120, 35)] {

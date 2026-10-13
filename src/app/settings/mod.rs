@@ -6,6 +6,7 @@ pub(crate) enum ConfigCategory {
     Storage,
     Display,
     TaskBehavior,
+    Notifications,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -18,4 +19,7 @@ pub(crate) enum ConfigSetting {
     SortOrder,
     CompletedDelete,
     ShowHints,
+    Notifications,
+    NotifyReminder1Minutes,
+    NotifyReminder2Minutes,
 }

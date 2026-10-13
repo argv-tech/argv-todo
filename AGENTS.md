@@ -78,8 +78,10 @@ Current source layout:
 
 | Module            | Responsibility                                                  |
 | ----------------- | --------------------------------------------------------------- |
-| `src/lib.rs`      | Library root for the binary; exposes `app`, `cli`, `config`, `db` |
+| `src/lib.rs`      | Library root for the binaries; exposes `app`, `cli`, `config`, `db`, `notify` |
 | `src/bin/argv-todo.rs` | Startup, terminal setup and cleanup                      |
+| `src/bin/argv-todo-daemon.rs` | Standalone deadline notifier; loopback schedule server |
+| `src/notify.rs`     | Deadline due selection and the TUI-to-daemon push protocol |
 | `src/app/`        | State, actions, editing, task notes, events, tree navigation, folding, settings, tasks, completed-task cleanup and deletion undo, pane focus and projections |
 | `src/app/archive/` | Archive browsing, tree restoration, and confirmed permanent cleanup while preserving live view state |
 | `src/app/projects/` | Project tabs, per-project selection and scrolling, project creation, task conversion and tree assignment |

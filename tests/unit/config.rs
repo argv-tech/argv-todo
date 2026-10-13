@@ -13,6 +13,9 @@ fn accepts_toml_and_rejects_invalid_settings() {
     assert!(defaults.show_completed && defaults.show_hints);
     assert_eq!(defaults.sort_order, SortOrder::Priority);
     assert_eq!(defaults.completed_delete, DeleteMode::Soft);
+    assert!(defaults.notifications);
+    assert_eq!(defaults.notify_reminder_1_minutes, 60);
+    assert_eq!(defaults.notify_reminder_2_minutes, 1440);
     assert_eq!(
         parse("task_view = 'nested'").unwrap().task_view,
         TaskView::Normal
@@ -44,6 +47,15 @@ fn accepts_toml_and_rejects_invalid_settings() {
         "sort_order = false",
         "completed_delete = false",
         "completed_delete = 'trash'",
+        "notifications = 'true'",
+        "notifications = 1",
+        "notify_reminder_1_minutes = '60'",
+        "notify_reminder_1_minutes = 1.5",
+        "notify_reminder_1_minutes = -1",
+        "notify_reminder_1_minutes = 10081",
+        "notify_reminder_2_minutes = '1440'",
+        "notify_lead_minutes = 15",
+        "notify_everything = true",
     ] {
         assert!(parse(content).is_err(), "Accepted {content}");
     }
@@ -63,6 +75,19 @@ fn accepts_toml_and_rejects_invalid_settings() {
             mode
         );
     }
+    assert!(!parse("notifications = false").unwrap().notifications);
+    assert_eq!(
+        parse("notify_reminder_1_minutes = 0")
+            .unwrap()
+            .notify_reminder_1_minutes,
+        0
+    );
+    assert_eq!(
+        parse("notify_reminder_2_minutes = 90")
+            .unwrap()
+            .notify_reminder_2_minutes,
+        90
+    );
 }
 
 #[test]

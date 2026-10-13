@@ -40,6 +40,9 @@ fn archive_shows_every_project_despite_search_and_preserves_live_state() {
             sort_order: SortOrder::Priority,
             show_hints: true,
             completed_delete: DeleteMode::Soft,
+            notifications: true,
+            notify_reminder_1_minutes: 60,
+            notify_reminder_2_minutes: 1440,
         });
         app.query = "Live parent".into();
         app.normalize_selection();

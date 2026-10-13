@@ -4,5 +4,6 @@ pub mod app;
 pub mod cli;
 pub mod config;
 pub mod db;
+pub mod notify;
 mod ui;
 mod vim_motion;
