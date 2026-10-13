@@ -5,12 +5,20 @@ use super::{Database, Priority, Todo};
 
 impl Database {
     pub(crate) fn list(&self) -> Result<Vec<Todo>> {
+        self.list_by_deleted(false)
+    }
+
+    pub(crate) fn list_deleted(&self) -> Result<Vec<Todo>> {
+        self.list_by_deleted(true)
+    }
+
+    fn list_by_deleted(&self, deleted: bool) -> Result<Vec<Todo>> {
         let mut statement = self.connection.prepare(
             "SELECT id, title, done, created_at, updated_at, parent_id, priority, position, note, project_id, deleted
-             FROM todos WHERE deleted = 0 ORDER BY priority ASC, position ASC, id ASC",
+             FROM todos WHERE deleted = ?1 ORDER BY priority ASC, position ASC, id ASC",
         )?;
         Ok(statement
-            .query_map([], Self::todo_from_row)?
+            .query_map([deleted], Self::todo_from_row)?
             .collect::<rusqlite::Result<_>>()?)
     }
 

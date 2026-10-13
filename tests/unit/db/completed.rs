@@ -100,12 +100,20 @@ fn archived_tasks_remain_hidden_after_reopen_and_ignore_active_updates() {
     let archived = db.add("Completed", Some(root), Priority::Mid).unwrap();
     db.update_note(archived, "Archived note").unwrap();
     db.toggle(archived).unwrap();
+    let mut expected = db
+        .list()
+        .unwrap()
+        .into_iter()
+        .find(|todo| todo.id == archived)
+        .unwrap();
+    expected.deleted = true;
     let deletion = db
         .delete_completed(TaskScope::All, DeleteMode::Soft)
         .unwrap();
     let mut db = Database::initialize(db.connection).unwrap();
     assert_eq!(db.list().unwrap().len(), 1);
     assert_eq!(count(&db, true), 1);
+    assert_eq!(db.list_deleted().unwrap(), [expected]);
     assert!(db.toggle(archived).is_err());
     assert!(db.update_note(archived, "Overwrite").is_err());
     assert!(db.add("Child", Some(archived), Priority::Mid).is_err());
@@ -123,6 +131,7 @@ fn archived_tasks_remain_hidden_after_reopen_and_ignore_active_updates() {
         .unwrap();
     assert!(done);
     db.restore_completed(&deletion).unwrap();
+    assert!(db.list_deleted().unwrap().is_empty());
     assert_eq!(db.list().unwrap().len(), 2);
     assert_eq!(
         db.list()

@@ -169,13 +169,14 @@ fn footer_hint(app: &App, width: usize) -> &'static str {
         ]
     } else if !app.query.is_empty() {
         &[
-            "j/k move · i child · n note · Esc clear · ? help · q quit",
+            "j/k move · i child · A archive · n note · Esc clear · ? help · q quit",
             "Esc clear · ? help · q quit",
             "Esc clear · ? · q",
         ]
     } else if app.task_view() == TaskView::Projects {
         &[
-            "Tab project · P new · C convert · m move · Alt-Enter clear done · n note · Esc config · ? help · q quit",
+            "Tab project · P new · C convert · m move · A archive · Alt-Enter clear done · n note · Esc config · ? help · q quit",
+            "Tab project · P new · A archive · n note · Esc config · ? · q",
             "Tab project · P new · C convert · m move · n note · Esc config · ? · q",
             "Tab project · P new · m move · ? · q",
             "Tab · P new · m move · ? · q",
@@ -183,8 +184,8 @@ fn footer_hint(app: &App, width: usize) -> &'static str {
         ]
     } else if app.task_view() == TaskView::Split {
         &[
-            "Tab pane · j/k move · h/l tree · Enter fold · i child · n note · Esc config · ? help · q quit",
-            "Tab pane · j/k move · n note · Esc config · ? help · q quit",
+            "Tab pane · j/k move · h/l tree · Enter fold · i child · A archive · n note · Esc config · ? help · q quit",
+            "Tab pane · j/k move · A archive · n note · Esc config · ? help · q quit",
             "Tab pane · n note · Esc config · ? · q",
             "Tab pane · Esc config · ? · q",
             "Tab pane · ? · q",
@@ -192,8 +193,9 @@ fn footer_hint(app: &App, width: usize) -> &'static str {
         ]
     } else {
         &[
-            "j/k move · h/l tree · i/a child · o/O sibling · n note · Enter fold · x done · t priority · Esc config · ? help · q quit",
-            "j/k move · P project · C convert · Alt-Enter clear done · n note · Esc config · ? · q",
+            "j/k move · h/l tree · i/a child · o/O sibling · n note · A archive · Enter fold · x done · t priority · Esc config · ? help · q quit",
+            "j/k move · P project · C convert · A archive · Alt-Enter clear done · n note · Esc config · ? · q",
+            "j/k move · i child · A archive · n note · Esc config · ? · q",
             "j/k move · i child · P project · n note · Esc config · ? · q",
             "j/k move · i child · n note · Esc config · ? help · q quit",
             "i child · o/O sibling · n note · Esc config · ? help · q quit",

@@ -101,7 +101,9 @@ Press `P` from the task view to create a project; this opens Projects and saves 
 
 Press `C` on a top-level task to create a project named after its title and open that tab. The original task and all descendants stay together inside the new project, including their notes, completion state, and priorities. Conversion saves atomically; a duplicate or reserved project name leaves the task tree intact. Child tasks cannot be converted directly.
 
-`Alt+Enter` (also called `Alt+Return`) clears completed tasks, including those hidden by search or folding. In Projects it affects the active project; in Normal and Split it affects all projects. Unfinished descendants are retained under their nearest surviving ancestor, or promoted to roots when necessary. In Settings, `completed_delete` selects **soft** (the default, hides tasks and retains their SQLite records) or **hard** (removes records). The choice saves and applies immediately. Add `completed_delete = "hard"` or `completed_delete = "soft"` to TOML to configure it directly. Press `u` to undo either mode during the same session; undo restores task data and original parent links. Soft-deleted records remain hidden after restart; session undo is the available in-app restoration mechanism.
+`Alt+Enter` (also called `Alt+Return`) clears completed tasks, including those hidden by search or folding. In Projects it affects the active project; in Normal and Split it affects all projects. Unfinished descendants are retained under their nearest surviving ancestor, or promoted to roots when necessary. In Settings, `completed_delete` selects **soft** (the default, hides tasks and retains their SQLite records) or **hard** (removes records). The choice saves and applies immediately. Add `completed_delete = "hard"` or `completed_delete = "soft"` to TOML to configure it directly. Press `u` to undo either mode during the same session; undo restores task data and original parent links. Soft-deleted records stay out of the active tree after restart; session undo is the available in-app restoration mechanism.
+
+Press `A` to browse all soft-deleted tasks, including tasks from other projects and tasks hidden by your current search. The read-only archive labels each task's project and shows its saved note at the bottom. Use `j` / `k` or arrows to select a task, `gg` / `G` or `Home` / `End` for the first / last task, and `Ctrl-r` to reload. Task changes and deletion shortcuts are ignored in the archive. Press `A` or `Esc` to return with your previous project, pane, selection, search, and folds intact. Hard-deleted tasks do not appear here.
 
 A database preview labeled “after restart” appears below the active database when the draft or saved setting resolves to a different path. Relative paths resolve against the config directory. The preview updates while editing; `--db` still takes precedence on launch.
 
@@ -123,6 +125,7 @@ While editing configuration, `Esc` discards the draft and returns to the configu
 | `C` | Convert a top-level task to a project, keeping its whole tree |
 | `m` | Move the selected task tree to a project |
 | `Alt+Enter` / `Alt+Return` | Clear completed tasks using the configured deletion mode |
+| `A` | Show all soft-deleted tasks; `A` or `Esc` returns |
 | `e`, `cc` | Edit selected task |
 | `n` | Add or edit the selected task's note in the bottom section |
 | `t` | Cycle priority: low → mid → high → low |

@@ -21,6 +21,10 @@ Include the following in a private report:
 
 Maintainers will investigate and coordinate a fix and disclosure as availability allows. There is no guaranteed response time or bug bounty.
 
+## Dependency alerts
+
+Dependabot security alerts are enabled on GitHub. Notification delivery follows your GitHub notification preferences. Automatic security-update pull requests are disabled in the repository settings, and `.github/dependabot.yml` sets version-update PR limits to zero for Cargo and GitHub Actions. Review dependency alerts and update dependencies manually.
+
 ## Local data
 
 Tasks are stored in a local SQLite database. The database is not encrypted by the application. Anyone with access to the file may be able to read or change its contents; protect it using your operating system's permissions and storage protections.

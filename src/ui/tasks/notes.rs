@@ -18,11 +18,12 @@ pub(in crate::ui) fn note_height(app: &App, area: Rect) -> u16 {
     if area.is_empty() {
         return 0;
     }
-    let tree_rows = if app.task_view() == TaskView::Split && area.width < 70 {
-        5
-    } else {
-        3
-    };
+    let tree_rows =
+        if app.archive.is_none() && app.task_view() == TaskView::Split && area.width < 70 {
+            5
+        } else {
+            3
+        };
     if app.vim.input() == Some(InputTarget::Note) {
         return area.height.min(2);
     }
@@ -46,7 +47,7 @@ pub(in crate::ui) fn draw_note(frame: &mut Frame, app: &App, area: Rect) {
         ""
     } else if editing {
         " Enter save "
-    } else if app.selected_todo().is_some() && !adding_task(app) {
+    } else if app.archive.is_none() && app.selected_todo().is_some() && !adding_task(app) {
         " n edit "
     } else {
         ""
@@ -59,7 +60,7 @@ pub(in crate::ui) fn draw_note(frame: &mut Frame, app: &App, area: Rect) {
             .add_modifier(Modifier::BOLD),
     )];
     if !adding_task(app)
-        && let Some(todo) = app.selected_todo()
+        && let Some(todo) = app.note_todo()
         && title_width > 0
     {
         title.push(Span::styled(
@@ -115,7 +116,7 @@ fn adding_task(app: &App) -> bool {
 fn note_text(app: &App) -> (&str, ratatui::style::Color) {
     if adding_task(app) {
         ("Save the task before adding a note.", MUTED)
-    } else if let Some(todo) = app.selected_todo() {
+    } else if let Some(todo) = app.note_todo() {
         if todo.note.is_empty() {
             ("No note yet.", MUTED)
         } else {

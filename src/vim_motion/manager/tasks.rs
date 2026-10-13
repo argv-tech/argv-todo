@@ -42,6 +42,12 @@ impl VimManager {
                 return action;
             }
         }
+        if key.code == KeyCode::Char('A')
+            || (key.code == KeyCode::Char('a') && key.modifiers.contains(KeyModifiers::SHIFT))
+        {
+            self.reset();
+            return (key.kind == KeyEventKind::Press).then_some(VimAction::ShowDeleted);
+        }
         if key.code == KeyCode::Char('C')
             || (key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::SHIFT))
         {

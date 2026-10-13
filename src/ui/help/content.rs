@@ -71,6 +71,14 @@ const SECTIONS: &[Section] = &[
             ),
             ("Ctrl-r", "Reload tasks from disk"),
             (
+                "A",
+                "Show soft-deleted tasks from all projects; A or Esc returns",
+            ),
+            (
+                "Archive j / k",
+                "Browse read-only tasks and notes; Ctrl-r reloads",
+            ),
+            (
                 "Settings j / k",
                 "Select a setting; Tab / Shift-Tab cycles settings",
             ),

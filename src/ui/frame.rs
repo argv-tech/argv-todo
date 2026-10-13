@@ -39,6 +39,10 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
         draw_config(frame, app, workspace(area));
         return;
     }
+    if app.archive.is_some() {
+        super::archive::draw_archive(frame, app, workspace(area));
+        return;
+    }
     let show_input = matches!(
         app.vim.input(),
         Some(InputTarget::Search | InputTarget::ProjectName)

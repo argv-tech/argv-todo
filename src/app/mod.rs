@@ -1,4 +1,5 @@
 mod actions;
+mod archive;
 mod deletion;
 mod editing;
 mod events;
@@ -47,6 +48,7 @@ pub(crate) struct App {
     pub(crate) list: ListState,
     panes: TaskPanes,
     projects: projects::ProjectState,
+    pub(crate) archive: Option<archive::ArchivedTasks>,
     collapsed: HashSet<i64>,
     pub(crate) vim: VimManager,
     pub(crate) editor: Editor,
@@ -76,6 +78,7 @@ impl App {
             list: ListState::default(),
             panes: TaskPanes::default(),
             projects,
+            archive: None,
             collapsed: HashSet::new(),
             vim: VimManager::default(),
             editor: Editor::default(),

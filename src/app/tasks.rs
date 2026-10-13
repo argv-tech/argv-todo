@@ -79,6 +79,7 @@ impl App {
             }
             VimAction::ConvertProject => self.convert_selected_project()?,
             VimAction::ClearCompleted => self.clear_completed()?,
+            VimAction::ShowDeleted => self.open_archive()?,
             VimAction::AddProject => self.begin_project()?,
             VimAction::AssignProject => self.begin_project_move(),
             VimAction::AddChild => {

@@ -1,6 +1,54 @@
 use super::*;
 
 #[test]
+fn archive_shortcut_is_press_only_and_keeps_editor_append_and_modal_focus() {
+    let mut vim = VimManager::default();
+    for key in [
+        KeyEvent::new(KeyCode::Char('A'), KeyModifiers::NONE),
+        KeyEvent::new(KeyCode::Char('a'), KeyModifiers::SHIFT),
+    ] {
+        assert_eq!(vim.handle(key), Some(VimAction::ShowDeleted));
+        for kind in [KeyEventKind::Repeat, KeyEventKind::Release] {
+            assert_eq!(
+                vim.handle(KeyEvent::new_with_kind(key.code, key.modifiers, kind)),
+                None
+            );
+        }
+    }
+    assert_eq!(
+        vim.handle(KeyEvent::new(KeyCode::Char('A'), KeyModifiers::ALT)),
+        None
+    );
+    assert_eq!(
+        vim.handle_project_picker(KeyEvent::new(KeyCode::Char('A'), KeyModifiers::NONE)),
+        None
+    );
+    assert_eq!(
+        vim.handle_help(KeyEvent::new(KeyCode::Char('A'), KeyModifiers::NONE)),
+        None
+    );
+    for target in [
+        InputTarget::Task,
+        InputTarget::Note,
+        InputTarget::Search,
+        InputTarget::DatabasePath,
+        InputTarget::ProjectName,
+    ] {
+        vim.begin_input(target);
+        assert_eq!(
+            vim.handle(KeyEvent::new(KeyCode::Char('A'), KeyModifiers::SHIFT)),
+            Some(VimAction::Insert('A'))
+        );
+        vim.set_mode(VimMode::Normal);
+        assert!(matches!(
+            vim.handle(KeyEvent::new(KeyCode::Char('A'), KeyModifiers::SHIFT)),
+            Some(VimAction::Input(EditAction::Insert(InsertPosition::End, 1)))
+        ));
+        vim.end_input();
+    }
+}
+
+#[test]
 fn project_commands_and_picker_keep_fields_modifiers_and_key_kinds_isolated() {
     let mut manager = VimManager::default();
     assert_eq!(

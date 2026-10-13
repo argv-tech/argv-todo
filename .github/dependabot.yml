@@ -1,19 +1,14 @@
 version: 2
+# Notify through Dependabot alerts; do not open version-update PRs.
+# Automatic security-update PRs are disabled in the repository's GitHub settings.
 updates:
   - package-ecosystem: cargo
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
-    groups:
-      rust-dependencies:
-        patterns: ["*"]
-        update-types: [minor, patch]
+    open-pull-requests-limit: 0
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
-    groups:
-      github-actions:
-        patterns: ["*"]
+    open-pull-requests-limit: 0

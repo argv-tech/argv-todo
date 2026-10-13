@@ -97,6 +97,7 @@ pub(crate) enum VimAction {
     SwitchPaneBackward,
     ConvertProject,
     ClearCompleted,
+    ShowDeleted,
     AddProject,
     AssignProject,
     AddChild,

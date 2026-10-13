@@ -55,6 +55,8 @@ def run_unix(command, settings, projects=False, cleanup=False):
         if cleanup:
             send_and_wait(b"\t\t", b"[Cross-platform task]")
             send_and_wait(b"\x1b\r", b"0 tasks")
+            send_and_wait(b"A", b"Soft-deleted tasks")
+            send_and_wait(b"\x1b", b"argv-todo")
             os.write(master, b"q")
         elif projects:
             send_and_wait(b"P", b"Project")
@@ -156,7 +158,7 @@ def run_windows(command, settings, projects=False, cleanup=False):
                             raise AssertionError("App did not enter raw mode")
                         time.sleep(0.05)
 
-                    keys = ("\t\t\rq" if cleanup else
+                    keys = ("\t\t\rA\x1bq" if cleanup else
                             f"P{PROJECT}\r\tmj\rCq" if projects else
                             "\x1bj\r\x1bq" if settings else f"i{TITLE}\rn{NOTE}\rxq")
                     records = []
@@ -227,7 +229,7 @@ def main():
         with closing(sqlite3.connect(database)) as connection:
             assert connection.execute("SELECT COUNT(*) FROM todos").fetchone()[0] == 0, "Hard deletion retained records"
         assert "# Task layouts:" in (folder / "config.toml").read_text(), "Config comments were lost"
-    print("Terminal startup, input, storage, settings, projects, deletion modes, and cleanup passed.")
+    print("Terminal startup, input, storage, settings, projects, deletion modes, archive browsing, and cleanup passed.")
 
 
 if __name__ == "__main__":
