@@ -1,4 +1,5 @@
 use anyhow::Result;
+use std::collections::HashSet;
 
 use super::App;
 use crate::{
@@ -12,6 +13,15 @@ pub(super) enum DeletionUndo {
 }
 
 impl App {
+    pub(super) fn discard_archive_undo(&mut self, ids: &[i64]) {
+        let ids: HashSet<_> = ids.iter().copied().collect();
+        // Stale snapshots must not resurrect a cleared archive or undo an explicit restore.
+        self.undo.retain(|deletion| match deletion {
+            DeletionUndo::Trees(tasks) => !tasks.iter().any(|task| ids.contains(&task.id)),
+            DeletionUndo::Completed(deletion) => !deletion.contains_any(&ids),
+        });
+    }
+
     pub(crate) fn completed_delete(&self) -> DeleteMode {
         self.config
             .as_ref()

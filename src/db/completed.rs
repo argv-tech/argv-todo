@@ -25,6 +25,10 @@ struct ParentChange {
 }
 
 impl CompletedDeletion {
+    pub(crate) fn contains_any(&self, ids: &HashSet<i64>) -> bool {
+        self.tasks.iter().any(|task| ids.contains(&task.id))
+    }
+
     pub(crate) fn len(&self) -> usize {
         self.tasks.len()
     }

@@ -125,3 +125,48 @@ fn empty_archive_and_nonzero_origin_clip_safely_and_return_to_tasks() {
             .unwrap();
     }
 }
+
+#[test]
+fn archive_restore_and_clear_prompt_keep_controls_visible_on_resize() {
+    let mut app = archived_app();
+    let mut terminal = Terminal::new(TestBackend::new(100, 24)).unwrap();
+    app.handle_key(KeyEvent::new(KeyCode::Char('r'), KeyModifiers::NONE));
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    text_position(&terminal, "29 archived");
+    text_position(&terminal, "Saved 01");
+    text_position(&terminal, "Note 01");
+    text_position(&terminal, "r restore tree");
+    text_position(&terminal, "D clear all");
+    app.handle_key(KeyEvent::new(KeyCode::Char('D'), KeyModifiers::NONE));
+    for area in [
+        Rect::new(0, 0, 100, 24),
+        Rect::new(7, 4, 35, 12),
+        Rect::new(7, 4, 1, 1),
+        Rect::new(7, 4, 0, 0),
+    ] {
+        terminal
+            .draw(|frame| super::draw_archive(frame, &mut app, area))
+            .unwrap();
+        if area.width < 35 {
+            continue;
+        }
+        let heading = text_position(&terminal, "Clear archive permanently?");
+        assert_eq!(terminal.backend().buffer()[heading].fg, ACCENT);
+        assert!(
+            terminal.backend().buffer()[heading]
+                .modifier
+                .contains(Modifier::BOLD)
+        );
+        let hint = text_position(&terminal, "Enter clears · Esc cancels");
+        assert!(area.contains(hint.into()));
+        text_position(&terminal, "29 tasks · all projects · no undo");
+        assert!(!terminal.backend().cursor_visible());
+    }
+    app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    text_position(&terminal, "Soft-deleted tasks");
+    app.handle_key(KeyEvent::new(KeyCode::Char('D'), KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    text_position(&terminal, "No soft-deleted tasks.");
+}

@@ -78,7 +78,8 @@ Current source layout:
 | Module            | Responsibility                                                  |
 | ----------------- | --------------------------------------------------------------- |
 | `src/main.rs`     | Startup, terminal setup and cleanup                             |
-| `src/app/`        | State, actions, editing, task notes, events, tree navigation, folding, settings, tasks, completed-task cleanup and deletion undo, read-only archive browsing, pane focus and projections |
+| `src/app/`        | State, actions, editing, task notes, events, tree navigation, folding, settings, tasks, completed-task cleanup and deletion undo, pane focus and projections |
+| `src/app/archive/` | Archive browsing, tree restoration, and confirmed permanent cleanup while preserving live view state |
 | `src/app/projects/` | Project tabs, per-project selection and scrolling, project creation, task conversion and tree assignment |
 | `src/ui/`         | Frame composition, shared branding, geometry, text and wrapping, editors, chrome, help, archive rendering, theme |
 | `src/ui/projects/` | Project tab strip and destination picker |
@@ -135,7 +136,10 @@ visibility rules above when adding or changing module boundaries.
   moves a whole task tree using a destination picker. Alt+Return clears completed
   tasks using the configured soft/hard mode, preserving unfinished descendants.
   `A` browses soft-deleted tasks from all projects with saved notes; `A` or Esc
-  returns to the active tree. Keep the archive read-only and preserve live view state.
+  returns to the active tree. In the archive, `r` restores the selected tree and
+  archived parents; `D` permanently clears archived tasks from all projects after
+  Return confirms, with Esc to cancel. Preserve live tasks and live view state;
+  keep other task editing commands disabled in the archive.
   Avoid separate task pages, dashboards, and large panels.
 - `j/k` selects visible tasks at every level. Return collapses or expands
   children. `h` selects the parent and `l` expands and selects the first child.

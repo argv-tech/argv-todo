@@ -9,7 +9,8 @@ Notable changes to argv-todo, grouped by release.
 - **tasks:** Add saved notes in the bottom section ([398fdd6](https://github.com/argv-tech/argv-todo/commit/398fdd6214fcb4ed5f5350ba64729a00f8df09bc))
 - Add project tabs, conversion, completed cleanup, and UI polish ([a403f82](https://github.com/argv-tech/argv-todo/commit/a403f8291cae0b567c50aa0c28feeba4a14f6733))
 - Add archived task browsing and keep Dependabot alerts without PRs ([a68435a](https://github.com/argv-tech/argv-todo/commit/a68435a3d8ba9eb477ddc9bc5d95419c76a2078c))
-- **ui:** Group settings into Storage, Display, and Task behavior categories
+- **ui:** Group settings into Storage, Display, and Task behavior categories ([78c2c38](https://github.com/argv-tech/argv-todo/commit/78c2c380486099de1e42d67464b292cec3e6c7d7))
+- **archive:** Add separate restore and clear shortcuts
 
 ### Fixed
 

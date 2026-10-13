@@ -1,17 +1,12 @@
 use anyhow::{Context, Result};
 use ratatui::widgets::ListState;
 
-use super::App;
+use super::{ArchiveMode, ArchivedTasks};
+use crate::app::App;
 use crate::{
-    db::{Project, Todo},
+    db::Todo,
     vim_motion::{Motion, VimAction},
 };
-
-pub(crate) struct ArchivedTasks {
-    pub(crate) todos: Vec<Todo>,
-    pub(crate) list: ListState,
-    projects: Vec<Project>,
-}
 
 impl ArchivedTasks {
     pub(crate) fn selected(&self) -> Option<&Todo> {
@@ -29,14 +24,14 @@ impl ArchivedTasks {
         }
     }
 
-    fn select(&mut self, index: usize) {
+    pub(super) fn select(&mut self, index: usize) {
         self.list
             .select(self.todos.len().checked_sub(1).map(|last| index.min(last)));
     }
 }
 
 impl App {
-    pub(super) fn open_archive(&mut self) -> Result<()> {
+    pub(in crate::app) fn open_archive(&mut self) -> Result<()> {
         // Keep the active tree, query, folds, project and viewport intact underneath.
         let todos = self
             .database
@@ -50,6 +45,7 @@ impl App {
             todos,
             projects,
             list: ListState::default(),
+            mode: ArchiveMode::Browsing,
         };
         archive.select(0);
         self.archive = Some(archive);
@@ -65,36 +61,30 @@ impl App {
         }
     }
 
-    pub(super) fn apply_archive(&mut self, action: VimAction) -> Result<()> {
+    pub(in crate::app) fn apply_archive(&mut self, action: VimAction) -> Result<()> {
+        if self.archive_clear_count().is_some() {
+            match action {
+                VimAction::Submit => self.confirm_archive_clear()?,
+                VimAction::Cancel | VimAction::ShowDeleted => {
+                    if let Some(archive) = &mut self.archive {
+                        archive.mode = ArchiveMode::Browsing;
+                    }
+                    self.message("Archive cleanup cancelled.");
+                }
+                _ => {}
+            }
+            return Ok(());
+        }
         match action {
+            VimAction::RestoreArchived => self.restore_archived()?,
+            VimAction::ClearArchived => self.begin_archive_clear()?,
             VimAction::ShowDeleted | VimAction::Cancel => {
                 self.archive = None;
                 self.vim.end_input();
                 self.message("Returned to active tasks.");
             }
             VimAction::Refresh => {
-                let id = self
-                    .archive
-                    .as_ref()
-                    .and_then(ArchivedTasks::selected)
-                    .map(|todo| todo.id);
-                let todos = self
-                    .database
-                    .list_deleted()
-                    .context("Could not reload soft-deleted tasks")?;
-                let projects = self
-                    .database
-                    .projects()
-                    .context("Could not reload archived task projects")?;
-                if let Some(archive) = &mut self.archive {
-                    let previous = archive.list.selected().unwrap_or(0);
-                    let selected = id
-                        .and_then(|id| todos.iter().position(|todo| todo.id == id))
-                        .unwrap_or(previous);
-                    archive.todos = todos;
-                    archive.projects = projects;
-                    archive.select(selected);
-                }
+                self.reload_archive()?;
                 self.message("Reloaded soft-deleted tasks.");
             }
             VimAction::Help => {
@@ -120,13 +110,9 @@ impl App {
                     });
                 }
             }
-            // Archived records are read-only; task commands must never reach the active tree.
+            // Other task commands must never reach the active tree from the archive.
             _ => {}
         }
         Ok(())
     }
 }
-
-#[cfg(test)]
-#[path = "../../tests/unit/app/archive.rs"]
-mod tests;

@@ -83,7 +83,15 @@ const SECTIONS: &[Section] = &[
             ),
             (
                 "Archive j / k",
-                "Browse read-only tasks and notes; Ctrl-r reloads",
+                "Browse archived tasks and notes; Ctrl-r reloads",
+            ),
+            (
+                "Archive r",
+                "Restore the selected tree and its archived parents",
+            ),
+            (
+                "Archive D",
+                "Clear all archived tasks permanently; Enter confirms, Esc cancels",
             ),
             (
                 "Settings j / k",

@@ -17,7 +17,7 @@ NOTE = "Task note: read 'chapter 2' first"
 PROJECT = "Smoke project"
 
 
-def run_unix(command, settings, projects=False, cleanup=False):
+def run_unix(command, settings, projects=False, cleanup=False, archive=None):
     import fcntl
     import pty
     import select
@@ -52,7 +52,18 @@ def run_unix(command, settings, projects=False, cleanup=False):
             wait_for(text, start)
 
         wait_for(b"argv-todo", 0)
-        if cleanup:
+        if archive:
+            send_and_wait(b"A", b"Soft-deleted tasks")
+            if archive == "restore":
+                send_and_wait(b"r", b"No soft-deleted tasks.")
+            else:
+                send_and_wait(b"D", b"Clear archive permanently?")
+                send_and_wait(b"\x1b", b"Soft-deleted tasks")
+                send_and_wait(b"D", b"Clear archive permanently?")
+                send_and_wait(b"\r", b"No soft-deleted tasks.")
+            send_and_wait(b"\x1b", b"argv-todo")
+            os.write(master, b"q")
+        elif cleanup:
             send_and_wait(b"\t\t", b"[Cross-platform task]")
             send_and_wait(b"\x1b\r", b"0 tasks")
             send_and_wait(b"A", b"Soft-deleted tasks")
@@ -100,7 +111,7 @@ def run_unix(command, settings, projects=False, cleanup=False):
         os.close(slave)
 
 
-def run_windows(command, settings, projects=False, cleanup=False):
+def run_windows(command, settings, projects=False, cleanup=False, archive=None):
     import ctypes
     from ctypes import wintypes
     import msvcrt
@@ -158,7 +169,9 @@ def run_windows(command, settings, projects=False, cleanup=False):
                             raise AssertionError("App did not enter raw mode")
                         time.sleep(0.05)
 
-                    keys = ("\t\t\rA\x1bq" if cleanup else
+                    keys = ("Ar\x1bq" if archive == "restore" else
+                            "AD\x1bD\r\x1bq" if archive == "clear" else
+                            "\t\t\rA\x1bq" if cleanup else
                             f"P{PROJECT}\r\tmj\rCq" if projects else
                             "\x1bj\r\x1bq" if settings else f"i{TITLE}\rn{NOTE}\rxq")
                     records = []
@@ -221,15 +234,22 @@ def main():
         with closing(sqlite3.connect(database)) as connection:
             archived = connection.execute("SELECT title, deleted FROM todos").fetchall()
             assert archived == [(TITLE, 1)], f"Soft deletion lost records: {archived!r}"
-            connection.execute("UPDATE todos SET deleted = 0")
-            connection.commit()
+        run_terminal(command, settings=False, archive="restore")
+        with closing(sqlite3.connect(database)) as connection:
+            restored = connection.execute("SELECT title, done, note, deleted FROM todos").fetchall()
+            assert restored == [(TITLE, 1, NOTE, 0)], f"Archive restoration lost metadata: {restored!r}"
         config_path = folder / "config.toml"
         config_path.write_text(config_path.read_text().replace('completed_delete = "soft"', 'completed_delete = "hard"'))
         run_terminal(command, settings=False, cleanup=True)
         with closing(sqlite3.connect(database)) as connection:
             assert connection.execute("SELECT COUNT(*) FROM todos").fetchone()[0] == 0, "Hard deletion retained records"
+            connection.execute("INSERT INTO todos (title, done, note, deleted) VALUES (?, 1, ?, 1)", (TITLE, NOTE))
+            connection.commit()
+        run_terminal(command, settings=False, archive="clear")
+        with closing(sqlite3.connect(database)) as connection:
+            assert connection.execute("SELECT COUNT(*) FROM todos").fetchone()[0] == 0, "Archive clear retained records"
         assert "# Task layouts:" in (folder / "config.toml").read_text(), "Config comments were lost"
-    print("Terminal startup, input, storage, settings, projects, deletion modes, archive browsing, and cleanup passed.")
+    print("Terminal startup, input, storage, settings, projects, deletion modes, archive restoration/clearing, and cleanup passed.")
 
 
 if __name__ == "__main__":

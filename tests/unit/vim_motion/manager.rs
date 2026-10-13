@@ -1,6 +1,85 @@
 use super::*;
 
 #[test]
+fn archive_restore_and_clear_use_separate_press_only_keys() {
+    let mut vim = VimManager::default();
+    for (code, modifiers, action) in [
+        (
+            KeyCode::Char('r'),
+            KeyModifiers::NONE,
+            VimAction::RestoreArchived,
+        ),
+        (
+            KeyCode::Char('D'),
+            KeyModifiers::NONE,
+            VimAction::ClearArchived,
+        ),
+        (
+            KeyCode::Char('D'),
+            KeyModifiers::SHIFT,
+            VimAction::ClearArchived,
+        ),
+        (
+            KeyCode::Char('d'),
+            KeyModifiers::SHIFT,
+            VimAction::ClearArchived,
+        ),
+        (KeyCode::Enter, KeyModifiers::NONE, VimAction::Submit),
+    ] {
+        vim.handle(key('3'));
+        assert_eq!(
+            vim.handle_archive(KeyEvent::new(code, modifiers)),
+            Some(action)
+        );
+        assert!(vim.pending_label().is_empty());
+        for kind in [KeyEventKind::Repeat, KeyEventKind::Release] {
+            assert_eq!(
+                vim.handle_archive(KeyEvent::new_with_kind(code, modifiers, kind)),
+                None
+            );
+        }
+        assert_eq!(
+            vim.handle(KeyEvent::new(code, modifiers)),
+            if code == KeyCode::Enter {
+                Some(VimAction::ToggleCollapse)
+            } else {
+                None
+            }
+        );
+    }
+    assert_eq!(
+        vim.handle_archive(KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL)),
+        Some(VimAction::Refresh)
+    );
+    assert_eq!(
+        vim.handle_archive(KeyEvent::new(KeyCode::Char('D'), KeyModifiers::ALT)),
+        None
+    );
+    assert_eq!(vim.handle_archive(key('d')), None);
+    assert_eq!(vim.handle_archive(key('d')), Some(VimAction::Delete(1)));
+    assert_eq!(
+        vim.handle_archive(key('j')),
+        Some(VimAction::Move(Motion::Down, 1))
+    );
+    for target in [
+        InputTarget::Task,
+        InputTarget::Note,
+        InputTarget::Search,
+        InputTarget::DatabasePath,
+        InputTarget::ProjectName,
+    ] {
+        vim.begin_input(target);
+        for letter in ['r', 'D'] {
+            assert_eq!(
+                vim.handle_archive(key(letter)),
+                Some(VimAction::Insert(letter))
+            );
+        }
+        vim.end_input();
+    }
+}
+
+#[test]
 fn archive_shortcut_is_press_only_and_keeps_editor_append_and_modal_focus() {
     let mut vim = VimManager::default();
     for key in [

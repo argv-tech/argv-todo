@@ -1,3 +1,4 @@
+mod archive;
 mod completed;
 mod model;
 mod ordering;

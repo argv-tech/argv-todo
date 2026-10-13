@@ -1,3 +1,4 @@
+mod archive;
 mod help;
 mod input;
 mod pending;

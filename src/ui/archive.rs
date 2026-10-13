@@ -15,6 +15,7 @@ use super::{
 use crate::app::App;
 
 pub(super) fn draw_archive(frame: &mut Frame, app: &mut App, area: Rect) {
+    let clear_count = app.archive_clear_count();
     let note_area = Rect {
         height: area.height.saturating_sub(4 + u16::from(app.error)),
         ..area
@@ -32,15 +33,20 @@ pub(super) fn draw_archive(frame: &mut Frame, app: &mut App, area: Rect) {
         return;
     };
     frame.render_widget(
-        Paragraph::new("Soft-deleted tasks")
-            .style(Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
+        Paragraph::new(if clear_count.is_some() {
+            "Clear archive permanently?"
+        } else {
+            "Soft-deleted tasks"
+        })
+        .style(Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
         heading,
     );
     frame.render_widget(
-        Paragraph::new(format!(
-            "{} archived · all projects · read-only",
-            archive.todos.len()
-        ))
+        Paragraph::new(if let Some(count) = clear_count {
+            format!("{count} tasks · all projects · no undo")
+        } else {
+            format!("{} archived · all projects", archive.todos.len())
+        })
         .style(Style::default().fg(MUTED)),
         summary,
     );
@@ -93,8 +99,14 @@ pub(super) fn draw_archive(frame: &mut Frame, app: &mut App, area: Rect) {
             error,
         );
     }
-    let hint = if app.show_hints() && footer.width >= 60 {
-        "j/k move · gg/G ends · Ctrl-r reload · A/Esc back · ? help"
+    let hint = if clear_count.is_some() {
+        "Enter clears · Esc cancels"
+    } else if app.show_hints() && footer.width >= 76 {
+        "j/k move · r restore tree · D clear all · Ctrl-r reload · A/Esc back · ? help"
+    } else if app.show_hints() && footer.width >= 45 {
+        "r restore · D clear all · A/Esc back · ? help"
+    } else if app.show_hints() {
+        "r restore · D clear · A/Esc back"
     } else {
         "A/Esc back · q quit"
     };
