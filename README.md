@@ -11,8 +11,8 @@
 
 A terminal todo list with Vim-style keys. Tasks can have children, notes,
 priorities, and deadlines. Everything is saved locally in SQLite as you work.
-Priority sorting ranks each branch by its highest-priority task, keeping
-children with their parents.
+Priority sorting orders siblings high → mid → low by their own priority at
+every tree level, keeping children with their parents.
 Shift+H/L outdents/indents a whole task tree while keeping the selected sort mode.
 Settings also offers deadline sorting, with the earliest branch deadline first
 and undated branches last. Priority sorting ignores deadlines.

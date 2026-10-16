@@ -34,14 +34,14 @@ fn change(app: &mut App, setting: ConfigSetting) {
 }
 
 #[test]
-fn descendant_priorities_rank_branches_in_every_layout_and_manual_order_stays_saved() {
+fn siblings_use_own_priorities_in_every_layout_and_manual_order_stays_saved() {
     for view in [TaskView::Normal, TaskView::Split, TaskView::Projects] {
         let (folder, mut app) = app();
         app.config.as_mut().unwrap().save_task_view(view).unwrap();
         let first = app.database.add("First root", None, Priority::Mid).unwrap();
         let second = app
             .database
-            .add("Second root", None, Priority::Mid)
+            .add("Second root", None, Priority::Low)
             .unwrap();
         let child = app
             .database
@@ -58,18 +58,18 @@ fn descendant_priorities_rank_branches_in_every_layout_and_manual_order_stays_sa
         app.reload(Some(grandchild)).unwrap();
         assert_eq!(
             ordered_ids(&app),
-            [second, child, grandchild, sibling, first]
+            [first, second, sibling, child, grandchild]
         );
         assert_eq!(app.selected_todo().unwrap().id, grandchild);
 
         app.query = "root".into();
-        assert_eq!(ordered_ids(&app), [second, first]);
+        assert_eq!(ordered_ids(&app), [first, second]);
         app.query.clear();
         app.select_id(second);
         press(&mut app, KeyCode::Enter);
-        assert_eq!(ordered_ids(&app), [second, first]);
+        assert_eq!(ordered_ids(&app), [first, second]);
         press(&mut app, KeyCode::Char('l'));
-        assert_eq!(app.selected_todo().unwrap().id, child);
+        assert_eq!(app.selected_todo().unwrap().id, sibling);
 
         app.select_id(grandchild);
         for character in "pl".chars() {
@@ -82,6 +82,14 @@ fn descendant_priorities_rank_branches_in_every_layout_and_manual_order_stays_sa
         assert_eq!(app.selected_todo().unwrap().id, grandchild);
 
         app.apply(VimAction::Priority(Priority::High)).unwrap();
+        // A hidden completed descendant must not promote its ancestors either.
+        app.database.toggle(grandchild).unwrap();
+        app.config.as_mut().unwrap().show_completed = false;
+        app.reload(Some(second)).unwrap();
+        assert_eq!(ordered_ids(&app), [first, second, sibling, child]);
+        app.database.toggle(grandchild).unwrap();
+        app.config.as_mut().unwrap().show_completed = true;
+        app.reload(Some(grandchild)).unwrap();
         change(&mut app, ConfigSetting::SortOrder);
         assert_eq!(
             ordered_ids(&app),
@@ -93,17 +101,34 @@ fn descendant_priorities_rank_branches_in_every_layout_and_manual_order_stays_sa
         change(&mut app, ConfigSetting::SortOrder);
         assert_eq!(
             ordered_ids(&app),
-            [second, child, grandchild, sibling, first]
+            [first, second, sibling, child, grandchild]
         );
-        // Sorting is a projection; it does not change the parent's saved priority.
+        assert_eq!(app.selected_todo().unwrap().id, grandchild);
+
+        // A child's priority reorders only that child's siblings.
+        app.select_id(child);
+        app.apply(VimAction::Priority(Priority::High)).unwrap();
+        assert_eq!(
+            ordered_ids(&app),
+            [first, second, child, grandchild, sibling]
+        );
+        assert_eq!(app.selected_todo().unwrap().id, child);
         assert_eq!(
             app.todos
                 .iter()
                 .find(|todo| todo.id == second)
                 .unwrap()
                 .priority,
-            Priority::Mid
+            Priority::Low
         );
+        // Changing the parent's own priority moves its entire subtree.
+        app.select_id(second);
+        app.apply(VimAction::Priority(Priority::High)).unwrap();
+        assert_eq!(
+            ordered_ids(&app),
+            [second, child, grandchild, sibling, first]
+        );
+        assert_eq!(app.selected_todo().unwrap().id, second);
         std::fs::remove_dir_all(folder).unwrap();
     }
 

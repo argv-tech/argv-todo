@@ -86,7 +86,7 @@ fn priority_changes_reorder_project_branches_and_preserve_selection() {
     terminal.draw(|frame| draw(frame, &mut app)).unwrap();
     let root_y = text_position(&terminal, "Third root").1;
     assert_eq!(text_position(&terminal, "Urgent child").1, root_y + 1);
-    assert!(root_y < text_position(&terminal, "Task for Work").1);
+    assert!(root_y > text_position(&terminal, "Second root").1);
     assert!(terminal_row(&terminal, root_y).contains("low"));
 
     for character in "ho".chars() {
@@ -97,6 +97,7 @@ fn priority_changes_reorder_project_branches_and_preserve_selection() {
     terminal.draw(|frame| draw(frame, &mut app)).unwrap();
     let draft_y = text_position(&terminal, "Draft root").1;
     assert!(draft_y > text_position(&terminal, "Second root").1);
+    assert!(draft_y < text_position(&terminal, "Third root").1);
     app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
     terminal.draw(|frame| draw(frame, &mut app)).unwrap();
     assert_eq!(text_position(&terminal, "Draft root").1, draft_y);

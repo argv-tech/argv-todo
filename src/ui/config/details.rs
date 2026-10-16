@@ -67,7 +67,7 @@ fn draw_preference(frame: &mut Frame, app: &App, setting: ConfigSetting, area: R
                 "Enter / h / l toggles visibility.",
             ],
             ConfigSetting::SortOrder => &[
-                "priority: highest branch priority.",
+                "priority: each sibling's own priority.",
                 "deadline: earliest branch deadline.",
                 "Undated branches come last.",
                 "manual: J/K moves down/up.",

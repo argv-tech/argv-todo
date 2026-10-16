@@ -23,7 +23,7 @@ pub(super) fn display_rows(app: &App, pane: TaskPane) -> (Vec<DisplayRow>, Optio
         && app.vim.input() == Some(InputTarget::Task)
         && app.editing_id.is_none();
     let draft = if adding {
-        let branch_values = app.branch_sort_values();
+        let sort_values = app.task_sort_values();
         let draft_value = app.draft_sort_value();
         let (start, end, depth) = app
             .adding_parent
@@ -55,7 +55,7 @@ pub(super) fn display_rows(app: &App, pane: TaskPane) -> (Vec<DisplayRow>, Optio
                     return false;
                 };
                 let todo = &app.todos[index];
-                let value = branch_values[&todo.id];
+                let value = sort_values[&todo.id];
                 visible[row].depth == depth
                     && (value > draft_value
                         || (value == draft_value

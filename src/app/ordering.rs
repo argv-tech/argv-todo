@@ -39,7 +39,17 @@ impl App {
         }
     }
 
-    pub(crate) fn branch_sort_values(&self) -> HashMap<i64, TaskSortValue<'_>> {
+    pub(crate) fn task_sort_values(&self) -> HashMap<i64, TaskSortValue<'_>> {
+        if self.sort_order() != SortOrder::Deadline {
+            return self
+                .todos
+                .iter()
+                .map(|todo| (todo.id, self.task_sort_value(todo)))
+                .collect();
+        }
+
+        // Only deadline sorting inherits a value from descendants. Priority
+        // sorting compares each sibling's own priority at every tree level.
         let mut branches: HashMap<_, _> = self
             .todos
             .iter()
@@ -66,9 +76,9 @@ impl App {
     pub(super) fn sibling_sort_key<'a>(
         &self,
         todo: &Todo,
-        branch_values: &HashMap<i64, TaskSortValue<'a>>,
+        sort_values: &HashMap<i64, TaskSortValue<'a>>,
     ) -> (TaskSortValue<'a>, i64, i64) {
-        (branch_values[&todo.id], todo.position, todo.id)
+        (sort_values[&todo.id], todo.position, todo.id)
     }
 
     pub(super) fn move_task(&mut self, movement: TaskMove, count: usize) -> Result<()> {
@@ -82,7 +92,7 @@ impl App {
             return Ok(());
         };
         let changed = if self.sort_order() != SortOrder::Manual {
-            let values = self.branch_sort_values();
+            let values = self.task_sort_values();
             let mut tasks: Vec<_> = self.todos.iter().collect();
             tasks.sort_by_key(|todo| self.sibling_sort_key(todo, &values));
             let sibling_order: Vec<_> = tasks.into_iter().map(|todo| todo.id).collect();

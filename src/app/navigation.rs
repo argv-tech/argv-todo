@@ -43,11 +43,9 @@ impl App {
                 }
             }
         }
-        let branch_sort_values = self.branch_sort_values();
+        let sort_values = self.task_sort_values();
         for siblings in children.values_mut() {
-            siblings.sort_by_key(|&index| {
-                self.sibling_sort_key(&self.todos[index], &branch_sort_values)
-            });
+            siblings.sort_by_key(|&index| self.sibling_sort_key(&self.todos[index], &sort_values));
         }
         let mut stack: Vec<_> = children
             .get(&None)
@@ -121,7 +119,7 @@ impl App {
         let Some(id) = self.selected_todo().map(|todo| todo.id) else {
             return false;
         };
-        let branch_sort_values = self.branch_sort_values();
+        let sort_values = self.task_sort_values();
         if let Some(child) = self
             .todos
             .iter()
@@ -129,7 +127,7 @@ impl App {
                 todo.parent_id == Some(id)
                     && (self.task_view() == TaskView::Split || self.show_completed() || !todo.done)
             })
-            .min_by_key(|todo| self.sibling_sort_key(todo, &branch_sort_values))
+            .min_by_key(|todo| self.sibling_sort_key(todo, &sort_values))
             .map(|todo| todo.id)
         {
             self.query.clear();

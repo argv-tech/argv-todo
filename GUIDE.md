@@ -66,10 +66,10 @@ Completing a child leaves its ancestors and siblings unchanged.
 
 ### Priority, deadline, and manual ordering
 
-By default, sibling branches are sorted high → mid → low using the highest
-priority anywhere in each branch. A high-priority child brings its whole branch
-upward, keeping descendants attached. Equal-priority branches keep their saved
-order. New roots use the `default_priority` setting;
+By default, siblings are sorted high → mid → low by each task's own priority
+at every tree level. A child's priority does not change its parent's position;
+descendants stay attached to their parent. Equal-priority siblings keep their
+saved order. New roots use the `default_priority` setting;
 children inherit their parent's priority and new siblings inherit the
 selected task's priority. `Ctrl-p` also changes priority while editing a title.
 

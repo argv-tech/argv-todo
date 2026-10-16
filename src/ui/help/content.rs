@@ -111,7 +111,7 @@ const SECTIONS: &[Section] = &[
             ("Picker Esc", "Close the deadline picker without saving"),
             (
                 "ph / pm / pl",
-                "Set high / mid / low priority; Settings sorts by priority, deadline, or manual order",
+                "Set high / mid / low priority; priority sort compares siblings' own priorities",
             ),
             ("Shift-J / K", "Move a task tree down / up in manual sort"),
             (

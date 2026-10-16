@@ -84,7 +84,7 @@ fn deadline_sort_uses_branch_dates_and_priority_sort_ignores_them() {
         app.reload(Some(undated)).unwrap();
         assert_eq!(
             ids(&app),
-            [earlier, sibling, child, grandchild, later, undated]
+            [later, undated, earlier, sibling, child, grandchild]
         );
 
         app.config
@@ -108,4 +108,37 @@ fn ids(app: &App) -> Vec<i64> {
         .into_iter()
         .map(|index| app.todos[index].id)
         .collect()
+}
+
+#[test]
+fn priority_indentation_uses_own_priority_order_despite_urgent_descendants() {
+    let database = crate::db::Database::memory();
+    let low = database.add("Low root", None, Priority::Low).unwrap();
+    let child = database
+        .add("Urgent child", Some(low), Priority::High)
+        .unwrap();
+    let mid = database.add("Mid root", None, Priority::Mid).unwrap();
+    let high = database.add("High root", None, Priority::High).unwrap();
+    let mut app = App::new(database).unwrap();
+    app.select_id(low);
+    assert_eq!(ids(&app), [high, mid, low, child]);
+
+    app.apply(VimAction::MoveTask(TaskMove::Indent, 1)).unwrap();
+    assert_eq!(app.selected_todo().unwrap().id, low);
+    assert_eq!(app.selected_todo().unwrap().parent_id, Some(mid));
+    assert_eq!(ids(&app), [high, mid, low, child]);
+    assert_eq!(
+        app.todos
+            .iter()
+            .find(|todo| todo.id == child)
+            .unwrap()
+            .parent_id,
+        Some(low)
+    );
+
+    app.apply(VimAction::MoveTask(TaskMove::Outdent, 1))
+        .unwrap();
+    assert_eq!(app.selected_todo().unwrap().parent_id, None);
+    assert_eq!(ids(&app), [high, mid, low, child]);
+    assert_eq!(app.sort_order(), SortOrder::Priority);
 }
