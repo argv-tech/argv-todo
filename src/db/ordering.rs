@@ -15,6 +15,21 @@ pub(crate) enum TaskMove {
 
 impl Database {
     pub(crate) fn move_task(&mut self, id: i64, movement: TaskMove, count: usize) -> Result<bool> {
+        self.move_task_with_sibling_order(id, movement, count, &[])
+    }
+
+    pub(crate) fn move_task_with_sibling_order(
+        &mut self,
+        id: i64,
+        movement: TaskMove,
+        count: usize,
+        sibling_order: &[i64],
+    ) -> Result<bool> {
+        let ranks: HashMap<_, _> = sibling_order
+            .iter()
+            .enumerate()
+            .map(|(rank, &id)| (id, rank))
+            .collect();
         let transaction = self.connection.transaction()?;
         let project_id: Option<i64> = transaction
             .query_row(
@@ -62,7 +77,7 @@ impl Database {
             }
             TaskMove::Outdent | TaskMove::Indent => {
                 for _ in 0..count {
-                    if !change_parent(&mut siblings, &mut parents, id, movement)? {
+                    if !change_parent(&mut siblings, &mut parents, id, movement, &ranks)? {
                         break;
                     }
                 }
@@ -96,6 +111,7 @@ fn change_parent(
     parents: &mut HashMap<i64, Option<i64>>,
     id: i64,
     movement: TaskMove,
+    ranks: &HashMap<i64, usize>,
 ) -> Result<bool> {
     let parent = parents[&id];
     let group = siblings
@@ -106,7 +122,15 @@ fn change_parent(
         .position(|&task| task == id)
         .context("Task is missing from its siblings")?;
     let (new_parent, insertion) = if movement == TaskMove::Indent {
-        let Some(previous) = index.checked_sub(1).map(|index| group[index]) else {
+        let mut ordered = group.clone();
+        if !ranks.is_empty() {
+            ordered.sort_by_key(|id| ranks.get(id).copied().unwrap_or(usize::MAX));
+        }
+        let index = ordered
+            .iter()
+            .position(|&task| task == id)
+            .context("Task is missing from its siblings")?;
+        let Some(previous) = index.checked_sub(1).map(|index| ordered[index]) else {
             return Ok(false);
         };
         (

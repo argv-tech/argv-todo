@@ -34,6 +34,158 @@ fn change(app: &mut App, setting: ConfigSetting) {
 }
 
 #[test]
+fn descendant_priorities_rank_branches_in_every_layout_and_manual_order_stays_saved() {
+    for view in [TaskView::Normal, TaskView::Split, TaskView::Projects] {
+        let (folder, mut app) = app();
+        app.config.as_mut().unwrap().save_task_view(view).unwrap();
+        let first = app.database.add("First root", None, Priority::Mid).unwrap();
+        let second = app
+            .database
+            .add("Second root", None, Priority::Mid)
+            .unwrap();
+        let child = app
+            .database
+            .add("Child", Some(second), Priority::Low)
+            .unwrap();
+        let grandchild = app
+            .database
+            .add("Grandchild", Some(child), Priority::High)
+            .unwrap();
+        let sibling = app
+            .database
+            .add("Sibling", Some(second), Priority::Mid)
+            .unwrap();
+        app.reload(Some(grandchild)).unwrap();
+        assert_eq!(
+            ordered_ids(&app),
+            [second, child, grandchild, sibling, first]
+        );
+        assert_eq!(app.selected_todo().unwrap().id, grandchild);
+
+        app.query = "root".into();
+        assert_eq!(ordered_ids(&app), [second, first]);
+        app.query.clear();
+        app.select_id(second);
+        press(&mut app, KeyCode::Enter);
+        assert_eq!(ordered_ids(&app), [second, first]);
+        press(&mut app, KeyCode::Char('l'));
+        assert_eq!(app.selected_todo().unwrap().id, child);
+
+        app.select_id(grandchild);
+        for character in "pl".chars() {
+            press(&mut app, KeyCode::Char(character));
+        }
+        assert_eq!(
+            ordered_ids(&app),
+            [first, second, sibling, child, grandchild]
+        );
+        assert_eq!(app.selected_todo().unwrap().id, grandchild);
+
+        app.apply(VimAction::Priority(Priority::High)).unwrap();
+        change(&mut app, ConfigSetting::SortOrder);
+        assert_eq!(
+            ordered_ids(&app),
+            [first, second, child, grandchild, sibling]
+        );
+        assert_eq!(app.selected_todo().unwrap().id, grandchild);
+        change(&mut app, ConfigSetting::SortOrder);
+        assert_eq!(
+            ordered_ids(&app),
+            [second, child, grandchild, sibling, first]
+        );
+        // Sorting is a projection; it does not change the parent's saved priority.
+        assert_eq!(
+            app.todos
+                .iter()
+                .find(|todo| todo.id == second)
+                .unwrap()
+                .priority,
+            Priority::Mid
+        );
+        std::fs::remove_dir_all(folder).unwrap();
+    }
+
+    fn ordered_ids(app: &App) -> Vec<i64> {
+        app.visible_indices()
+            .iter()
+            .map(|&index| app.todos[index].id)
+            .collect()
+    }
+}
+
+#[test]
+fn shifted_parent_moves_keep_priority_sort_and_use_priority_order_in_every_layout() {
+    for view in [TaskView::Normal, TaskView::Split, TaskView::Projects] {
+        let (folder, mut app) = app();
+        app.config.as_mut().unwrap().save_task_view(view).unwrap();
+        let first = app.database.add("First", None, Priority::Low).unwrap();
+        let second = app.database.add("Second", None, Priority::Mid).unwrap();
+        let third = app.database.add("Third", None, Priority::High).unwrap();
+        let anchor = app
+            .database
+            .add("Anchor", Some(third), Priority::High)
+            .unwrap();
+        let child = app
+            .database
+            .add("Child", Some(second), Priority::Low)
+            .unwrap();
+        let grandchild = app
+            .database
+            .add("Grandchild", Some(child), Priority::Low)
+            .unwrap();
+        app.reload(Some(second)).unwrap();
+        press(&mut app, KeyCode::Enter);
+        app.query = "Second".into();
+        app.normalize_selection();
+        press(&mut app, KeyCode::Char('L'));
+        assert_eq!(app.sort_order(), SortOrder::Priority);
+        assert_eq!(app.selected_todo().unwrap().id, second);
+        assert_eq!(app.selected_todo().unwrap().parent_id, Some(third));
+        assert!(app.is_collapsed(second));
+        assert_eq!(
+            app.todos
+                .iter()
+                .find(|todo| todo.id == child)
+                .unwrap()
+                .parent_id,
+            Some(second)
+        );
+        assert_eq!(
+            app.todos
+                .iter()
+                .find(|todo| todo.id == grandchild)
+                .unwrap()
+                .parent_id,
+            Some(child)
+        );
+        press(&mut app, KeyCode::Char('H'));
+        assert_eq!(app.selected_todo().unwrap().parent_id, None);
+        press(&mut app, KeyCode::Char('2'));
+        press(&mut app, KeyCode::Char('L'));
+        assert_eq!(app.selected_todo().unwrap().parent_id, Some(anchor));
+        press(&mut app, KeyCode::Char('2'));
+        press(&mut app, KeyCode::Char('H'));
+        assert_eq!(app.selected_todo().unwrap().parent_id, None);
+        app.query.clear();
+        let roots: Vec<_> = app
+            .visible_rows()
+            .into_iter()
+            .filter(|row| row.depth == 0)
+            .map(|row| app.todos[row.index].id)
+            .collect();
+        assert_eq!(roots, [third, second, first]);
+        app.select_id(third);
+        press(&mut app, KeyCode::Char('L'));
+        assert_eq!(app.selected_todo().unwrap().parent_id, None);
+        press(&mut app, KeyCode::Char('H'));
+        assert_eq!(app.selected_todo().unwrap().parent_id, None);
+        let saved = Config::load(&folder.join("db.sql"), false).unwrap();
+        assert_eq!(saved.sort_order, SortOrder::Priority);
+        std::fs::remove_dir_all(folder).unwrap();
+    }
+}
+
+#[test]
 fn root_defaults_apply_immediately_children_and_siblings_keep_inheritance() {
     let (folder, mut app) = app();
     change(&mut app, ConfigSetting::DefaultPriority);

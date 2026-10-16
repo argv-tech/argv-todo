@@ -15,12 +15,13 @@ Notable changes to argv-todo, grouped by release.
 - **projects:** Add keybinds to rename and delete projects ([503fd84](https://github.com/argv-tech/argv-todo/commit/503fd84a7d9168383aa74561a76df8c0bfd02acb))
 - **deletion:** Require confirmation for destructive deletions ([3f8e59b](https://github.com/argv-tech/argv-todo/commit/3f8e59beebc07dd3f828132076cca8952dd38c28))
 - **deadlines:** Add optional date-time deadlines with calendar picker ([afa7023](https://github.com/argv-tech/argv-todo/commit/afa7023d218acbc8ec46957950e22c96ca9fbe6d))
-- **notify:** Add argv-todo-daemon deadline notifications ([55feee0](https://github.com/argv-tech/argv-todo/commit/55feee048d266b37ad213eacb13012eb821ecbf6))
+- **notify:** Add argv-todo-daemon deadline notifications ([e0c27da](https://github.com/argv-tech/argv-todo/commit/e0c27da0d7445bc97769732c06d13ee2def15183))
 
 ### Fixed
 
 - **projects:** Keep subtask navigation before switching tabs with h and l ([f9df04f](https://github.com/argv-tech/argv-todo/commit/f9df04fcafe52c2fa746ff50cca10122c94886d7))
 - **projects:** Remove original task when converting it to a project ([4bf137a](https://github.com/argv-tech/argv-todo/commit/4bf137a2c0b50a9a9abd4de7f13077273674de87))
+- **tasks:** Sort branches by priority and allow tree indentation
 
 ### Changed
 
@@ -29,6 +30,10 @@ Notable changes to argv-todo, grouped by release.
 ### Documentation
 
 - **help:** Cover archive, settings, and project picker shortcuts ([472a408](https://github.com/argv-tech/argv-todo/commit/472a4086db8939e059576de62b4df6778e1c942a))
+- **readme:** Rewrite guide around practical usage ([83d4431](https://github.com/argv-tech/argv-todo/commit/83d44312146375a287eea53055a5680ae5b33b4e))
+- Ascii art ([f3079ae](https://github.com/argv-tech/argv-todo/commit/f3079ae78d4442ad3ed6798cc2ce5327135ef13e))
+- **readme:** Add project badges and move app help to guide ([76f834e](https://github.com/argv-tech/argv-todo/commit/76f834e96771db82d5b16a426bf699081729ba16))
+- **readme:** Add star history chart and contributor avatars ([a95e9aa](https://github.com/argv-tech/argv-todo/commit/a95e9aaa614a2b9525f3d0fe99b17146ed48f71e))
 
 ### Build
 

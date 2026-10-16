@@ -11,6 +11,9 @@
 
 A terminal todo list with Vim-style keys. Tasks can have children, notes,
 priorities, and deadlines. Everything is saved locally in SQLite as you work.
+Priority sorting ranks each branch by its highest-priority task, keeping
+children with their parents.
+Shift+H/L outdents/indents a whole task tree while keeping priority sorting.
 
 [![CI](https://github.com/argv-tech/argv-todo/actions/workflows/ci.yml/badge.svg)](https://github.com/argv-tech/argv-todo/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/argv-tech/argv-todo)](LICENSE)

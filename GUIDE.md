@@ -66,16 +66,21 @@ Completing a child leaves its ancestors and siblings unchanged.
 
 ### Priority and manual ordering
 
-By default, siblings are sorted high → mid → low. Tasks with equal priority
-keep their saved order. New roots use the `default_priority` setting;
+By default, sibling branches are sorted high → mid → low using the highest
+priority anywhere in each branch. A high-priority child brings its whole branch
+upward, keeping descendants attached. Equal-priority branches keep their saved
+order. New roots use the `default_priority` setting;
 children inherit their parent's priority and new siblings inherit the
 selected task's priority. `Ctrl-p` also changes priority while editing a title.
 
-To arrange tasks yourself, set `sort_order` to `manual` in Settings:
+Use `Shift-H` / `Shift-L` to outdent / indent the selected task tree in either
+sort mode. Indenting uses the previous sibling in the current sort order.
+Priority sorting stays active and descendants move with their parent.
+To move trees up or down yourself, set `sort_order` to `manual` in Settings:
 
-| Key | Action in manual order |
+| Key | Action |
 | --- | --- |
-| `J` / `K` | Move the selected task tree down / up |
+| `J` / `K` | Move the selected task tree down / up (manual order only) |
 | `L` | Indent under the previous sibling |
 | `H` | Outdent one level |
 

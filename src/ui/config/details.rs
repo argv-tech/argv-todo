@@ -67,10 +67,11 @@ fn draw_preference(frame: &mut Frame, app: &App, setting: ConfigSetting, area: R
                 "Enter / h / l toggles visibility.",
             ],
             ConfigSetting::SortOrder => &[
-                "priority: highest priority first.",
+                "priority: most urgent branch first.",
+                "Includes descendant priorities.",
                 "manual: use Shift+H/J/K/L.",
                 "J/K moves down/up among siblings.",
-                "H outdents; L indents.",
+                "H outdents; L indents in either mode.",
                 "Enter / h / l changes ordering.",
             ],
             ConfigSetting::CompletedDelete => &[

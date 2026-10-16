@@ -45,6 +45,64 @@ fn app() -> App {
 }
 
 #[test]
+fn priority_changes_reorder_project_branches_and_preserve_selection() {
+    let mut app = app();
+    app.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+    for text in ["oSecond root", "oThird root"] {
+        for character in text.chars() {
+            app.handle_key(KeyEvent::new(KeyCode::Char(character), KeyModifiers::NONE));
+        }
+        app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    }
+    let mut terminal = Terminal::new(TestBackend::new(100, 24)).unwrap();
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    assert!(text_position(&terminal, "Task for Work").1 < text_position(&terminal, "Third root").1);
+
+    for character in "ph".chars() {
+        app.handle_key(KeyEvent::new(KeyCode::Char(character), KeyModifiers::NONE));
+    }
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    assert!(text_position(&terminal, "Third root").1 < text_position(&terminal, "Task for Work").1);
+    let (x, y) = text_position(&terminal, "Third root");
+    assert!(
+        terminal.backend().buffer()[(x, y)]
+            .modifier
+            .contains(Modifier::UNDERLINED)
+    );
+
+    for character in "pl".chars() {
+        app.handle_key(KeyEvent::new(KeyCode::Char(character), KeyModifiers::NONE));
+    }
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    assert!(text_position(&terminal, "Second root").1 < text_position(&terminal, "Third root").1);
+
+    for character in "iUrgent child".chars() {
+        app.handle_key(KeyEvent::new(KeyCode::Char(character), KeyModifiers::NONE));
+    }
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    for character in "ph".chars() {
+        app.handle_key(KeyEvent::new(KeyCode::Char(character), KeyModifiers::NONE));
+    }
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    let root_y = text_position(&terminal, "Third root").1;
+    assert_eq!(text_position(&terminal, "Urgent child").1, root_y + 1);
+    assert!(root_y < text_position(&terminal, "Task for Work").1);
+    assert!(terminal_row(&terminal, root_y).contains("low"));
+
+    for character in "ho".chars() {
+        app.handle_key(KeyEvent::new(KeyCode::Char(character), KeyModifiers::NONE));
+    }
+    app.handle_key(KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL));
+    app.editor.insert("Draft root");
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    let draft_y = text_position(&terminal, "Draft root").1;
+    assert!(draft_y > text_position(&terminal, "Second root").1);
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    assert_eq!(text_position(&terminal, "Draft root").1, draft_y);
+}
+
+#[test]
 fn tabs_keep_active_project_visible_with_styles_and_scoped_notes_on_resize() {
     let mut app = app();
     let mut terminal = Terminal::new(TestBackend::new(100, 24)).unwrap();

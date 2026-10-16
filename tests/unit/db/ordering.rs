@@ -85,6 +85,13 @@ fn ordering_rolls_back_parent_and_all_positions_on_failure() {
         .unwrap();
     assert!(database.move_task(second, TaskMove::Indent, 1).is_err());
     assert_eq!(database.list().unwrap(), before);
+    let first = before.iter().find(|task| task.id != second).unwrap().id;
+    assert!(
+        database
+            .move_task_with_sibling_order(second, TaskMove::Indent, 1, &[first, second])
+            .is_err()
+    );
+    assert_eq!(database.list().unwrap(), before);
     assert!(database.move_task(second, TaskMove::Up, 1).is_err());
     assert_eq!(database.list().unwrap(), before);
 }

@@ -312,9 +312,9 @@ fn priorities_sort_siblings_keep_selection_and_survive_edit_and_undo() {
             .collect::<Vec<_>>(),
         [
             (second, 0),
-            (mid_child, 1),
             (high_child, 1),
             (grandchild, 2),
+            (mid_child, 1),
             (first, 0),
         ]
     );
