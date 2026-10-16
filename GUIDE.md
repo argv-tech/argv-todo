@@ -64,7 +64,7 @@ Search keeps ancestors visible so matches have context. Completing or
 deleting a parent also affects descendants hidden by search or folding.
 Completing a child leaves its ancestors and siblings unchanged.
 
-### Priority and manual ordering
+### Priority, deadline, and manual ordering
 
 By default, sibling branches are sorted high → mid → low using the highest
 priority anywhere in each branch. A high-priority child brings its whole branch
@@ -73,9 +73,14 @@ order. New roots use the `default_priority` setting;
 children inherit their parent's priority and new siblings inherit the
 selected task's priority. `Ctrl-p` also changes priority while editing a title.
 
-Use `Shift-H` / `Shift-L` to outdent / indent the selected task tree in either
+Choose `sort_order = "deadline"` in Settings to sort branches by their earliest
+deadline, including descendants. Overdue deadlines come first; undated branches
+come last. Equal deadlines keep saved order. Deadline sorting ignores priority,
+and priority sorting ignores deadlines.
+
+Use `Shift-H` / `Shift-L` to outdent / indent the selected task tree in any
 sort mode. Indenting uses the previous sibling in the current sort order.
-Priority sorting stays active and descendants move with their parent.
+The selected sort mode stays active and descendants move with their parent.
 To move trees up or down yourself, set `sort_order` to `manual` in Settings:
 
 | Key | Action |
@@ -212,7 +217,7 @@ database_path = "db.sql"
 task_view = "normal"              # normal, split, projects
 default_priority = "mid"          # low, mid, high
 show_completed = true            # Normal and Projects; Split has its own pane
-sort_order = "priority"           # priority, manual
+sort_order = "priority"           # priority, manual, deadline
 completed_delete = "soft"         # soft, hard
 show_hints = true
 notifications = true

@@ -16,12 +16,13 @@ Notable changes to argv-todo, grouped by release.
 - **deletion:** Require confirmation for destructive deletions ([3f8e59b](https://github.com/argv-tech/argv-todo/commit/3f8e59beebc07dd3f828132076cca8952dd38c28))
 - **deadlines:** Add optional date-time deadlines with calendar picker ([afa7023](https://github.com/argv-tech/argv-todo/commit/afa7023d218acbc8ec46957950e22c96ca9fbe6d))
 - **notify:** Add argv-todo-daemon deadline notifications ([e0c27da](https://github.com/argv-tech/argv-todo/commit/e0c27da0d7445bc97769732c06d13ee2def15183))
+- **config:** Add independent deadline sorting for task branches
 
 ### Fixed
 
 - **projects:** Keep subtask navigation before switching tabs with h and l ([f9df04f](https://github.com/argv-tech/argv-todo/commit/f9df04fcafe52c2fa746ff50cca10122c94886d7))
 - **projects:** Remove original task when converting it to a project ([4bf137a](https://github.com/argv-tech/argv-todo/commit/4bf137a2c0b50a9a9abd4de7f13077273674de87))
-- **tasks:** Sort branches by priority and allow tree indentation
+- **tasks:** Sort branches by priority and allow tree indentation ([8b9ac09](https://github.com/argv-tech/argv-todo/commit/8b9ac0990d5b4a9725f728770cfb57dcfcbb9216))
 
 ### Changed
 

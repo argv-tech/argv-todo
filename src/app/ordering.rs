@@ -7,42 +7,68 @@ use crate::{
     db::{Priority, TaskMove, Todo},
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum TaskSortValue<'a> {
+    Priority(Priority),
+    Deadline(&'a str),
+    Undated,
+    Manual,
+}
+
+#[cfg(test)]
+#[path = "../../tests/unit/app/ordering.rs"]
+mod tests;
+
 impl App {
-    pub(crate) fn branch_priorities(&self) -> HashMap<i64, Priority> {
+    fn task_sort_value<'a>(&self, todo: &'a Todo) -> TaskSortValue<'a> {
+        match self.sort_order() {
+            SortOrder::Priority => TaskSortValue::Priority(todo.priority),
+            SortOrder::Deadline => todo
+                .deadline
+                .as_deref()
+                .map_or(TaskSortValue::Undated, TaskSortValue::Deadline),
+            SortOrder::Manual => TaskSortValue::Manual,
+        }
+    }
+
+    pub(crate) fn draft_sort_value(&self) -> TaskSortValue<'_> {
+        match self.sort_order() {
+            SortOrder::Priority => TaskSortValue::Priority(self.input_priority),
+            SortOrder::Deadline => TaskSortValue::Undated,
+            SortOrder::Manual => TaskSortValue::Manual,
+        }
+    }
+
+    pub(crate) fn branch_sort_values(&self) -> HashMap<i64, TaskSortValue<'_>> {
         let mut branches: HashMap<_, _> = self
             .todos
             .iter()
-            .map(|todo| (todo.id, (todo.parent_id, todo.priority)))
+            .map(|todo| (todo.id, (todo.parent_id, self.task_sort_value(todo))))
             .collect();
-        if self.sort_order() == SortOrder::Priority {
-            for todo in &self.todos {
-                let mut ancestor = todo.parent_id;
-                while let Some((parent, priority)) = ancestor.and_then(|id| branches.get_mut(&id)) {
-                    // An equally urgent ancestor already carries this priority upward.
-                    if *priority <= todo.priority {
-                        break;
-                    }
-                    *priority = todo.priority;
-                    ancestor = *parent;
+        for todo in &self.todos {
+            let value = self.task_sort_value(todo);
+            let mut ancestor = todo.parent_id;
+            while let Some((parent, inherited)) = ancestor.and_then(|id| branches.get_mut(&id)) {
+                // An equally early sort value already propagates through this ancestor.
+                if *inherited <= value {
+                    break;
                 }
+                *inherited = value;
+                ancestor = *parent;
             }
         }
         branches
             .into_iter()
-            .map(|(id, (_, priority))| (id, priority))
+            .map(|(id, (_, value))| (id, value))
             .collect()
     }
 
-    pub(super) fn sibling_sort_key(
+    pub(super) fn sibling_sort_key<'a>(
         &self,
         todo: &Todo,
-        branch_priorities: &HashMap<i64, Priority>,
-    ) -> (Option<Priority>, i64, i64) {
-        let priority = match self.sort_order() {
-            SortOrder::Priority => Some(branch_priorities[&todo.id]),
-            SortOrder::Manual => None,
-        };
-        (priority, todo.position, todo.id)
+        branch_values: &HashMap<i64, TaskSortValue<'a>>,
+    ) -> (TaskSortValue<'a>, i64, i64) {
+        (branch_values[&todo.id], todo.position, todo.id)
     }
 
     pub(super) fn move_task(&mut self, movement: TaskMove, count: usize) -> Result<()> {
@@ -55,10 +81,10 @@ impl App {
         let Some(id) = self.selected_todo().map(|todo| todo.id) else {
             return Ok(());
         };
-        let changed = if self.sort_order() == SortOrder::Priority {
-            let priorities = self.branch_priorities();
+        let changed = if self.sort_order() != SortOrder::Manual {
+            let values = self.branch_sort_values();
             let mut tasks: Vec<_> = self.todos.iter().collect();
-            tasks.sort_by_key(|todo| self.sibling_sort_key(todo, &priorities));
+            tasks.sort_by_key(|todo| self.sibling_sort_key(todo, &values));
             let sibling_order: Vec<_> = tasks.into_iter().map(|todo| todo.id).collect();
             self.database
                 .move_task_with_sibling_order(id, movement, count, &sibling_order)?

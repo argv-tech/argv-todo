@@ -5,6 +5,7 @@ pub(crate) enum SortOrder {
     #[default]
     Priority,
     Manual,
+    Deadline,
 }
 
 impl SortOrder {
@@ -12,13 +13,15 @@ impl SortOrder {
         match self {
             Self::Priority => "priority",
             Self::Manual => "manual",
+            Self::Deadline => "deadline",
         }
     }
 
     pub(crate) fn next(self) -> Self {
         match self {
             Self::Priority => Self::Manual,
-            Self::Manual => Self::Priority,
+            Self::Manual => Self::Deadline,
+            Self::Deadline => Self::Priority,
         }
     }
 
@@ -26,7 +29,8 @@ impl SortOrder {
         match value {
             "priority" => Ok(Self::Priority),
             "manual" => Ok(Self::Manual),
-            _ => bail!("sort_order must be priority or manual"),
+            "deadline" => Ok(Self::Deadline),
+            _ => bail!("sort_order must be priority, manual, or deadline"),
         }
     }
 }

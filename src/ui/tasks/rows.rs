@@ -1,6 +1,5 @@
 use crate::{
     app::{App, TaskPane},
-    config::SortOrder,
     vim_motion::InputTarget,
 };
 
@@ -24,7 +23,8 @@ pub(super) fn display_rows(app: &App, pane: TaskPane) -> (Vec<DisplayRow>, Optio
         && app.vim.input() == Some(InputTarget::Task)
         && app.editing_id.is_none();
     let draft = if adding {
-        let branch_priorities = app.branch_priorities();
+        let branch_values = app.branch_sort_values();
+        let draft_value = app.draft_sort_value();
         let (start, end, depth) = app
             .adding_parent
             .and_then(|id| {
@@ -55,19 +55,11 @@ pub(super) fn display_rows(app: &App, pane: TaskPane) -> (Vec<DisplayRow>, Optio
                     return false;
                 };
                 let todo = &app.todos[index];
+                let value = branch_values[&todo.id];
                 visible[row].depth == depth
-                    && match app.sort_order() {
-                        SortOrder::Priority => {
-                            let priority = branch_priorities[&todo.id];
-                            priority > app.input_priority
-                                || (priority == app.input_priority
-                                    && relative_position
-                                        .is_some_and(|position| todo.position >= position))
-                        }
-                        SortOrder::Manual => {
-                            relative_position.is_some_and(|position| todo.position >= position)
-                        }
-                    }
+                    && (value > draft_value
+                        || (value == draft_value
+                            && relative_position.is_some_and(|position| todo.position >= position)))
             })
             .unwrap_or(end);
         visible.insert(

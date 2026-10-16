@@ -89,6 +89,8 @@ fn descendant_priorities_rank_branches_in_every_layout_and_manual_order_stays_sa
         );
         assert_eq!(app.selected_todo().unwrap().id, grandchild);
         change(&mut app, ConfigSetting::SortOrder);
+        assert_eq!(app.sort_order(), SortOrder::Deadline);
+        change(&mut app, ConfigSetting::SortOrder);
         assert_eq!(
             ordered_ids(&app),
             [second, child, grandchild, sibling, first]
@@ -183,6 +185,33 @@ fn shifted_parent_moves_keep_priority_sort_and_use_priority_order_in_every_layou
         assert_eq!(saved.sort_order, SortOrder::Priority);
         std::fs::remove_dir_all(folder).unwrap();
     }
+}
+
+#[test]
+fn sort_setting_cycles_deadline_with_reverse_counts_and_persists() {
+    let (folder, mut app) = app();
+    app.configuring = true;
+    app.config_setting = ConfigSetting::SortOrder;
+    press(&mut app, KeyCode::Char('h'));
+    assert_eq!(app.sort_order(), SortOrder::Deadline);
+    app.config.as_mut().unwrap().reload().unwrap();
+    assert_eq!(app.sort_order(), SortOrder::Deadline);
+    press(&mut app, KeyCode::Enter);
+    assert_eq!(app.sort_order(), SortOrder::Priority);
+    press(&mut app, KeyCode::Char('2'));
+    press(&mut app, KeyCode::Char('l'));
+    assert_eq!(app.sort_order(), SortOrder::Deadline);
+    press(&mut app, KeyCode::Char('2'));
+    press(&mut app, KeyCode::Char('h'));
+    assert_eq!(app.sort_order(), SortOrder::Priority);
+    let before = std::fs::read_to_string(&app.config.as_ref().unwrap().path).unwrap();
+    press(&mut app, KeyCode::Char('3'));
+    press(&mut app, KeyCode::Char('l'));
+    assert_eq!(
+        std::fs::read_to_string(&app.config.as_ref().unwrap().path).unwrap(),
+        before
+    );
+    std::fs::remove_dir_all(folder).unwrap();
 }
 
 #[test]

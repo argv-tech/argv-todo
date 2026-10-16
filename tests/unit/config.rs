@@ -12,6 +12,14 @@ fn accepts_toml_and_rejects_invalid_settings() {
     assert_eq!(defaults.default_priority, Priority::Mid);
     assert!(defaults.show_completed && defaults.show_hints);
     assert_eq!(defaults.sort_order, SortOrder::Priority);
+    for order in [SortOrder::Priority, SortOrder::Manual, SortOrder::Deadline] {
+        assert_eq!(
+            parse(&format!("sort_order = '{}'", order.label()))
+                .unwrap()
+                .sort_order,
+            order
+        );
+    }
     assert_eq!(defaults.completed_delete, DeleteMode::Soft);
     assert!(defaults.notifications);
     assert_eq!(defaults.notify_reminder_1_minutes, 60);

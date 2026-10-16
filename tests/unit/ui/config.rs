@@ -343,6 +343,35 @@ fn hiding_hints_keeps_mode_errors_and_help_usable() {
 }
 
 #[test]
+fn deadline_sort_renders_earliest_first_and_places_undated_drafts_last() {
+    use crate::{config::SortOrder, db::Priority, vim_motion::InputTarget};
+    let database = Database::memory();
+    database.add("Undated", None, Priority::High).unwrap();
+    let dated = database.add("Dated", None, Priority::Low).unwrap();
+    database
+        .set_deadline(dated, Some("2030-01-01 09:00"))
+        .unwrap();
+    let config = app().config;
+    let mut app = App::new(database).unwrap();
+    app.config = config;
+    app.config.as_mut().unwrap().sort_order = SortOrder::Deadline;
+    app.adding_relative = Some((dated, true));
+    app.input_priority = Priority::High;
+    app.vim.begin_input(InputTarget::Task);
+    app.editor.insert("Draft");
+    let mut terminal = Terminal::new(TestBackend::new(100, 24)).unwrap();
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    assert!(text_position(&terminal, "Dated").1 < text_position(&terminal, "Undated").1);
+    assert!(text_position(&terminal, "Undated").1 < text_position(&terminal, "Draft").1);
+
+    app.configuring = true;
+    app.vim.end_input();
+    app.config_setting = ConfigSetting::SortOrder;
+    terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+    text_position(&terminal, "sort_order · deadline");
+}
+
+#[test]
 fn manual_sort_places_inline_sibling_drafts_at_the_saved_position() {
     use crate::{config::SortOrder, db::Priority, vim_motion::InputTarget};
     let database = Database::memory();

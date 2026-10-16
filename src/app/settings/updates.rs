@@ -40,7 +40,7 @@ impl App {
             .context("Configuration is unavailable")?;
         let steps = if matches!(
             self.config_setting,
-            ConfigSetting::DefaultPriority | ConfigSetting::TaskView
+            ConfigSetting::DefaultPriority | ConfigSetting::TaskView | ConfigSetting::SortOrder
         ) {
             if forward {
                 count % 3
@@ -75,7 +75,13 @@ impl App {
                 config.save_default_priority(priority)?;
             }
             ConfigSetting::ShowCompleted => config.save_show_completed(!config.show_completed)?,
-            ConfigSetting::SortOrder => config.save_sort_order(config.sort_order.next())?,
+            ConfigSetting::SortOrder => {
+                let mut order = config.sort_order;
+                for _ in 0..steps {
+                    order = order.next();
+                }
+                config.save_sort_order(order)?;
+            }
             ConfigSetting::ShowHints => config.save_show_hints(!config.show_hints)?,
             ConfigSetting::CompletedDelete => {
                 config.save_completed_delete(config.completed_delete.next())?
